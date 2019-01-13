@@ -6,10 +6,10 @@ appended to the corresponding release in the [Releases Page](/../../releases).
 
 Some of the features of `kubergrunt` includes:
 
-    * configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
-      in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
-    * managing Helm and associated TLS certificates.
-    * setting up Helm client with TLS certificates.
+* configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
+  in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
+* managing Helm and associated TLS certificates.
+* setting up Helm client with TLS certificates.
 
 
 ## Installation
