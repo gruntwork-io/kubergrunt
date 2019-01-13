@@ -1,5 +1,3 @@
-[![Maintained by Gruntwork.io](https://img.shields.io/badge/maintained%20by-gruntwork.io-%235849a6.svg)](https://gruntwork.io/?ref=repo_kubergrunt)
-
 # kubergrunt
 
 `kubergrunt` is an encompassing tool that attempts to fill in the gaps between Terraform, Helm, and Kubectl for managing
@@ -8,10 +6,10 @@ appended to the corresponding release in the [Releases Page](/../../releases).
 
 Some of the features of `kubergrunt` includes:
 
-* configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
-  in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
-* managing Helm and associated TLS certificates.
-* setting up Helm client with TLS certificates.
+    * configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
+      in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
+    * managing Helm and associated TLS certificates.
+    * setting up Helm client with TLS certificates.
 
 
 ## Installation
@@ -33,6 +31,10 @@ The following commands are available as part of `kubergrunt`:
     * [configure](#configure)
     * [token](#token)
     * [deploy](#deploy)
+1. [helm](#helm)
+    * [deploy](#helm-deploy)
+    * [grant](#grant)
+    * [revoke](#revoke)
 
 ### eks
 
@@ -136,37 +138,85 @@ Currently `kubergrunt` does not implement any checks for these resources to be i
 plan to bake in checks into the deployment command to verify that all services have a disruption budget set, and warn
 the user of any services that do not have a check.
 
-## Who maintains this project?
 
-`kubergrunt` is maintained by [Gruntwork](http://www.gruntwork.io/). If you are looking for help or commercial support,
-send an email to [support@gruntwork.io](mailto:support@gruntwork.io?Subject=kubergrunt).
+### helm
 
-Gruntwork can help with:
+The `helm` subcommand of `kubergrunt` provides the ability to manage various Helm Server (Tiller) installs on your
+Kubernetes cluster, in addition to setting up operator machines to authenticate with the designated Helm Server for the
+operator.
 
-* Setup, customization, and support for this Module.
-* Modules and submodules for other types of infrastructure, such as VPCs, Docker clusters, databases, and continuous
-  integration.
-* Modules and Submodules that meet compliance requirements, such as HIPAA.
-* Consulting & Training on AWS, Terraform, and DevOps.
+**Note**: The `helm` subcommand requires the `helm` client to be installed on the operators' machine. Refer to the
+[official docs](https://docs.helm.sh/) for instructions on installing the client.
 
 
-## How do I contribute?
+#### (helm) deploy
 
-Contributions are very welcome! Check out the [Contribution Guidelines](/CONTRIBUTING.md) for instructions.
+This subcommand will install and setup the Helm Server on the designated Kubernetes cluster. In addition to providing a
+basic helm server, this subcommand contains features such as:
 
+- Provisioning and managing TLS certs for a particular Tiller install.
+- Defaulting to use `Secrets` for Tiller release storage (as opposed to ConfigMaps).
+- Specifying [ServiceAccounts](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/) for a
+  particular Tiller install.
+- Tying certificate access to RBAC roles to harden access to the Tiller server.
 
-## How is this project versioned?
+Note that this command does not create `Namespaces` or `ServiceAccounts`, delegating that responsibility to other
+systems (see [k8s-helm-server module](../k8s-helm-server) for example).
 
-This project follows the principles of [Semantic Versioning](http://semver.org/). You can find each new release, along
-with the changelog, in the [Releases Page](../../releases).
+For example, to setup a basic install of helm in the Kubernetes namespace `tiller-world` with the `ServiceAccount`
+`tiller`:
 
-During initial development, the major version will be 0 (e.g., `0.x.y`), which indicates the code does not yet have a
-stable API. Once we hit `1.0.0`, we will make every effort to maintain a backwards compatible API and use the MAJOR,
-MINOR, and PATCH versions on each release to indicate any incompatibilities.
+```bash
+# Note that most of the arguments here are used to setup the Certificate Authority for TLS
+kubergrunt helm deploy \
+    --namespace tiller-world \
+    --service-account tiller \
+    --tls-common-name tiller \
+    --tls-org Gruntwork \
+    --tls-org-unit IT \
+    --tls-city Phoenix \
+    --tls-state AZ \
+    --tls-country US
+```
 
+This will:
 
-## License
+- Generate a new Certificate Authority keypair.
+- Generate a new TLS certificate signed by the generated Certificate Authority keypair.
+- Store the Certificate Authority private key in a new `Secret` in the `kube-system` namespace.
+- Launch Tiller using the generated TLS certificate in the specified `Namespace` with the specified `ServiceAccount`.
 
-Please see [LICENSE](/LICENSE) for how the code in this repo is licensed.
+#### grant
 
-Copyright &copy; 2018 Gruntwork, Inc.
+This subcommand will grant access to an installed helm server to a given RBAC role. This will:
+
+- Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
+- Issue a new TLS certificate keypair using the CA keypair.
+- Upload the new TLS certificate keypair to a new Secret in a new Namespace that only the granted RBAC role has access
+  to. This access is readonly.
+- Remove the local copies of the downloaded and generated certificates.
+
+This command assumes that the authenticated entitiy running the command has enough permissions to access the generated
+CA `Secret`.
+
+For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC role `dev`:
+
+```bash
+kubergrunt helm grant --tiller-namespace tiller-world --rbac-role dev
+```
+
+#### revoke
+
+This subcommand will revoke access to an installed helm server for a given RBAC role. This will:
+
+- Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
+- Download the TLS certificate keypair for the RBAC role.
+- Revoke the certificate in the CA.
+- Update the CA certificate keypair in both the `Secret` and the installed Tiller server.
+- Restart Tiller.
+
+For example, to revoke access to a Tiller server deployed in the namespace `tiller-world` from the RBAC role `dev`:
+
+```bash
+kubergrunt helm revoke --tiller-namespace tiller-world --rbac-role dev
+```

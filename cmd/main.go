@@ -55,6 +55,7 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		SetupEksCommand(),
+		SetupHelmCommand(),
 	}
 	entrypoint.RunApp(app)
 }

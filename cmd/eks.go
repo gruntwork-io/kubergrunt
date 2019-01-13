@@ -24,11 +24,11 @@ var (
 		Name:  "wait",
 		Usage: "Whether or not to wait for the command to succeed.",
 	}
-	kubectlContextNameFlag = cli.StringFlag{
+	eksKubectlContextNameFlag = cli.StringFlag{
 		Name:  "kubectl-context-name",
 		Usage: "The name to use for the config context that is set up to authenticate with the EKS cluster. Defaults to the cluster ARN.",
 	}
-	kubeconfigFlag = cli.StringFlag{
+	eksKubeconfigFlag = cli.StringFlag{
 		Name:  "kubeconfig",
 		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
 	}
@@ -64,11 +64,10 @@ var (
 
 // SetupEksCommand creates the cli.Command entry for the eks subcommand of kubergrunt
 func SetupEksCommand() cli.Command {
-	helpText := "Helper commands to configure EKS, including setting up operator machines to authenticate with EKS."
 	return cli.Command{
 		Name:        "eks",
-		Usage:       helpText,
-		Description: helpText,
+		Usage:       "Helper commands to configure EKS.",
+		Description: "Helper commands to configure EKS, including setting up operator machines to authenticate with EKS.",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:        "verify",
@@ -89,8 +88,8 @@ func SetupEksCommand() cli.Command {
 				Action:      setupKubectl,
 				Flags: []cli.Flag{
 					eksClusterArnFlag,
-					kubectlContextNameFlag,
-					kubeconfigFlag,
+					eksKubectlContextNameFlag,
+					eksKubeconfigFlag,
 				},
 			},
 			cli.Command{
@@ -123,8 +122,8 @@ If max-retries is unspecified, this command will use a value that translates to 
 				Flags: []cli.Flag{
 					clusterRegionFlag,
 					clusterAsgNameFlag,
-					kubectlContextNameFlag,
-					kubeconfigFlag,
+					eksKubectlContextNameFlag,
+					eksKubeconfigFlag,
 					drainTimeoutFlag,
 					waitMaxRetriesFlag,
 					waitSleepBetweenRetriesFlag,
@@ -152,11 +151,11 @@ func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, erro
 	logger := logging.GetProjectLogger()
 
 	// Set defaults for the optional parameters, if unset
-	kubectlContextName := cliContext.String(kubectlContextNameFlag.Name)
+	kubectlContextName := cliContext.String(eksKubectlContextNameFlag.Name)
 	if kubectlContextName == "" {
 		logger.Infof("No context name provided. Using default.")
 	}
-	kubeconfigPath := cliContext.String(kubeconfigFlag.Name)
+	kubeconfigPath := cliContext.String(eksKubeconfigFlag.Name)
 	if kubeconfigPath == "" {
 		defaultKubeconfigPath, err := kubectl.KubeConfigPathFromHomeDir()
 		if err != nil {
