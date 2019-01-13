@@ -2,9 +2,9 @@
 
 # kubergrunt
 
-This folder contains the source code for `kubergrunt`. `kubergrunt` is an encompassing tool that supports the
-configuration and management of a Kubernetes cluster. The binaries are all built as part of the CI pipeline on each
-release of the package, and is appended to the corresponding release in the [Releases Page](/../../releases).
+`kubergrunt` is an encompassing tool that attempts to fill in the gaps between Terraform, Helm, and Kubectl for managing
+a Kubernetes Cluster. The binaries are all built as part of the CI pipeline on each release of the package, and is
+appended to the corresponding release in the [Releases Page](/../../releases).
 
 Some of the features of `kubergrunt` includes:
 
@@ -32,6 +32,7 @@ The following commands are available as part of `kubergrunt`:
 1. [eks](#eks)
     * [configure](#configure)
     * [token](#token)
+    * [deploy](#deploy)
 
 ### eks
 
