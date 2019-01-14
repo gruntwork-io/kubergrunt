@@ -63,8 +63,7 @@ install_gruntwork_utils: &install_gruntwork_utils
       --packer-version ${PACKER_VERSION} \
       --use-go-dep \
       --go-version ${GOLANG_VERSION} \
-      --go-src-path test \
-      --go-src-path modules/kubergrunt
+      --go-src-path ./ 
 
 
 version: 2
