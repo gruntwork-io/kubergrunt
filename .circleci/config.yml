@@ -81,15 +81,9 @@ jobs:
           <<: *install_gruntwork_utils
 
       - save_cache:
-          key: dep-{{ checksum "test/Gopkg.lock" }}
+          key: dep-{{ checksum "Gopkg.lock" }}
           paths:
           - ./vendor
-
-      # Fail the build if the pre-commit hooks don't pass. Note: if you run pre-commit install locally, these hooks will
-      # execute automatically every time before you commit, ensuring the build never fails at this step!
-      - run: pip install pre-commit==1.11.2
-      - run: pre-commit install
-      - run: pre-commit run --all-files
 
       - persist_to_workspace:
           root: /home/circleci
