@@ -8,7 +8,7 @@ import (
 	"github.com/gruntwork-io/gruntwork-cli/collections"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // Given a list of instance IDs, fetch the instance details from AWS.

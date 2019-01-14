@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/eks"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // GetClusterByArn returns the EKS Cluster object that corresponds to the given ARN.

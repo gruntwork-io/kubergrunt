@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // This will create an initial blank config

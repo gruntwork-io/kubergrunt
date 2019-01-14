@@ -13,7 +13,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/stretchr/testify/require"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/kubectl"
+	"github.com/gruntwork-io/kubergrunt/kubectl"
 )
 
 func TestEksKubectlConfigureHonorsKubeConfigPath(t *testing.T) {

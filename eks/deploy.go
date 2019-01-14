@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/kubectl"
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/kubectl"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // RollOutDeployment will perform a zero downtime roll out of the current launch configuration associated with the

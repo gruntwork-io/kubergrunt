@@ -10,8 +10,8 @@ import (
 	"github.com/gruntwork-io/gruntwork-cli/collections"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/kubectl"
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/kubectl"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // GetAsgByName will lookup an AutoScalingGroup that matches the given name. This will return an error if it can not
