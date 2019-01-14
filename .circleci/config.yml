@@ -108,6 +108,7 @@ jobs:
           command: |
             mkdir -p /tmp/kubergrunt_logs
             run-go-tests --path . --timeout 10m | tee /tmp/logs/all.log
+          no_output_timeout: 900s
       - run:
           command: terratest_log_parser --testlog /tmp/logs/all.log --outputdir /tmp/logs
           when: always
