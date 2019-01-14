@@ -106,7 +106,7 @@ jobs:
       - run:
           name: run kubergrunt tests
           command: |
-            mkdir -p /tmp/kubergrunt_logs
+            mkdir -p /tmp/logs
             run-go-tests --path . --timeout 10m | tee /tmp/logs/all.log
           no_output_timeout: 900s
       - run:
