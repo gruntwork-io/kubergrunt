@@ -20,6 +20,7 @@ defaults: &defaults
 # https://github.com/kubernetes/minikube#linux-continuous-integration-without-vm-support
 setup_minikube: &setup_minikube
   name: install kubectl and minikube
+  working_directory: /tmp
   command: |
     # install kubectl
     curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/linux/amd64/kubectl
