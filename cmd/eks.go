@@ -10,9 +10,9 @@ import (
 	"github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token"
 	"github.com/urfave/cli"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/eks"
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/kubectl"
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/eks"
+	"github.com/gruntwork-io/kubergrunt/kubectl"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 var (

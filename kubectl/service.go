@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/gruntwork-io/package-k8s/modules/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // GetAllServices queries Kubernetes for information on all deployed Service resources in the current cluster that the

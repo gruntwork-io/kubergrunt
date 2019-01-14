@@ -19,7 +19,7 @@ Some of the features of `kubergrunt` includes:
 You can install `kubergrunt` using the [Gruntwork Installer](https://github.com/gruntwork-io/gruntwork-installer):
 
 ```bash
-gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/package-k8s" --tag "v0.0.1"
+gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.0.1"
 ```
 
 Alternatively, you can download the corresponding binary for your platform directly from the [Releases Page](/../../releases).

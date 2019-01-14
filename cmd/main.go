@@ -8,6 +8,14 @@ import (
 	"github.com/urfave/cli"
 )
 
+// This variable is set at build time using -ldflags parameters. For example, we typically set this flag in circle.yml
+// to the latest Git tag when building our Go apps:
+//
+// build-go-binaries --app-name my-app --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+//
+// For more info, see: http://stackoverflow.com/a/11355611/483528
+var VERSION string
+
 var (
 	logLevelFlag = cli.StringFlag{
 		Name:  "loglevel",
@@ -37,6 +45,8 @@ func main() {
 	app.Author = "Gruntwork <www.gruntwork.io>"
 	app.Description = "A CLI tool to help setup and manage a Kubernetes cluster."
 	app.EnableBashCompletion = true
+	// Set the version number from your app from the VERSION variable that is passed in at build time
+	app.Version = VERSION
 
 	app.Before = initCli
 

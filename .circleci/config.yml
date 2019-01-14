@@ -20,6 +20,7 @@ defaults: &defaults
 # https://github.com/kubernetes/minikube#linux-continuous-integration-without-vm-support
 setup_minikube: &setup_minikube
   name: install kubectl and minikube
+  working_directory: /tmp
   command: |
     # install kubectl
     curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/linux/amd64/kubectl
@@ -63,8 +64,7 @@ install_gruntwork_utils: &install_gruntwork_utils
       --packer-version ${PACKER_VERSION} \
       --use-go-dep \
       --go-version ${GOLANG_VERSION} \
-      --go-src-path test \
-      --go-src-path modules/kubergrunt
+      --go-src-path ./ 
 
 
 version: 2
@@ -82,15 +82,9 @@ jobs:
           <<: *install_gruntwork_utils
 
       - save_cache:
-          key: dep-{{ checksum "test/Gopkg.lock" }}
+          key: dep-{{ checksum "Gopkg.lock" }}
           paths:
           - ./vendor
-
-      # Fail the build if the pre-commit hooks don't pass. Note: if you run pre-commit install locally, these hooks will
-      # execute automatically every time before you commit, ensuring the build never fails at this step!
-      - run: pip install pre-commit==1.11.2
-      - run: pre-commit install
-      - run: pre-commit run --all-files
 
       - persist_to_workspace:
           root: /home/circleci
@@ -112,8 +106,9 @@ jobs:
       - run:
           name: run kubergrunt tests
           command: |
-            mkdir -p /tmp/kubergrunt_logs
+            mkdir -p /tmp/logs
             run-go-tests --path . --timeout 10m | tee /tmp/logs/all.log
+          no_output_timeout: 900s
       - run:
           command: terratest_log_parser --testlog /tmp/logs/all.log --outputdir /tmp/logs
           when: always
