@@ -4,12 +4,21 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 )
+
+// CertificateKeyPairPath represents the path where the certificate key pair resides.
+type CertificateKeyPairPath struct {
+	CertificatePath string
+	PrivateKeyPath  string
+	PublicKeyPath   string
+}
 
 // StoreCertificate will take the provided certificate, encode it to pem, and store it on disk at the specified path.
 func StoreCertificate(certificate *x509.Certificate, path string) error {
@@ -83,4 +92,18 @@ func createCertificateTemplate(
 	// Because of that, helm requires a certificate that allows localhost.
 	template.IPAddresses = append(template.IPAddresses, net.ParseIP("127.0.0.1"))
 	return template
+}
+
+// LoadCertificate will load a Certificate object from the provided path, assuming it holds a certificate encoded in PEM.
+func LoadCertificate(path string) (*x509.Certificate, error) {
+	rawData, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	certificatePemBlock, _ := pem.Decode(rawData)
+	certificate, err := x509.ParseCertificate(certificatePemBlock.Bytes)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	return certificate, nil
 }

@@ -687,6 +687,7 @@
     "github.com/gruntwork-io/terratest/modules/k8s",
     "github.com/gruntwork-io/terratest/modules/logger",
     "github.com/gruntwork-io/terratest/modules/random",
+    "github.com/gruntwork-io/terratest/modules/shell",
     "github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token",
     "github.com/mitchellh/go-homedir",
     "github.com/sirupsen/logrus",

@@ -4,6 +4,15 @@ import (
 	"fmt"
 )
 
+// UnknownPrivateKeyAlgorithm is returned when the provided algorithm is unknown or unsupported.
+type UnknownPrivateKeyAlgorithm struct {
+	Algorithm string
+}
+
+func (err UnknownPrivateKeyAlgorithm) Error() string {
+	return fmt.Sprintf("Unrecognized private key algorithm %s", err.Algorithm)
+}
+
 // UnknownECDSACurveError is returned when an unknown ecdsa curve is requested.
 type UnknownECDSACurveError struct {
 	Curve string

@@ -4,11 +4,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 )
-
-var KnownCurves = []string{"P224", "P256", "P384", "P521"}
 
 // StoreECDSAPrivateKey takes the given ECDSA private key, encode it to pem, and store it on disk at the specified path.
 // You can optionally provide a password to encrypt the key on disk (passing in "" will store it unencrypted).
@@ -34,13 +35,13 @@ func StoreECDSAPublicKey(publicKey *ecdsa.PublicKey, path string) error {
 func CreateECDSAKeyPair(ecdsaCurve string) (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	var curve elliptic.Curve
 	switch ecdsaCurve {
-	case "P224":
+	case P224Curve:
 		curve = elliptic.P224()
-	case "P256":
+	case P256Curve:
 		curve = elliptic.P256()
-	case "P384":
+	case P384Curve:
 		curve = elliptic.P384()
-	case "P521":
+	case P521Curve:
 		curve = elliptic.P521()
 	default:
 		err := UnknownECDSACurveError{ecdsaCurve}
@@ -52,4 +53,19 @@ func CreateECDSAKeyPair(ecdsaCurve string) (*ecdsa.PrivateKey, *ecdsa.PublicKey,
 		return nil, nil, errors.WithStackTrace(err)
 	}
 	return privateKey, &privateKey.PublicKey, nil
+}
+
+// LoadECDSAPrivateKey will load a private key object from the provided path, assuming it holds a certificate encoded in
+// PEM.
+func LoadECDSAPrivateKey(path string) (*ecdsa.PrivateKey, error) {
+	rawData, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	privateKeyPemBlock, _ := pem.Decode(rawData)
+	privateKey, err := x509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	return privateKey, nil
 }

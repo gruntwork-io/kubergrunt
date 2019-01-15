@@ -3,14 +3,12 @@ package tls
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"io/ioutil"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 )
-
-// We force users to use at least 2048 bits, as anything less is cryptographically insecure (since they have been
-// cracked).
-// See https://en.wikipedia.org/wiki/Key_size for more commentary
-const MinimumRSABits = 2048
 
 // StoreRSAPrivateKey takes the given RSA private key, encode it to pem, and store it on disk at the specified path. You
 // can optionally provide a password to encrypt the key on disk (passing in "" will store it unencrypted).
@@ -46,4 +44,19 @@ func CreateRSAKeyPair(rsaBits int) (*rsa.PrivateKey, *rsa.PublicKey, error) {
 		return nil, nil, errors.WithStackTrace(err)
 	}
 	return privateKey, &privateKey.PublicKey, nil
+}
+
+// LoadRSAPrivateKey will load a private key object from the provided path, assuming it holds a certificate encoded in
+// PEM.
+func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
+	rawData, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	privateKeyPemBlock, _ := pem.Decode(rawData)
+	privateKey, err := x509.ParsePKCS1PrivateKey(privateKeyPemBlock.Bytes)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	return privateKey, nil
 }
