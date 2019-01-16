@@ -83,8 +83,10 @@ func Deploy(
 	err = RunHelm(
 		kubectlOptions,
 		"init",
+		// Use Secrets instead of ConfigMap to track metadata
 		"--override",
-		"'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'", // Use Secrets instead of ConfigMap to track metadata
+		"'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'",
+		// Enable TLS
 		"--tiller-tls",
 		"--tiller-tls-verify",
 		"--tiller-tls-cert",
@@ -93,6 +95,7 @@ func Deploy(
 		tillerKeyPairPath.PrivateKeyPath,
 		"--tls-ca-cert",
 		caKeyPairPath.CertificatePath,
+		// Specific namespace and service account
 		"--tiller-namespace",
 		namespace,
 		"--service-account",
@@ -102,7 +105,7 @@ func Deploy(
 		logger.Errorf("Error deploying Helm server: %s", err)
 		return err
 	}
-	logger.Info("Successfully deployed helm server")
+	logger.Infof("Successfully deployed helm server in namespace %s with service account %s", namespace, serviceAccount)
 
 	logger.Info("Done deploying helm server")
 	return nil

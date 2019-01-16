@@ -217,7 +217,8 @@
   version = "v0.4.2"
 
 [[projects]]
-  digest = "1:a40b1839e6fd62e1922d80c02ca6968720cbcc5b45855fac21a43f7215ce08a1"
+  branch = "yori-k8s-service-account-and-secret"
+  digest = "1:8d134d3a96ab2d1e6001721fbd2881af73242aa2041eabd6a4bfd2170056d003"
   name = "github.com/gruntwork-io/terratest"
   packages = [
     "modules/aws",
@@ -233,8 +234,7 @@
     "modules/ssh",
   ]
   pruneopts = "UT"
-  revision = "da848892d7e2822604027814f5402743eb1c292c"
-  version = "v0.13.20"
+  revision = "dbe73c4a8e528f30e49c6824b4d32ecfd0884a4b"
 
 [[projects]]
   digest = "1:8eb1de8112c9924d59bf1d3e5c26f5eaa2bfc2a5fcbb92dc1c2e4546d695f277"
