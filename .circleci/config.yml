@@ -19,7 +19,7 @@ defaults: &defaults
 # Install and setup minikube
 # https://github.com/kubernetes/minikube#linux-continuous-integration-without-vm-support
 setup_minikube: &setup_minikube
-  name: install kubectl and minikube
+  name: install helm, kubectl and minikube
   working_directory: /tmp
   command: |
     # install kubectl
@@ -28,6 +28,12 @@ setup_minikube: &setup_minikube
     sudo mv kubectl /usr/local/bin/
     mkdir -p ${HOME}/.kube
     touch ${HOME}/.kube/config
+
+    # install helm
+    curl -Lo helm.tar.gz https://storage.googleapis.com/kubernetes-helm/helm-v2.12.2-linux-amd64.tar.gz
+    tar -xvf helm.tar.gz
+    chmod +x linux-amd64/helm
+    sudo mv linux-amd64/helm /usr/local/bin/
 
     # Install minikube
     curl -Lo minikube https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64

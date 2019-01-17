@@ -3,6 +3,7 @@ package tls
 import (
 	"testing"
 
+	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,6 +65,7 @@ func TestTLSOptionsValidateRejectsUnknownAlgorithms(t *testing.T) {
 	}
 	err := options.Validate()
 	assert.Error(t, err)
+	err = errors.Unwrap(err)
 	switch err.(type) {
 	case UnknownPrivateKeyAlgorithm:
 	default:
@@ -79,6 +81,7 @@ func TestTLSOptionsValidateRejectsUnknownCurves(t *testing.T) {
 	}
 	err := options.Validate()
 	assert.Error(t, err)
+	err = errors.Unwrap(err)
 	switch err.(type) {
 	case UnknownECDSACurveError:
 	default:
@@ -94,6 +97,7 @@ func TestTLSOptionsValidateRejectsRSABitsBelowMinimum(t *testing.T) {
 	}
 	err := options.Validate()
 	assert.Error(t, err)
+	err = errors.Unwrap(err)
 	switch err.(type) {
 	case RSABitsTooLow:
 	default:
