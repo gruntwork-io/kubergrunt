@@ -30,12 +30,14 @@ Alternatively, you can download the corresponding binary for your platform direc
 The following commands are available as part of `kubergrunt`:
 
 1. [eks](#eks)
+    * [verify](#verify)
     * [configure](#configure)
     * [token](#token)
     * [deploy](#deploy)
 1. [helm](#helm)
     * [deploy](#helm-deploy)
     * [undeploy](#undeploy)
+    * [configure](#helm-configure)
     * [grant](#grant)
     * [revoke](#revoke)
 
@@ -207,6 +209,36 @@ wanted to uninstall it:
 # The helm-home option should point to a helm home directory that has been configured for the Helm server being
 # undeployed.
 kubergrunt helm undeploy --helm-home $HOME/.helm
+```
+
+#### (helm) configure
+
+This subcommand will setup the installed `helm` client to be able to access the specified Helm server. Specifically,
+this will:
+
+- Download the client TLS certificate key pair generated with the [`grant`](#grant) command.
+- Install the TLS certificate key pair in the helm home directory.
+- Install an environment file that sets up environment variables to target the specific helm server. This environment
+  file needs to be loaded before issuing any commands, at it sets the necessary environment variables to signal to the
+  helm client which helm server to use. The environment variables it sets are:
+  - `HELM_HOME`: The helm client home directory where the TLS certs are located.
+  - `TILLER_NAMESPACE`: The namespace where the helm server is installed.
+  - `HELM_TLS_VERIFY`: This will be set to true to enable TLS verification.
+  - `HELM_TLS_ENABLE`: This will be set to true to enable TLS authentication.
+
+Afterwards, you can source the environment file to setup your shell to access the proper helm client.
+
+For example, if you want to setup helm to target a server install in the namespace `dev` with the default helm home
+directory:
+
+```bash
+# This is for linux
+# Setup helm
+helm configure --home-dir $HOME/.helm --namespace dev
+# Source the environment file
+source $HOME/.helm/env
+# Verify connection. This should display info about both the client and server.
+helm version
 ```
 
 #### grant
