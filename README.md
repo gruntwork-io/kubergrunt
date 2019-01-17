@@ -234,7 +234,7 @@ directory:
 ```bash
 # This is for linux
 # Setup helm
-helm configure --home-dir $HOME/.helm --namespace dev
+kubergrunt helm configure --home-dir $HOME/.helm --namespace dev
 # Source the environment file
 source $HOME/.helm/env
 # Verify connection. This should display info about both the client and server.
