@@ -35,6 +35,7 @@ The following commands are available as part of `kubergrunt`:
     * [deploy](#deploy)
 1. [helm](#helm)
     * [deploy](#helm-deploy)
+    * [undeploy](#undeploy)
     * [grant](#grant)
     * [revoke](#revoke)
 
@@ -187,6 +188,25 @@ This will:
 - Generate a new TLS certificate signed by the generated Certificate Authority keypair.
 - Store the Certificate Authority private key in a new `Secret` in the `kube-system` namespace.
 - Launch Tiller using the generated TLS certificate in the specified `Namespace` with the specified `ServiceAccount`.
+
+#### undeploy
+
+This subcommand will uninstall the Helm Server from the designated Kubernetes cluster and delete all Secrets related to
+the installed Helm Server. This subcommand relies on the `helm reset` command, which requires a helm client that can
+access the Helm Server pod being uninstalled. See the [`configure`](#helm-configure) subcommand for more details on
+setting up your helm client.
+
+**Note**: This will not be able to uninstall a Helm Server that has active releases in it. To do so, you must first delete
+all deployed releases before attempting to uninstall the Helm Server.
+
+For example, if you had a deployed a Helm server into the namespace `dev` using the [`deploy`](#helm-deploy) command and
+wanted to uninstall it:
+
+```bash
+# The helm-home option should point to a helm home directory that has been configured for the Helm server being
+# undeployed.
+kubergrunt helm undeploy --helm-home $HOME/.helm
+```
 
 #### grant
 
