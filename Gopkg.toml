@@ -31,9 +31,7 @@
 
 [[constraint]]
   name = "github.com/gruntwork-io/terratest"
-  # TODO: Fix when new version is released
-  branch = "yori-k8s-service-account-and-secret"
-  #version = "0.13.21"
+  version = "0.13.22"
 
 [[constraint]]
   name = "github.com/gruntwork-io/gruntwork-cli"
