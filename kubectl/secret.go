@@ -22,6 +22,7 @@ func PrepareSecret(
 	newSecret.Namespace = namespace
 	newSecret.Labels = labels
 	newSecret.Annotations = annotations
+	newSecret.Data = map[string][]byte{}
 	return &newSecret
 }
 
