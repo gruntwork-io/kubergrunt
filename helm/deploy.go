@@ -57,20 +57,17 @@ func Deploy(
 	// Tiller Pods when Tiller is deployed.
 	logger.Info("Uploading CA certificate key pair as a secret")
 	caSecretName := fmt.Sprintf("%s-namespace-ca-certs", namespace) // The name of the secret
-	err = kubectl.RunKubectl(
+	err = StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
-		"create",
-		"--namespace",
-		"kube-system",
-		"secret",
-		"generic",
 		caSecretName,
-		"--from-file",
-		caKeyPairPath.CertificatePath,
-		"--from-file",
-		caKeyPairPath.PrivateKeyPath,
-		"--from-file",
-		caKeyPairPath.PublicKeyPath,
+		"kube-system",
+		map[string]string{
+			"helm-namespace":          namespace,
+			"helm-server-credentials": "true",
+		},
+		map[string]string{},
+		"ca",
+		caKeyPairPath,
 	)
 	if err != nil {
 		logger.Errorf("Error uploading CA certificate key pair as a secret: %s", err)
