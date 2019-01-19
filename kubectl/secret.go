@@ -33,7 +33,7 @@ func AddToSecretFromFile(secret *corev1.Secret, key string, path string) error {
 	}
 
 	// Kubernetes Secrets require the secret to be base64 encoded
-	var encoded []byte
+	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
 	base64.StdEncoding.Encode(encoded, data)
 	secret.Data[key] = encoded
 	return nil
@@ -42,7 +42,7 @@ func AddToSecretFromFile(secret *corev1.Secret, key string, path string) error {
 // AddToSecretFromData will add data to the secret at the provided key.
 func AddToSecretFromData(secret *corev1.Secret, key string, rawData []byte) {
 	// Kubernetes Secrets require the secret to be base64 encoded
-	var encoded []byte
+	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(rawData)))
 	base64.StdEncoding.Encode(encoded, rawData)
 	secret.Data[key] = encoded
 }
