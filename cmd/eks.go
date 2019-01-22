@@ -25,11 +25,11 @@ var (
 		Usage: "Whether or not to wait for the command to succeed.",
 	}
 	eksKubectlContextNameFlag = cli.StringFlag{
-		Name:  "kubectl-context-name",
+		Name:  KubectlContextNameFlagName,
 		Usage: "The name to use for the config context that is set up to authenticate with the EKS cluster. Defaults to the cluster ARN.",
 	}
 	eksKubeconfigFlag = cli.StringFlag{
-		Name:  "kubeconfig",
+		Name:  KubeconfigFlagName,
 		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
 	}
 	clusterIDFlag = cli.StringFlag{
@@ -151,11 +151,11 @@ func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, erro
 	logger := logging.GetProjectLogger()
 
 	// Set defaults for the optional parameters, if unset
-	kubectlContextName := cliContext.String(eksKubectlContextNameFlag.Name)
+	kubectlContextName := cliContext.String(KubectlContextNameFlagName)
 	if kubectlContextName == "" {
 		logger.Infof("No context name provided. Using default.")
 	}
-	kubeconfigPath := cliContext.String(eksKubeconfigFlag.Name)
+	kubeconfigPath := cliContext.String(KubeconfigFlagName)
 	if kubeconfigPath == "" {
 		defaultKubeconfigPath, err := kubectl.KubeConfigPathFromHomeDir()
 		if err != nil {
