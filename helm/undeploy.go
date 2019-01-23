@@ -15,12 +15,13 @@ func Undeploy(
 	kubectlOptions *kubectl.KubectlOptions,
 	namespace string,
 	helmHome string,
+	force bool,
 ) error {
 	logger := logging.GetProjectLogger()
 	logger.Infof("Undeploying Helm Server in namespace %s", namespace)
 
 	logger.Info("Removing Helm Server")
-	if err := helmReset(kubectlOptions, namespace, helmHome); err != nil {
+	if err := helmReset(kubectlOptions, namespace, helmHome, force); err != nil {
 		logger.Errorf("Error removing helm server: %s", err)
 		return err
 	}
@@ -42,6 +43,7 @@ func helmReset(
 	kubectlOptions *kubectl.KubectlOptions,
 	namespace string,
 	helmHome string,
+	force bool,
 ) error {
 	args := []string{
 		"reset",
@@ -53,6 +55,9 @@ func helmReset(
 	if helmHome != "" {
 		args = append(args, "--home")
 		args = append(args, helmHome)
+	}
+	if force {
+		args = append(args, "--force")
 	}
 	return RunHelm(kubectlOptions, args...)
 }

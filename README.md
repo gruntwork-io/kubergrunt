@@ -196,8 +196,10 @@ the installed Helm Server. This subcommand relies on the `helm reset` command, w
 access the Helm Server pod being uninstalled. See the [`configure`](#helm-configure) subcommand for more details on
 setting up your helm client.
 
-**Note**: This will not be able to uninstall a Helm Server that has active releases in it. To do so, you must first delete
-all deployed releases before attempting to uninstall the Helm Server.
+**Note**: By default, this will not uninstall the Helm server if there are any deployed releases. You can force removal
+of the server using the `--force` option, but this will not delete any releases. Given the destructive nature of such an
+operation, we intentionally do not implement the removal of releases (and associated resources) into this command. If
+you wish to also delete releases, use the relevant commands in the helm client.
 
 For example, if you had a deployed a Helm server into the namespace `dev` using the [`deploy`](#helm-deploy) command and
 wanted to uninstall it:
