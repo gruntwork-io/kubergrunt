@@ -43,16 +43,18 @@ func helmReset(
 	namespace string,
 	helmHome string,
 ) error {
-	return RunHelm(
-		kubectlOptions,
+	args := []string{
 		"reset",
 		"--tiller-namespace",
 		namespace,
-		"--home",
-		helmHome,
 		"--tls",
 		"--tls-verify",
-	)
+	}
+	if helmHome != "" {
+		args = append(args, "--home")
+		args = append(args, helmHome)
+	}
+	return RunHelm(kubectlOptions, args...)
 }
 
 // removeHelmCredentials will look up all the credentials created during a deploy, and remove them from the Kubernetes
@@ -64,7 +66,7 @@ func removeHelmCredentials(kubectlOptions *kubectl.KubectlOptions, namespace str
 		kubectlOptions,
 		namespace,
 		metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("helm-namespace=\"%s\",helm-server-credentials=true", namespace),
+			LabelSelector: fmt.Sprintf("helm-namespace=%s,helm-server-credentials=true", namespace),
 		},
 	)
 	if err != nil {

@@ -82,7 +82,7 @@ func Deploy(
 		"init",
 		// Use Secrets instead of ConfigMap to track metadata
 		"--override",
-		"'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'",
+		"spec.template.spec.containers[0].command={/tiller,--storage=secret}",
 		// Enable TLS
 		"--tiller-tls",
 		"--tiller-tls-verify",
@@ -97,6 +97,8 @@ func Deploy(
 		namespace,
 		"--service-account",
 		serviceAccount,
+		// Wait until tiller is up and available
+		"--wait",
 	)
 	if err != nil {
 		logger.Errorf("Error deploying Helm server: %s", err)

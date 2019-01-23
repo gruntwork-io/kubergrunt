@@ -1,7 +1,6 @@
 package kubectl
 
 import (
-	"encoding/base64"
 	"io/ioutil"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
@@ -32,20 +31,13 @@ func AddToSecretFromFile(secret *corev1.Secret, key string, path string) error {
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
-
-	// Kubernetes Secrets require the secret to be base64 encoded
-	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-	base64.StdEncoding.Encode(encoded, data)
-	secret.Data[key] = encoded
+	secret.Data[key] = data
 	return nil
 }
 
 // AddToSecretFromData will add data to the secret at the provided key.
 func AddToSecretFromData(secret *corev1.Secret, key string, rawData []byte) {
-	// Kubernetes Secrets require the secret to be base64 encoded
-	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(rawData)))
-	base64.StdEncoding.Encode(encoded, rawData)
-	secret.Data[key] = encoded
+	secret.Data[key] = rawData
 }
 
 // CreateSecret will create the provided secret on the Kubernetes cluster.
