@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
@@ -55,18 +56,16 @@ func TestCreateECDSAKeyPairReturnsCompatibleKeys(t *testing.T) {
 	pubKeyTmpPath := StoreECDSAPublicKeyToTempFile(t, pubKey)
 	defer os.Remove(pubKeyTmpPath)
 
-	// Verify the public key matches the private key. This is done by comparing the modulus output
-	privKeyModulusCmd := shell.Command{
+	// Verify the public key matches the private key by regenerating the public key from the private key and verifying
+	// it is the same as what we have.
+	keyPubFromPrivCmd := shell.Command{
 		Command: "openssl",
-		Args:    []string{"ecdsa", "-inform", "PEM", "-in", privKeyTmpPath, "-modulus", "-noout"},
+		Args:    []string{"pkey", "-pubout", "-inform", "PEM", "-in", privKeyTmpPath, "-outform", "PEM"},
 	}
-	privKeyModulus := shell.RunCommandAndGetOutput(t, privKeyModulusCmd)
-	pubKeyModulusCmd := shell.Command{
-		Command: "openssl",
-		Args:    []string{"ecdsa", "-inform", "PEM", "-pubin", "-in", pubKeyTmpPath, "-modulus", "-noout"},
-	}
-	pubKeyModulus := shell.RunCommandAndGetOutput(t, pubKeyModulusCmd)
-	assert.Equal(t, privKeyModulus, pubKeyModulus)
+	keyPubFromPriv := shell.RunCommandAndGetOutput(t, keyPubFromPrivCmd)
+	pubKeyBytes, err := ioutil.ReadFile(pubKeyTmpPath)
+	assert.NoError(t, err)
+	assert.Equal(t, strings.TrimSpace(string(pubKeyBytes)), strings.TrimSpace(keyPubFromPriv))
 }
 
 func TestStoreECDSAPrivateKeyStoresInPEMFormat(t *testing.T) {
