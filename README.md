@@ -174,7 +174,7 @@ For example, to setup a basic install of helm in the Kubernetes namespace `tille
 ```bash
 # Note that most of the arguments here are used to setup the Certificate Authority for TLS
 kubergrunt helm deploy \
-    --namespace tiller-world \
+    --tiller-namespace tiller-world \
     --service-account tiller \
     --tls-common-name tiller \
     --tls-org Gruntwork \
@@ -226,6 +226,9 @@ this will:
   - `HELM_TLS_VERIFY`: This will be set to true to enable TLS verification.
   - `HELM_TLS_ENABLE`: This will be set to true to enable TLS authentication.
 
+You can also optionally set the current kubectl context to set the default namespace to be compatible with this Tiller
+install.
+
 Afterwards, you can source the environment file to setup your shell to access the proper helm client.
 
 For example, if you want to setup helm to target a server install in the namespace `dev` with the default helm home
@@ -234,7 +237,7 @@ directory:
 ```bash
 # This is for linux
 # Setup helm
-kubergrunt helm configure --home-dir $HOME/.helm --namespace dev
+kubergrunt helm configure --home-dir $HOME/.helm --tiller-namespace dev
 # Source the environment file
 source $HOME/.helm/env
 # Verify connection. This should display info about both the client and server.
