@@ -198,8 +198,7 @@ setting up your helm client.
 
 **Note**: By default, this will not uninstall the Helm server if there are any deployed releases. You can force removal
 of the server using the `--force` option, but this will not delete any releases. Given the destructive nature of such an
-operation, we intentionally do not implement the removal of releases (and associated resources) into this command. If
-you wish to also delete releases, use the relevant commands in the helm client.
+operation, we intentionally added a second option for removing the releases (`--undeploy-releases`).
 
 For example, if you had a deployed a Helm server into the namespace `dev` using the [`deploy`](#helm-deploy) command and
 wanted to uninstall it:

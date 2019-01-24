@@ -105,6 +105,10 @@ var (
 		Name:  "force",
 		Usage: "Force removal of the Helm server. Note: this will not delete all deployed releases.",
 	}
+	undeployReleasesFlag = cli.BoolFlag{
+		Name:  "undeploy-releases",
+		Usage: "Undeploy all releases managed by the target Helm server before undeploying the server.",
+	}
 	helmHomeFlag = cli.StringFlag{
 		Name:  "home",
 		Usage: "Home directory that is configured for accessing the helm server being removed.",
@@ -154,6 +158,7 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 				Action: undeployHelmServer,
 				Flags: []cli.Flag{
 					forceUndeployFlag,
+					undeployReleasesFlag,
 					helmHomeFlag,
 					namespaceFlag,
 					helmKubectlContextNameFlag,
@@ -263,12 +268,14 @@ func undeployHelmServer(cliContext *cli.Context) error {
 	}
 
 	force := cliContext.Bool(forceUndeployFlag.Name)
+	undeployReleases := cliContext.Bool(undeployReleasesFlag.Name)
 
 	return helm.Undeploy(
 		kubectlOptions,
 		namespace,
 		helmHome,
 		force,
+		undeployReleases,
 	)
 }
 func grantHelmAccess(cliContext *cli.Context) error {

@@ -61,7 +61,8 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 // 2. Upload certificate key pairs to Kubernetes secrets
 // 3. Deploy Helm with TLS enabled in the specified namespace
 // 4. [TODO] Configure helm client
-// 5. Undeploy helm
+// 5. Deploy a helm chart
+// 6. Undeploy helm
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	t.Parallel()
 	kubectlOptions := getTestKubectlOptions(t)
@@ -82,11 +83,13 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 
 	assert.NoError(t, Deploy(kubectlOptions, namespaceName, serviceAccountName, tlsOptions))
 	defer func() {
-		// TODO: Temporary hack to configure the helm client. In the near future, this should be replaced with the
-		//       configure command
-		configureHelmClient(t, terratestKubectlOptions, namespaceName)
-		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, ""))
+		// Make sure to undeploy all helm releases before undeploying the server. However, don't force undeploy the
+		// server so that it crashes should the release removal fail.
+		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
+	// TODO: Temporary hack to configure the helm client. In the near future, this should be replaced with the
+	//       configure command
+	configureHelmClient(t, terratestKubectlOptions, namespaceName)
 
 	// Check tiller pod is in chosen namespace
 	tillerPodName := validateTillerPodDeployedInNamespace(t, terratestKubectlOptions)
@@ -100,6 +103,8 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	// Check tiller pod TLS
 	validateTillerPodUsesTLS(t, terratestKubectlOptions)
 
+	// Check that we can deploy a helm chart
+	validateHelmChartDeploy(t, kubectlOptions, namespaceName)
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed into the provided namespace and
@@ -194,6 +199,25 @@ func validateKeyCompatibility(t *testing.T, certKeyPair tls.CertificateKeyPairPa
 	assert.Equal(t, strings.TrimSpace(certPubKey), strings.TrimSpace(string(pubKey)))
 	assert.Equal(t, strings.TrimSpace(certPubKey), strings.TrimSpace(keyPubFromPriv))
 
+}
+
+// validateHelmChartDeploy checks if we can deploy a simple helm chart to the server.
+func validateHelmChartDeploy(t *testing.T, kubectlOptions *kubectl.KubectlOptions, namespace string) {
+	require.NoError(
+		t,
+		RunHelm(
+			kubectlOptions,
+			"install",
+			"stable/kubernetes-dashboard",
+			"--wait",
+			"--tls",
+			"--tls-verify",
+			"--tiller-namespace",
+			namespace,
+			"--namespace",
+			namespace,
+		),
+	)
 }
 
 func sampleTlsOptions(algorithm string) tls.TLSOptions {
