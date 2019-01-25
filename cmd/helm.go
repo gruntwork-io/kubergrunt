@@ -102,9 +102,13 @@ var (
 	}
 
 	// Configurations for granting and revoking access to clients
-	grantedRbacRoleFlag = cli.StringFlag{
-		Name:  "rbac-role",
-		Usage: "The name of the RBAC role that should be granted access to tiller.",
+	grantedRbacGroupsFlag = cli.StringSliceFlag{
+		Name:  "rbac-group",
+		Usage: "The name of the RBAC group that should be granted access to tiller. Pass in multiple times for multiple groups.",
+	}
+	grantedServiceAccountsFlag = cli.StringSliceFlag{
+		Name:  "service-account",
+		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
 	}
 
 	// Configurations for undeploying helm
@@ -201,11 +205,22 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 			cli.Command{
 				Name:        "grant",
 				Usage:       "Grant access to a deployed Helm server.",
-				Description: "Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC role.",
+				Description: "Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.",
 				Action:      grantHelmAccess,
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
-					grantedRbacRoleFlag,
+					grantedRbacGroupsFlag,
+					grantedServiceAccountsFlag,
+					tlsCommonNameFlag,
+					tlsOrgFlag,
+					tlsOrgUnitFlag,
+					tlsCityFlag,
+					tlsStateFlag,
+					tlsCountryFlag,
+					tlsValidityFlag,
+					tlsAlgorithmFlag,
+					tlsECDSACurveFlag,
+					tlsRSABitsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -213,11 +228,12 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 			cli.Command{
 				Name:        "revoke",
 				Usage:       "Revoke access to a deployed Helm server.",
-				Description: "Revoke access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC role.",
+				Description: "Revoke access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.",
 				Action:      revokeHelmAccess,
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
-					grantedRbacRoleFlag,
+					grantedRbacGroupsFlag,
+					grantedServiceAccountsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -245,31 +261,12 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	distinguishedName, err := tlsDistinguishedNameFlagsAsPkixName(cliContext)
-	if err != nil {
-		return err
-	}
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
 	}
-
-	// Get additional options
-	tlsValidityInDays := cliContext.Int(tlsValidityFlag.Name)
-	tlsAlgorithm := cliContext.String(tlsAlgorithmFlag.Name)
-	tlsECDSACurve := cliContext.String(tlsECDSACurveFlag.Name)
-	tlsRSABits := cliContext.Int(tlsRSABitsFlag.Name)
-
-	// Create tls options struct
-	tlsValidity := time.Duration(tlsValidityInDays) * 24 * time.Hour
-	tlsOptions := tls.TLSOptions{
-		DistinguishedName:   distinguishedName,
-		ValidityTimeSpan:    tlsValidity,
-		PrivateKeyAlgorithm: tlsAlgorithm,
-		ECDSACurve:          tlsECDSACurve,
-		RSABits:             tlsRSABits,
-	}
-	if err := tlsOptions.Validate(); err != nil {
+	tlsOptions, err := parseTLSArgs(cliContext)
+	if err != nil {
 		return err
 	}
 
@@ -351,12 +348,61 @@ func configureHelmClient(cliContext *cli.Context) error {
 
 // grantHelmAccess is the action function for the helm grant command.
 func grantHelmAccess(cliContext *cli.Context) error {
-	return nil
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+	tlsOptions, err := parseTLSArgs(cliContext)
+	if err != nil {
+		return err
+	}
+	rbacGroups := cliContext.StringSlice(grantedRbacGroupsFlag.Name)
+	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
+	if len(rbacGroups) == 0 && len(serviceAccounts) == 0 {
+		return entrypoint.NewRequiredArgsError("At least one --rbac-group or --service-account is required")
+	}
+	serviceAccountInfo, err := serviceAccountsToServiceAccountInfo(serviceAccounts)
+	if err != nil {
+		return err
+	}
+	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, serviceAccountInfo)
 }
 
 // revokeHelmAccess is the action function for the helm revoke command.
 func revokeHelmAccess(cliContext *cli.Context) error {
 	return nil
+}
+
+// parseTLSArgs will take CLI args pertaining to TLS and extract out a TLSOptions struct.
+func parseTLSArgs(cliContext *cli.Context) (tls.TLSOptions, error) {
+	distinguishedName, err := tlsDistinguishedNameFlagsAsPkixName(cliContext)
+	if err != nil {
+		return tls.TLSOptions{}, err
+	}
+
+	// Get additional options
+	tlsValidityInDays := cliContext.Int(tlsValidityFlag.Name)
+	tlsAlgorithm := cliContext.String(tlsAlgorithmFlag.Name)
+	tlsECDSACurve := cliContext.String(tlsECDSACurveFlag.Name)
+	tlsRSABits := cliContext.Int(tlsRSABitsFlag.Name)
+
+	// Create tls options struct
+	tlsValidity := time.Duration(tlsValidityInDays) * 24 * time.Hour
+	tlsOptions := tls.TLSOptions{
+		DistinguishedName:   distinguishedName,
+		ValidityTimeSpan:    tlsValidity,
+		PrivateKeyAlgorithm: tlsAlgorithm,
+		ECDSACurve:          tlsECDSACurve,
+		RSABits:             tlsRSABits,
+	}
+	if err := tlsOptions.Validate(); err != nil {
+		return tlsOptions, err
+	}
+	return tlsOptions, nil
 }
 
 // tlsDistinguishedNameFlagsAsPkixName takes the CLI args related to setting up the Distinguished Name identifier of
@@ -395,4 +441,21 @@ func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, er
 		distinguishedName.Country = []string{country}
 	}
 	return distinguishedName, nil
+}
+
+// serviceAccountsToServiceAccountInfo takes string encoded service account information and converts them to the
+// ServiceAccountInfo struct.
+func serviceAccountsToServiceAccountInfo(serviceAccounts []string) ([]helm.ServiceAccountInfo, error) {
+	serviceAccountInfo := []helm.ServiceAccountInfo{}
+	for _, serviceAccount := range serviceAccounts {
+		splitServiceAccount := strings.Split(serviceAccount, "/")
+		if len(splitServiceAccount) != 2 {
+			return nil, InvalidServiceAccountInfo{serviceAccount}
+		}
+		serviceAccountInfo = append(serviceAccountInfo, helm.ServiceAccountInfo{
+			Namespace: splitServiceAccount[0],
+			Name:      splitServiceAccount[1],
+		})
+	}
+	return serviceAccountInfo, nil
 }

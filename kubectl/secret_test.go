@@ -187,6 +187,22 @@ func TestListSecretsShowsSecretInNamespace(t *testing.T) {
 	assert.True(t, found)
 }
 
+func TestGetSecretGetsSecretByName(t *testing.T) {
+	t.Parallel()
+
+	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+
+	namespace := strings.ToLower(random.UniqueId())
+	configData := createSecret(t, ttKubectlOptions, namespace)
+	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
+
+	secretName := fmt.Sprintf("%s-master-password", namespace)
+	secret, err := GetSecret(kubectlOptions, namespace, secretName)
+	require.NoError(t, err)
+	assert.Equal(t, secret.Name, secretName)
+	assert.Equal(t, secret.Namespace, namespace)
+}
+
 func TestLabelsSupportForSecrets(t *testing.T) {
 	t.Parallel()
 

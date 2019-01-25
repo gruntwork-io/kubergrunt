@@ -22,14 +22,14 @@ import (
 //   that the release info is stored in a Secret as opposed to ConfigMap.
 func Deploy(
 	kubectlOptions *kubectl.KubectlOptions,
-	namespace string,
+	tillerNamespace string,
 	serviceAccount string,
 	tlsOptions tls.TLSOptions,
 ) error {
 	logger := logging.GetProjectLogger()
 
 	logger.Info("Validating required resources exist.")
-	if err := validateRequiredResourcesForDeploy(kubectlOptions, namespace, serviceAccount); err != nil {
+	if err := validateRequiredResourcesForDeploy(kubectlOptions, tillerNamespace, serviceAccount); err != nil {
 		logger.Error("All required resources do not exist.")
 		return err
 	}
@@ -44,7 +44,7 @@ func Deploy(
 	}
 	logger.Infof("Using %s as temp path for storing certificates", tlsPath)
 	defer os.RemoveAll(tlsPath)
-	caKeyPairPath, tillerKeyPairPath, err := generateCertificateKeyPairs(tlsOptions, namespace, tlsPath)
+	caKeyPairPath, tillerKeyPairPath, err := generateCertificateKeyPairs(tlsOptions, tillerNamespace, tlsPath)
 	if err != nil {
 		logger.Errorf("Error generating certificate key pairs: %s", err)
 		return err
@@ -56,15 +56,12 @@ func Deploy(
 	// access them. The Tiller Certificate Key Pair does not need to be stored separately, as it will be managed by the
 	// Tiller Pods when Tiller is deployed.
 	logger.Info("Uploading CA certificate key pair as a secret")
-	caSecretName := fmt.Sprintf("%s-namespace-ca-certs", namespace) // The name of the secret
+	caSecretName := fmt.Sprintf("%s-namespace-ca-certs", tillerNamespace) // The name of the secret
 	err = StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
 		caSecretName,
 		"kube-system",
-		map[string]string{
-			"helm-namespace":          namespace,
-			"helm-server-credentials": "true",
-		},
+		map[string]string{"tiller-namespace": tillerNamespace},
 		map[string]string{},
 		"ca",
 		caKeyPairPath,
@@ -94,7 +91,7 @@ func Deploy(
 		caKeyPairPath.CertificatePath,
 		// Specific namespace and service account
 		"--tiller-namespace",
-		namespace,
+		tillerNamespace,
 		"--service-account",
 		serviceAccount,
 		// Wait until tiller is up and available
@@ -104,7 +101,7 @@ func Deploy(
 		logger.Errorf("Error deploying Helm server: %s", err)
 		return err
 	}
-	logger.Infof("Successfully deployed helm server in namespace %s with service account %s", namespace, serviceAccount)
+	logger.Infof("Successfully deployed helm server in namespace %s with service account %s", tillerNamespace, serviceAccount)
 
 	logger.Info("Done deploying helm server")
 	return nil
@@ -151,12 +148,12 @@ func loadPrivateKeyFromDisk(tlsOptions tls.TLSOptions, path string) (interface{}
 
 // generateCertificateKeyPair will generate the CA TLS certificate key pair and use that generate another, signed, TLS
 // certificate key pair that will be used by the Helm server.
-func generateCertificateKeyPairs(tlsOptions tls.TLSOptions, namespace string, tmpStorePath string) (tls.CertificateKeyPairPath, tls.CertificateKeyPairPath, error) {
+func generateCertificateKeyPairs(tlsOptions tls.TLSOptions, tillerNamespace string, tmpStorePath string) (tls.CertificateKeyPairPath, tls.CertificateKeyPairPath, error) {
 	logger := logging.GetProjectLogger()
 
 	logger.Info("Generating CA TLS certificate key pair")
 	caKeyPairPath, err := tlsOptions.GenerateAndStoreTLSCertificateKeyPair(
-		fmt.Sprintf("tiller_%s_ca", namespace),
+		fmt.Sprintf("tiller_%s_ca", tillerNamespace),
 		tmpStorePath,
 		"", // TODO: Generate a password
 		true,
@@ -167,21 +164,45 @@ func generateCertificateKeyPairs(tlsOptions tls.TLSOptions, namespace string, tm
 		logger.Errorf("Error generating CA TLS certificate key pair: %s", err)
 		return tls.CertificateKeyPairPath{}, tls.CertificateKeyPairPath{}, err
 	}
-	signingCertificate, err := tls.LoadCertificate(caKeyPairPath.CertificatePath)
-	if err != nil {
-		logger.Errorf("Error generating CA TLS certificate key pair: %s", err)
-		return tls.CertificateKeyPairPath{}, tls.CertificateKeyPairPath{}, err
-	}
-	signingKey, err := loadPrivateKeyFromDisk(tlsOptions, caKeyPairPath.PrivateKeyPath)
-	if err != nil {
-		logger.Errorf("Error generating CA TLS certificate key pair: %s", err)
-		return tls.CertificateKeyPairPath{}, tls.CertificateKeyPairPath{}, err
-	}
 	logger.Info("Done generating CA TLS certificate key pair")
 
 	logger.Info("Generating Tiller TLS certificate key pair (used to identify server)")
-	tillerKeyPairPath, err := tlsOptions.GenerateAndStoreTLSCertificateKeyPair(
-		fmt.Sprintf("tiller_%s", namespace),
+	tillerKeyPairPath, err := generateSignedCertificateKeyPair(
+		tlsOptions,
+		tmpStorePath,
+		caKeyPairPath,
+		fmt.Sprintf("tiller_%s", tillerNamespace),
+	)
+	if err != nil {
+		logger.Errorf("Error generating Tiller TLS certificate key pair: %s", err)
+		return tls.CertificateKeyPairPath{}, tls.CertificateKeyPairPath{}, err
+	}
+	logger.Info("Successfully generated Tiller TLS certificate key pair (used to identify server)")
+	return caKeyPairPath, tillerKeyPairPath, nil
+}
+
+func generateSignedCertificateKeyPair(
+	tlsOptions tls.TLSOptions,
+	tmpStorePath string,
+	caKeyPairPath tls.CertificateKeyPairPath,
+	nameBase string,
+) (tls.CertificateKeyPairPath, error) {
+	logger := logging.GetProjectLogger()
+
+	signingCertificate, err := tls.LoadCertificate(caKeyPairPath.CertificatePath)
+	if err != nil {
+		logger.Errorf("Error loading CA TLS certificate key pair: %s", err)
+		return tls.CertificateKeyPairPath{}, err
+	}
+	signingKey, err := loadPrivateKeyFromDisk(tlsOptions, caKeyPairPath.PrivateKeyPath)
+	if err != nil {
+		logger.Errorf("Error loading CA TLS certificate key pair: %s", err)
+		return tls.CertificateKeyPairPath{}, err
+	}
+
+	logger.Info("Generating signed TLS certificate key pair")
+	signedKeyPairPath, err := tlsOptions.GenerateAndStoreTLSCertificateKeyPair(
+		nameBase,
 		tmpStorePath,
 		"", // Tiller does not support passwords on the private key
 		false,
@@ -189,10 +210,9 @@ func generateCertificateKeyPairs(tlsOptions tls.TLSOptions, namespace string, tm
 		signingKey,
 	)
 	if err != nil {
-		logger.Errorf("Error generating Tiller TLS certificate key pair: %s", err)
-		return tls.CertificateKeyPairPath{}, tls.CertificateKeyPairPath{}, err
+		logger.Errorf("Error generating signed TLS certificate key pair: %s", err)
+		return tls.CertificateKeyPairPath{}, err
 	}
-	logger.Info("Done generating Tiller TLS Certificate key pair")
-
-	return caKeyPairPath, tillerKeyPairPath, nil
+	logger.Info("Done generating signed TLS Certificate key pair")
+	return signedKeyPairPath, nil
 }

@@ -54,6 +54,20 @@ func CreateSecret(options *KubectlOptions, newSecret *corev1.Secret) error {
 	return nil
 }
 
+// GetSecret will get a Kubernetes secret by name in the provided namespace.
+func GetSecret(options *KubectlOptions, namespace string, name string) (*corev1.Secret, error) {
+	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := client.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	return secret, nil
+}
+
 // ListSecrets will list all the secrets that match the provided filters in the provided namespace.
 func ListSecrets(options *KubectlOptions, namespace string, filters metav1.ListOptions) ([]corev1.Secret, error) {
 	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)

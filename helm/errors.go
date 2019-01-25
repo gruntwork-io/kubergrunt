@@ -4,6 +4,15 @@ import (
 	"fmt"
 )
 
+// HelmValidationError is returned when a command validation fails.
+type HelmValidationError struct {
+	Message string
+}
+
+func (err HelmValidationError) Error() string {
+	return err.Message
+}
+
 // MultiHelmError is returned when there are multiple errors in a helm action.
 type MultiHelmError struct {
 	Action string

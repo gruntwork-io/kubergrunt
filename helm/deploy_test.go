@@ -1,22 +1,17 @@
 package helm
 
 import (
-	"crypto/x509/pkix"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/shell"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	rbacv1 "k8s.io/api/rbac/v1"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/tls"
@@ -56,13 +51,18 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// This is an end to end integration for the commands to setup helm access. This integrationtest is designed this way
+// due to the way each step is setup to build on the previous step. For example, it is impossible to test grant without
+// having a helm server deployed, and configure without running grant.
+//
 // Test that we can:
 // 1. Generate certificate key pairs for use with Tiller
 // 2. Upload certificate key pairs to Kubernetes secrets
 // 3. Deploy Helm with TLS enabled in the specified namespace
-// 4. [TODO] Configure helm client
-// 5. Deploy a helm chart
-// 6. Undeploy helm
+// 4. Grant access to helm
+// 5. [TODO] Configure helm client
+// 6. Deploy a helm chart
+// 7. Undeploy helm
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	t.Parallel()
 	kubectlOptions := getTestKubectlOptions(t)
@@ -87,9 +87,10 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		// server so that it crashes should the release removal fail.
 		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
-	// TODO: Temporary hack to configure the helm client. In the near future, this should be replaced with the
-	//       configure command
-	configureHelmClient(t, terratestKubectlOptions, namespaceName)
+
+	// Grant and configure client as a new service account, testing the flow
+	serviceAccountKubectlOptions := grantAndConfigureClientAsServiceAccount(t, terratestKubectlOptions, kubectlOptions, tlsOptions)
+	defer k8s.DeleteConfigContextE(t, serviceAccountKubectlOptions.ContextName)
 
 	// Check tiller pod is in chosen namespace
 	tillerPodName := validateTillerPodDeployedInNamespace(t, terratestKubectlOptions)
@@ -104,7 +105,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	validateTillerPodUsesTLS(t, terratestKubectlOptions)
 
 	// Check that we can deploy a helm chart
-	validateHelmChartDeploy(t, kubectlOptions, namespaceName)
+	validateHelmChartDeploy(t, serviceAccountKubectlOptions, namespaceName)
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed into the provided namespace and
@@ -218,90 +219,4 @@ func validateHelmChartDeploy(t *testing.T, kubectlOptions *kubectl.KubectlOption
 			namespace,
 		),
 	)
-}
-
-func sampleTlsOptions(algorithm string) tls.TLSOptions {
-	options := tls.TLSOptions{
-		DistinguishedName: pkix.Name{
-			CommonName:         "gruntwork.io",
-			Organization:       []string{"Gruntwork"},
-			OrganizationalUnit: []string{"IT"},
-			Locality:           []string{"Phoenix"},
-			Province:           []string{"AZ"},
-			Country:            []string{"US"},
-		},
-		ValidityTimeSpan:    1 * time.Hour,
-		PrivateKeyAlgorithm: algorithm,
-		RSABits:             2048,
-		ECDSACurve:          tls.P256Curve,
-	}
-	return options
-}
-
-func getTestKubectlOptions(t *testing.T) *kubectl.KubectlOptions {
-	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
-	require.NoError(t, err)
-	return kubectl.NewKubectlOptions("", kubeConfigPath)
-}
-
-// configureHelmClient is a temporary hack to configure the local helm client to be able to communicate with the
-// deployed helm server. This hack will simply reuse the tiller certs.
-func configureHelmClient(t *testing.T, terratestKubectlOptions *k8s.KubectlOptions, namespaceName string) {
-	secret := k8s.GetSecret(t, terratestKubectlOptions, "tiller-secret")
-	helmHome := getHelmHome(t)
-	decodedData := secret.Data["ca.crt"]
-	require.NoError(t, ioutil.WriteFile(filepath.Join(helmHome, "ca.pem"), decodedData, 0644))
-
-	decodedData = secret.Data["tls.key"]
-	require.NoError(t, ioutil.WriteFile(filepath.Join(helmHome, "key.pem"), decodedData, 0644))
-
-	decodedData = secret.Data["tls.crt"]
-	require.NoError(t, ioutil.WriteFile(filepath.Join(helmHome, "cert.pem"), decodedData, 0644))
-}
-
-func getHelmHome(t *testing.T) string {
-	home, err := homedir.Dir()
-	require.NoError(t, err)
-	helmHome := filepath.Join(home, ".helm")
-	return helmHome
-}
-
-func bindNamespaceAdminRole(t *testing.T, ttKubectlOptions *k8s.KubectlOptions, serviceAccountName string) {
-	clientset, err := k8s.GetKubernetesClientFromOptionsE(t, ttKubectlOptions)
-	require.NoError(t, err)
-
-	// Create the admin rbac role
-	role := rbacv1.Role{
-		Rules: []rbacv1.PolicyRule{
-			rbacv1.PolicyRule{
-				Verbs:     []string{"*"},
-				APIGroups: []string{"*"},
-				Resources: []string{"*"},
-			},
-		},
-	}
-	role.Name = fmt.Sprintf("%s-admin", ttKubectlOptions.Namespace)
-	role.Namespace = ttKubectlOptions.Namespace
-	_, err = clientset.RbacV1().Roles(ttKubectlOptions.Namespace).Create(&role)
-	require.NoError(t, err)
-
-	// ... and bind it to the service account
-	binding := rbacv1.RoleBinding{
-		Subjects: []rbacv1.Subject{
-			rbacv1.Subject{
-				Kind:      "ServiceAccount",
-				APIGroup:  "",
-				Name:      serviceAccountName,
-				Namespace: ttKubectlOptions.Namespace,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     role.Name,
-		},
-	}
-	binding.Name = fmt.Sprintf("%s-admin-binding", serviceAccountName)
-	_, err = clientset.RbacV1().RoleBindings(ttKubectlOptions.Namespace).Create(&binding)
-	require.NoError(t, err)
 }
