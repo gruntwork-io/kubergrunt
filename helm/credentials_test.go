@@ -41,6 +41,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresAllFiles(t *testing.T) {
 		map[string]string{},
 		baseName,
 		certificateKeyPairPath,
+		"",
 	)
 	require.NoError(t, err)
 
@@ -50,6 +51,10 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresAllFiles(t *testing.T) {
 	assert.Equal(t, secret.Data[fmt.Sprintf("%s.crt", baseName)], mustReadFile(t, certificateKeyPairPath.CertificatePath))
 	assert.Equal(t, secret.Data[fmt.Sprintf("%s.pem", baseName)], mustReadFile(t, certificateKeyPairPath.PrivateKeyPath))
 	assert.Equal(t, secret.Data[fmt.Sprintf("%s.pub", baseName)], mustReadFile(t, certificateKeyPairPath.PublicKeyPath))
+}
+
+func TestStoreCertificateKeyPairAsKubernetesSecretStoresCACert(t *testing.T) {
+	t.Fatalf("Not implemented")
 }
 
 func mustReadFile(t *testing.T, path string) []byte {

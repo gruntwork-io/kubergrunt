@@ -65,6 +65,7 @@ func Deploy(
 		map[string]string{},
 		"ca",
 		caKeyPairPath,
+		"",
 	)
 	if err != nil {
 		logger.Errorf("Error uploading CA certificate key pair as a secret: %s", err)

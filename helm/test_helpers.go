@@ -3,7 +3,6 @@ package helm
 import (
 	"crypto/x509/pkix"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -59,35 +58,20 @@ func grantAndConfigureClientAsServiceAccount(
 		tlsOptions,
 		terratestKubectlOptions.Namespace,
 		[]string{},
-		[]ServiceAccountInfo{
-			ServiceAccountInfo{
-				Name:      serviceAccountName,
-				Namespace: terratestKubectlOptions.Namespace,
-			},
-		},
+		[]string{},
+		[]string{fmt.Sprintf("%s/%s", terratestKubectlOptions.Namespace, serviceAccountName)},
 	))
 
-	// TODO: Temporary hack to configure the helm client. In the near future, this should be replaced with the
-	//       configure command
-	configureHelmClient(t, terratestKubectlOptions, terratestKubectlOptions.Namespace, serviceAccountName)
+	require.NoError(t, ConfigureClient(
+		serviceAccountKubectlOptions,
+		getHelmHome(t),
+		terratestKubectlOptions.Namespace,
+		terratestKubectlOptions.Namespace,
+		true,
+		serviceAccountName,
+	))
+
 	return serviceAccountKubectlOptions
-}
-
-// configureHelmClient is a temporary hack to configure the local helm client to be able to communicate with the
-// deployed helm server. This hack will simply reuse the tiller certs.
-func configureHelmClient(t *testing.T, terratestKubectlOptions *k8s.KubectlOptions, namespaceName string, serviceAccountName string) {
-	secretName := fmt.Sprintf("%s-namespace-%s-client-certs", namespaceName, serviceAccountName)
-	secret := k8s.GetSecret(t, terratestKubectlOptions, secretName)
-	tillerSecret := k8s.GetSecret(t, terratestKubectlOptions, "tiller-secret")
-	helmHome := getHelmHome(t)
-	decodedData := tillerSecret.Data["ca.crt"]
-	require.NoError(t, ioutil.WriteFile(filepath.Join(helmHome, "ca.pem"), decodedData, 0644))
-
-	decodedData = secret.Data["client.pem"]
-	require.NoError(t, ioutil.WriteFile(filepath.Join(helmHome, "key.pem"), decodedData, 0644))
-
-	decodedData = secret.Data["client.crt"]
-	require.NoError(t, ioutil.WriteFile(filepath.Join(helmHome, "cert.pem"), decodedData, 0644))
 }
 
 func getHelmHome(t *testing.T) string {
@@ -141,9 +125,10 @@ func createServiceAccountForAuth(t *testing.T, terratestKubectlOptions *k8s.Kube
 	contextName := random.UniqueId()
 	serviceAccountName := strings.ToLower(random.UniqueId())
 
-	// Create a new admin service account that we will use
+	// Create a new service account that we will use for auth.
+	// We intentionally bind no role to the account to test the granting process, which will grant enough permissions to
+	// configure and access helm.
 	k8s.CreateServiceAccount(t, terratestKubectlOptions, serviceAccountName)
-	bindNamespaceAdminRole(t, terratestKubectlOptions, serviceAccountName)
 
 	// Add a new context with the service account as auth
 	// First wait for the TokenController to provision a ServiceAccount token

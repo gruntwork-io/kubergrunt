@@ -1,14 +1,10 @@
 package main
 
-import (
-	"fmt"
-)
-
-// InvalidServiceAccountInfo error is returned when the encoded service account is not encoded correctly.
-type InvalidServiceAccountInfo struct {
-	EncodedServiceAccount string
+// MutualExclusiveFlagError is returned when there is a violation of a mutually exclusive flag set.
+type MutuallyExclusiveFlagError struct {
+	Message string
 }
 
-func (err InvalidServiceAccountInfo) Error() string {
-	return fmt.Sprintf("Invalid encoding for ServiceAccount string %s. Expected NAMESPACE/NAME.", err.EncodedServiceAccount)
+func (err MutuallyExclusiveFlagError) Error() string {
+	return err.Message
 }

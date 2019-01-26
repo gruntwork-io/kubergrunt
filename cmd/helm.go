@@ -106,6 +106,10 @@ var (
 		Name:  "rbac-group",
 		Usage: "The name of the RBAC group that should be granted access to tiller. Pass in multiple times for multiple groups.",
 	}
+	grantedRbacUsersFlag = cli.StringSliceFlag{
+		Name:  "rbac-user",
+		Usage: "The name of the RBAC user that should be granted access to Tiller. Pass in multiple times for multiple users.",
+	}
 	grantedServiceAccountsFlag = cli.StringSliceFlag{
 		Name:  "service-account",
 		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
@@ -130,6 +134,18 @@ var (
 	setKubectlNamespaceFlag = cli.BoolFlag{
 		Name:  "set-kubectl-namespace",
 		Usage: "Set the kubectl context default namespace to match the namespace that Tiller deploys resources into.",
+	}
+	configuringRBACUserFlag = cli.StringFlag{
+		Name:  "rbac-user",
+		Usage: "Name of RBAC user that configuration is for. Only one of --rbac-user, --rbac-group, or --service-account can be specified.",
+	}
+	configuringRBACGroupFlag = cli.StringFlag{
+		Name:  "rbac-group",
+		Usage: "Name of RBAC group that configuration is for. Only one of --rbac-user, --rbac-group, or --service-account can be specified.",
+	}
+	configuringServiceAccountFlag = cli.StringFlag{
+		Name:  "service-account",
+		Usage: "Name of the Service Account that configuration is for. Only one of --rbac-user, --rbac-group, or --service-account can be specified.",
 	}
 )
 
@@ -191,10 +207,15 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 - Download the client TLS certificate key pair that you have access to.
 - Install the TLS certificate key pair in the helm home directory. The helm home directory can be modified with the --helm-home option.
 - Install an environment file compatible with your platform that can be sourced to setup variables to configure default parameters for the helm client to access the Tiller install.
-- Optionally set the kubectl context default namespace to be the one that Tiller manages.`,
+- Optionally set the kubectl context default namespace to be the one that Tiller manages.
+
+You must pass in an identifier for your account. This is either the name of the RBAC user (--rbac-user), RBAC group (--rbac-group), or ServiceAccount (--service-account) that you are authenticating as.`,
 				Action: configureHelmClient,
 				Flags: []cli.Flag{
 					helmHomeFlag,
+					configuringRBACUserFlag,
+					configuringRBACGroupFlag,
+					configuringServiceAccountFlag,
 					tillerNamespaceFlag,
 					resourceNamespaceFlag,
 					setKubectlNamespaceFlag,
@@ -210,6 +231,7 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
 					grantedRbacGroupsFlag,
+					grantedRbacUsersFlag,
 					grantedServiceAccountsFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
@@ -330,18 +352,37 @@ func configureHelmClient(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	resourceNamespace, err := entrypoint.StringFlagRequiredE(cliContext, resourceNamespaceFlag.Name)
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
 	}
 
+	// Get mutexed info (entity name)
+	configuringRBACUser := cliContext.String(configuringRBACUserFlag)
+	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag)
+	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag)
+	setEntities := 0
+	var entityName string
+	if configuringRBACUser != "" {
+		setEntities += 1
+		entityName = configuringRBACUser
+	}
+	if configuringRBACGroup != "" {
+		setEntities += 1
+		entityName = configuringRBACGroup
+	}
+	if configuringServiceAccount != "" {
+		setEntities += 1
+		entityName = configuringServiceAccount
+	}
+	if setEntities != 1 {
+		return MutuallyExclusiveFlagError("Exactly one of --rbac-user, --rbac-group, or --service-account must be set")
+	}
+
 	// Get optional info
 	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
 	resourceNamespace := cliContext.String(resourceNamespaceFlag.Name)
-	if resourceNamespace == "" {
-		logger.Warnf("Did not get a specific resource namespace. Defaulting to the provided Tiller namespace.")
-		resourceNamespace = tillerNamespace
-	}
 
 	return helm.ConfigureClient(kubectlOptions, helmHome, tillerNamespace, resourceNamespace, setKubectlNamespace)
 }
@@ -361,15 +402,12 @@ func grantHelmAccess(cliContext *cli.Context) error {
 		return err
 	}
 	rbacGroups := cliContext.StringSlice(grantedRbacGroupsFlag.Name)
+	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
 	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
-	if len(rbacGroups) == 0 && len(serviceAccounts) == 0 {
+	if len(rbacGroups) == 0 && len(rbacUsers) && len(serviceAccounts) == 0 {
 		return entrypoint.NewRequiredArgsError("At least one --rbac-group or --service-account is required")
 	}
-	serviceAccountInfo, err := serviceAccountsToServiceAccountInfo(serviceAccounts)
-	if err != nil {
-		return err
-	}
-	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, serviceAccountInfo)
+	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
 }
 
 // revokeHelmAccess is the action function for the helm revoke command.
@@ -441,21 +479,4 @@ func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, er
 		distinguishedName.Country = []string{country}
 	}
 	return distinguishedName, nil
-}
-
-// serviceAccountsToServiceAccountInfo takes string encoded service account information and converts them to the
-// ServiceAccountInfo struct.
-func serviceAccountsToServiceAccountInfo(serviceAccounts []string) ([]helm.ServiceAccountInfo, error) {
-	serviceAccountInfo := []helm.ServiceAccountInfo{}
-	for _, serviceAccount := range serviceAccounts {
-		splitServiceAccount := strings.Split(serviceAccount, "/")
-		if len(splitServiceAccount) != 2 {
-			return nil, InvalidServiceAccountInfo{serviceAccount}
-		}
-		serviceAccountInfo = append(serviceAccountInfo, helm.ServiceAccountInfo{
-			Namespace: splitServiceAccount[0],
-			Name:      splitServiceAccount[1],
-		})
-	}
-	return serviceAccountInfo, nil
 }

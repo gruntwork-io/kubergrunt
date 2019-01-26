@@ -60,7 +60,7 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 // 2. Upload certificate key pairs to Kubernetes secrets
 // 3. Deploy Helm with TLS enabled in the specified namespace
 // 4. Grant access to helm
-// 5. [TODO] Configure helm client
+// 5. Configure helm client
 // 6. Deploy a helm chart
 // 7. Undeploy helm
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
