@@ -56,12 +56,16 @@ func Deploy(
 	// access them. The Tiller Certificate Key Pair does not need to be stored separately, as it will be managed by the
 	// Tiller Pods when Tiller is deployed.
 	logger.Info("Uploading CA certificate key pair as a secret")
-	caSecretName := fmt.Sprintf("%s-namespace-ca-certs", tillerNamespace) // The name of the secret
+	caSecretName := getTillerCACertSecretName(tillerNamespace)
 	err = StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
 		caSecretName,
 		"kube-system",
-		map[string]string{"tiller-namespace": tillerNamespace},
+		map[string]string{
+			"gruntwork.io/tiller-namespace":        tillerNamespace,
+			"gruntwork.io/tiller-credentials":      "true",
+			"gruntwork.io/tiller-credentials-type": "ca",
+		},
 		map[string]string{},
 		"ca",
 		caKeyPairPath,

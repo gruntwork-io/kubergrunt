@@ -188,7 +188,7 @@ func grantAccessToRBACEntities(
 // "tiller-namespace=TILLER_NAMESPACE".
 func downloadCATLSCertificates(kubectlOptions *kubectl.KubectlOptions, tillerNamespace string, tmpStorePath string) (tls.CertificateKeyPairPath, error) {
 	// First get the Secret containing the TLS certificates for the CA for the deployed Tiller.
-	secretName := fmt.Sprintf("%s-namespace-ca-certs", tillerNamespace)
+	secretName := getTillerCACertSecretName(tillerNamespace)
 	secret, err := kubectl.GetSecret(kubectlOptions, "kube-system", secretName)
 	if err != nil {
 		return tls.CertificateKeyPairPath{}, err
@@ -271,9 +271,10 @@ func generateAndStoreSignedCertificateKeyPair(
 		clientSecretName,
 		tillerNamespace,
 		map[string]string{
-			"tiller-namespace":          tillerNamespace,
-			"tiller-client-credentials": "true",
-			entityKey:                   entityName,
+			"gruntwork.io/tiller-namespace":           tillerNamespace,
+			"gruntwork.io/tiller-credentials":         "true",
+			"gruntwork.io/tiller-credentials-type":    "client",
+			fmt.Sprintf("gruntwork.io/%s", entityKey): entityName,
 		},
 		map[string]string{},
 		"client",

@@ -80,11 +80,18 @@ func helmReset(
 func removeHelmCredentials(kubectlOptions *kubectl.KubectlOptions, namespace string) error {
 	logger := logging.GetProjectLogger()
 
+	// First remove the CA cert credentials
+	err := kubectl.DeleteSecret(kubectlOptions, "kube-system", getTillerCACertSecretName(namespace))
+	if err != nil {
+		return err
+	}
+
+	// Then remove all the client credential secrets
 	secrets, err := kubectl.ListSecrets(
 		kubectlOptions,
 		namespace,
 		metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("helm-namespace=%s,helm-server-credentials=true", namespace),
+			LabelSelector: fmt.Sprintf("gruntwork.io/tiller-namespace=%s,gruntwork.io/tiller-credentials=true", namespace),
 		},
 	)
 	if err != nil {
