@@ -72,7 +72,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresCACert(t *testing.T) {
 
 	// Now store certificate key pair using the tested function, with the CA cert
 	baseName := random.UniqueId()
-	caCertPath := mustAbs(t, "../testfixtures/ca.cert")
+	caCertPath := mustAbs(t, "./testfixtures/ca.cert")
 	certificateKeyPairPath := createSampleCertificateKeyPairPath(t)
 	err = StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
