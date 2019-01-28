@@ -72,22 +72,19 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	namespaceName := strings.ToLower(random.UniqueId())
 	serviceAccountName := fmt.Sprintf("%s-service-account", namespaceName)
 
+	defer k8s.DeleteNamespace(t, terratestKubectlOptions, namespaceName)
 	k8s.CreateNamespace(t, terratestKubectlOptions, namespaceName)
-	defer func() {
-		terratestKubectlOptions.Namespace = ""
-		k8s.DeleteNamespace(t, terratestKubectlOptions, namespaceName)
-	}()
 	terratestKubectlOptions.Namespace = namespaceName
 
 	k8s.CreateServiceAccount(t, terratestKubectlOptions, serviceAccountName)
 	bindNamespaceAdminRole(t, terratestKubectlOptions, serviceAccountName)
 
-	assert.NoError(t, Deploy(kubectlOptions, namespaceName, serviceAccountName, tlsOptions))
 	defer func() {
 		// Make sure to undeploy all helm releases before undeploying the server. However, don't force undeploy the
 		// server so that it crashes should the release removal fail.
 		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
+	assert.NoError(t, Deploy(kubectlOptions, namespaceName, serviceAccountName, tlsOptions))
 
 	// Grant and configure client as a new service account, testing the flow
 	serviceAccountKubectlOptions := grantAndConfigureClientAsServiceAccount(t, terratestKubectlOptions, kubectlOptions, tlsOptions)

@@ -11,7 +11,6 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/kubergrunt/helm"
-	"github.com/gruntwork-io/kubergrunt/logging"
 	"github.com/gruntwork-io/kubergrunt/tls"
 )
 
@@ -207,7 +206,7 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 - Download the client TLS certificate key pair that you have access to.
 - Install the TLS certificate key pair in the helm home directory. The helm home directory can be modified with the --helm-home option.
 - Install an environment file compatible with your platform that can be sourced to setup variables to configure default parameters for the helm client to access the Tiller install.
-- Optionally set the kubectl context default namespace to be the one that Tiller manages.
+- Optionally set the kubectl context default namespace to be the one that Tiller manages. Note that this will update the kubeconfig file.
 
 You must pass in an identifier for your account. This is either the name of the RBAC user (--rbac-user), RBAC group (--rbac-group), or ServiceAccount (--service-account) that you are authenticating as.`,
 				Action: configureHelmClient,
@@ -336,8 +335,6 @@ func undeployHelmServer(cliContext *cli.Context) error {
 
 // configureHelmClient is the action function for the helm configure command.
 func configureHelmClient(cliContext *cli.Context) error {
-	logger := logging.GetProjectLogger()
-
 	// Check if the required commands are installed
 	if err := shell.CommandInstalledE("helm"); err != nil {
 		return err
@@ -359,9 +356,9 @@ func configureHelmClient(cliContext *cli.Context) error {
 	}
 
 	// Get mutexed info (entity name)
-	configuringRBACUser := cliContext.String(configuringRBACUserFlag)
-	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag)
-	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag)
+	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
+	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
+	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
 	setEntities := 0
 	var entityName string
 	if configuringRBACUser != "" {
@@ -377,14 +374,13 @@ func configureHelmClient(cliContext *cli.Context) error {
 		entityName = configuringServiceAccount
 	}
 	if setEntities != 1 {
-		return MutuallyExclusiveFlagError("Exactly one of --rbac-user, --rbac-group, or --service-account must be set")
+		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --service-account must be set"}
 	}
 
 	// Get optional info
 	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
-	resourceNamespace := cliContext.String(resourceNamespaceFlag.Name)
 
-	return helm.ConfigureClient(kubectlOptions, helmHome, tillerNamespace, resourceNamespace, setKubectlNamespace)
+	return helm.ConfigureClient(kubectlOptions, helmHome, tillerNamespace, resourceNamespace, setKubectlNamespace, entityName)
 }
 
 // grantHelmAccess is the action function for the helm grant command.
@@ -404,7 +400,7 @@ func grantHelmAccess(cliContext *cli.Context) error {
 	rbacGroups := cliContext.StringSlice(grantedRbacGroupsFlag.Name)
 	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
 	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
-	if len(rbacGroups) == 0 && len(rbacUsers) && len(serviceAccounts) == 0 {
+	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
 		return entrypoint.NewRequiredArgsError("At least one --rbac-group or --service-account is required")
 	}
 	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)

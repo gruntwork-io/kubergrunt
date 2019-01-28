@@ -3,6 +3,8 @@ package helm
 import (
 	"crypto/x509/pkix"
 	"fmt"
+	"io/ioutil"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -190,4 +192,20 @@ func createServiceAccountForAuth(t *testing.T, terratestKubectlOptions *k8s.Kube
 	)
 	// Finally, create a new KubectlOption that can be used in the context
 	return serviceAccountName, kubectl.NewKubectlOptions(contextName, configPath)
+}
+
+// copyKubeconfigToTempFile will copy the default kubeconfig to a temp file that can be used to test config manipulation
+// in isolation.
+func copyKubeconfigToTempFile(t *testing.T) string {
+	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
+	require.NoError(t, err)
+	data, err := ioutil.ReadFile(kubeConfigPath)
+	require.NoError(t, err)
+	escapedTestName := url.PathEscape(t.Name())
+	tmpfile, err := ioutil.TempFile("", escapedTestName)
+	require.NoError(t, err)
+	defer tmpfile.Close()
+	_, err = tmpfile.Write(data)
+	require.NoError(t, err)
+	return tmpfile.Name()
 }

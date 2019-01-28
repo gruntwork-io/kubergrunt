@@ -8,6 +8,7 @@ import (
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
@@ -58,7 +59,15 @@ func ConfigureClient(
 
 	if setKubectlNamespace {
 		logger.Info("Requested to set default kubectl namespace.")
-		// TODO
+		if err := setKubectlNamespaceForCurrentContext(kubectlOptions, resourceNamespace); err != nil {
+			logger.Errorf(
+				"Error updating context %s to use namespace %s as default: %s",
+				kubectlOptions.ContextName,
+				resourceNamespace,
+				err,
+			)
+			return err
+		}
 		logger.Infof("Updated context %s to use namespace %s as default.", kubectlOptions.ContextName, resourceNamespace)
 	}
 
@@ -132,4 +141,34 @@ func renderEnvFile(helmHome string, tillerNamespace string) error {
 		TillerNamespace: tillerNamespace,
 	}
 	return info.Render()
+}
+
+// setKubectlNamespaceForCurrentContext sets the default namespace for the current context to be the provided resource
+// namespace so that all commands default to target that namespace, including helm. This will update the config.
+func setKubectlNamespaceForCurrentContext(kubectlOptions *kubectl.KubectlOptions, resourceNamespace string) error {
+	logger := logging.GetProjectLogger()
+
+	config := kubectl.LoadConfigFromPath(kubectlOptions.ConfigPath)
+	rawConfig, err := config.RawConfig()
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	var contextName string
+	if kubectlOptions.ContextName == "" {
+		contextName = rawConfig.CurrentContext
+	} else {
+		contextName = kubectlOptions.ContextName
+	}
+	contextInfo, found := rawConfig.Contexts[contextName]
+	if !found {
+		return errors.WithStackTrace(kubectl.KubeContextNotFound{Options: kubectlOptions})
+	}
+	contextInfo.Namespace = resourceNamespace
+	logger.Infof("Saving kubeconfig updates to %s", kubectlOptions.ConfigPath)
+	err = clientcmd.ModifyConfig(config.ConfigAccess(), rawConfig, false)
+	if err != nil {
+		logger.Errorf("Error saving kubeconfig updates to %s: %s", kubectlOptions.ConfigPath, err)
+		return errors.WithStackTrace(err)
+	}
+	return nil
 }
