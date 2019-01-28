@@ -241,7 +241,7 @@ func validateHelmEnvFile(t *testing.T, options *kubectl.KubectlOptions) {
 		Command: "sh",
 		Args: []string{
 			"-c",
-			fmt.Sprintf("source %s && %s", helmEnvPath, helmCmd),
+			fmt.Sprintf(". %s && %s", helmEnvPath, helmCmd),
 		},
 	}
 	shell.RunCommand(t, cmd)
