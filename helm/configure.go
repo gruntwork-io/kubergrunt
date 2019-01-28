@@ -51,7 +51,9 @@ func ConfigureClient(
 	logger.Info("Successfully downloaded TLS certificates.")
 
 	logger.Info("Generating environment file to setup helm client.")
-	// TODO
+	if err := renderEnvFile(helmHome, tillerNamespace); err != nil {
+		return err
+	}
 	logger.Info("Successfully generated environment file.")
 
 	if setKubectlNamespace {
@@ -89,21 +91,45 @@ func getClientCertsSecret(
 	return kubectl.GetSecret(kubectlOptions, tillerNamespace, clientSecretName)
 }
 
+// downloadTLSCertificatesToHelmHome will take the TLS certs stored in the provided secret and save it to the helm home
+// directory. The TLS info that helm expects are:
+// - ca.pem : The public certificate file of the CA. This is used to verify the Tiller.
+// - key.pem : The private key of the TLS certificate key pair to identify the client.
+// - cert.pem : The public certificate file of the client.
 func downloadTLSCertificatesToHelmHome(helmHome string, secret *corev1.Secret) error {
+	absHelmHome, err := filepath.Abs(helmHome)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
 	decodedCACertData := secret.Data["ca.crt"]
-	if err := ioutil.WriteFile(filepath.Join(helmHome, "ca.pem"), decodedCACertData, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(absHelmHome, "ca.pem"), decodedCACertData, 0644); err != nil {
 		return errors.WithStackTrace(err)
 	}
 
 	decodedClientPrivateKeyData := secret.Data["client.pem"]
-	if err := ioutil.WriteFile(filepath.Join(helmHome, "key.pem"), decodedClientPrivateKeyData, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(absHelmHome, "key.pem"), decodedClientPrivateKeyData, 0644); err != nil {
 		return errors.WithStackTrace(err)
 	}
 
 	decodedClientCertData := secret.Data["client.crt"]
-	if err := ioutil.WriteFile(filepath.Join(helmHome, "cert.pem"), decodedClientCertData, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(absHelmHome, "cert.pem"), decodedClientCertData, 0644); err != nil {
 		return errors.WithStackTrace(err)
 	}
 
 	return nil
+}
+
+// renderEnvFile will render a file into the provided helm home that can be dot sourced to set environment variables in
+// the shell that can be used to access the deployed Tiller instance in the provided tiller namespace.
+func renderEnvFile(helmHome string, tillerNamespace string) error {
+	absHelmHome, err := filepath.Abs(helmHome)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	info := DeployedHelmInfo{
+		HelmHome:        absHelmHome,
+		TillerNamespace: tillerNamespace,
+	}
+	return info.Render()
 }

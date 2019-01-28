@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -106,6 +107,9 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 
 	// Check that we can deploy a helm chart
 	validateHelmChartDeploy(t, serviceAccountKubectlOptions, namespaceName)
+
+	// Check that the rendered helm env file works
+	validateHelmEnvFile(t, serviceAccountKubectlOptions)
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed into the provided namespace and
@@ -219,4 +223,29 @@ func validateHelmChartDeploy(t *testing.T, kubectlOptions *kubectl.KubectlOption
 			namespace,
 		),
 	)
+}
+
+// validateHelmEnvFile sources the generated helm env file and verifies it sets the necessary and sufficient
+// environment variables for helm to talk to the deployed Tiller instance.
+func validateHelmEnvFile(t *testing.T, options *kubectl.KubectlOptions) {
+	helmArgs := []string{"helm"}
+	if options.ContextName != "" {
+		helmArgs = append(helmArgs, "--kube-context", options.ContextName)
+	}
+	if options.ConfigPath != "" {
+		helmArgs = append(helmArgs, "--kubeconfig", options.ConfigPath)
+	}
+	helmArgs = append(helmArgs, "ls")
+	helmCmd := strings.Join(helmArgs, " ")
+
+	helmEnvPath := filepath.Join(getHelmHome(t), envFileName)
+	// TODO: make this test platform independent
+	cmd := shell.Command{
+		Command: "sh",
+		Args: []string{
+			"-c",
+			fmt.Sprintf("source %s && %s", helmEnvPath, helmCmd),
+		},
+	}
+	shell.RunCommand(t, cmd)
 }
