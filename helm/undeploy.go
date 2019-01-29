@@ -126,8 +126,13 @@ func deleteReleases(kubectlOptions *kubectl.KubectlOptions, namespace string, he
 	}
 	releases := strings.Split(releasesRawString, "\n")
 
-	// Then, delete the releases in groups of 100
-	for _, group := range collections.BatchListIntoGroupsOf(releases, 100) {
+	// Then, delete the releases in groups of 1000
+	// This limit comes from limits on command line arg lengths. Since we pass the release names to the delete command,
+	// we need to make sure we don't hit the maximum command line arg limit, which on most systems is on the order of
+	// 100k.
+	// We set a somewhat arbitrary assumption of ~100 character release names to come up with the 1000 release delete
+	// limit here.
+	for _, group := range collections.BatchListIntoGroupsOf(releases, 1000) {
 		deleteArgs := []string{
 			"delete",
 			"--tiller-namespace",

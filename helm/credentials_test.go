@@ -59,10 +59,15 @@ func mustReadFile(t *testing.T, path string) []byte {
 }
 
 func createSampleCertificateKeyPairPath(t *testing.T) tls.CertificateKeyPairPath {
+	// Load in pregenerated test certificate key pairs. These are generated using openssl and are not used anywhere.
+	// To regenerate them, run:
+	//   openssl genrsa -out ./ca.key.pem 4096
+	//   openssl req -key ca.key.pem -new -x509 -days 7300 -sha256 -out ca.cert
+	//   openssl rsa -in ca.key.pem -pubout > ca.pub
 	return tls.CertificateKeyPairPath{
 		CertificatePath: mustAbs(t, "./testfixtures/ca.cert"),
-		PrivateKeyPath:  mustAbs(t, "./testfixtures/tls.pem"),
-		PublicKeyPath:   mustAbs(t, "./testfixtures/tls.pub"),
+		PrivateKeyPath:  mustAbs(t, "./testfixtures/ca.key.pem"),
+		PublicKeyPath:   mustAbs(t, "./testfixtures/ca.pub"),
 	}
 }
 
