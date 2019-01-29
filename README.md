@@ -237,31 +237,40 @@ directory:
 ```bash
 # This is for linux
 # Setup helm
-kubergrunt helm configure --home-dir $HOME/.helm --tiller-namespace dev
+kubergrunt helm configure --home-dir $HOME/.helm --tiller-namespace dev --rbac-user me
 # Source the environment file
 source $HOME/.helm/env
 # Verify connection. This should display info about both the client and server.
 helm version
 ```
 
+See the command help for all the available options: `kubergrunt helm configure --help`.
+
 #### grant
 
-This subcommand will grant access to an installed helm server to a given RBAC role. This will:
+This subcommand will grant access to an installed helm server to a given RBAC entity (`User`, `Group`, or
+`ServiceAccount`). This will:
 
 - Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
 - Issue a new TLS certificate keypair using the CA keypair.
-- Upload the new TLS certificate keypair to a new Secret in a new Namespace that only the granted RBAC role has access
+- Upload the new TLS certificate keypair to a new Secret in a new Namespace that only the granted RBAC entity has access
   to. This access is readonly.
 - Remove the local copies of the downloaded and generated certificates.
 
 This command assumes that the authenticated entitiy running the command has enough permissions to access the generated
 CA `Secret`.
 
-For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC role `dev`:
+For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC group `developers`:
 
 ```bash
-kubergrunt helm grant --tiller-namespace tiller-world --rbac-role dev
+kubergrunt helm grant \
+    --tls-common-name developers \
+    --tls-org YourCo \
+    --tiller-namespace tiller-world \
+    --rbac-group developers
 ```
+
+See the command help for all the available options: `kubergrunt helm grant --help`.
 
 #### revoke
 
@@ -276,8 +285,11 @@ This subcommand will revoke access to an installed helm server for a given RBAC 
 For example, to revoke access to a Tiller server deployed in the namespace `tiller-world` from the RBAC role `dev`:
 
 ```bash
-kubergrunt helm revoke --tiller-namespace tiller-world --rbac-role dev
+kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 ```
+
+See the command help for all the available options: `kubergrunt helm revoke --help`.
+
 
 ## Who maintains this project?
 

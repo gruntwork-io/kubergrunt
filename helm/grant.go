@@ -328,6 +328,8 @@ func createAndBindRBACRolesForTillerAccess(
 		},
 	}
 	switch entityType {
+	case User:
+		rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", rbacEntity, tillerNamespace)
 	case Group:
 		rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", rbacEntity, tillerNamespace)
 	case ServiceAccount:
