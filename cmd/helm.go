@@ -99,6 +99,20 @@ var (
 		Name:  "rbac-role",
 		Usage: "The name of the RBAC role that should be granted access to tiller.",
 	}
+
+	// Configurations for undeploying helm
+	forceUndeployFlag = cli.BoolFlag{
+		Name:  "force",
+		Usage: "Force removal of the Helm server. Note: this will not delete all deployed releases.",
+	}
+	undeployReleasesFlag = cli.BoolFlag{
+		Name:  "undeploy-releases",
+		Usage: "Undeploy all releases managed by the target Helm server before undeploying the server.",
+	}
+	helmHomeFlag = cli.StringFlag{
+		Name:  "home",
+		Usage: "Home directory that is configured for accessing the helm server being removed.",
+	}
 )
 
 // SetupHelmCommand creates the cli.Command entry for the helm subcommand of kubergrunt
@@ -131,6 +145,22 @@ func SetupHelmCommand() cli.Command {
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					helmKubectlContextNameFlag,
+					helmKubeconfigFlag,
+				},
+			},
+			cli.Command{
+				Name:  "undeploy",
+				Usage: "Undeploy a deployed Helm server.",
+				Description: `Undeploy a deployed Helm server. This will remove all the resources created as part of deploying the Helm server, including all the Secrets that contain the various certificate key pairs for accessing Helm over TLS.
+
+Note: By default, this will not undeploy the Helm server if there are any deployed releases. You can force removal of the server using the --force option, but this will not delete any releases. If you wish to also delete releases, use the relevant commands in the helm client.`,
+				Action: undeployHelmServer,
+				Flags: []cli.Flag{
+					forceUndeployFlag,
+					undeployReleasesFlag,
+					helmHomeFlag,
+					namespaceFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -217,6 +247,37 @@ func deployHelmServer(cliContext *cli.Context) error {
 	)
 }
 
+func undeployHelmServer(cliContext *cli.Context) error {
+	// Check if the required commands are installed
+	if err := shell.CommandInstalledE("helm"); err != nil {
+		return err
+	}
+
+	// Get required info
+	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
+	if err != nil {
+		return err
+	}
+	namespace, err := entrypoint.StringFlagRequiredE(cliContext, namespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
+	force := cliContext.Bool(forceUndeployFlag.Name)
+	undeployReleases := cliContext.Bool(undeployReleasesFlag.Name)
+
+	return helm.Undeploy(
+		kubectlOptions,
+		namespace,
+		helmHome,
+		force,
+		undeployReleases,
+	)
+}
 func grantHelmAccess(cliContext *cli.Context) error {
 	return nil
 }
