@@ -12,13 +12,13 @@ import (
 	"github.com/gruntwork-io/kubergrunt/tls"
 )
 
-// Deploy will deploy a new helm server to the Kubernetes cluster configured with KubectlOptions following best
+// Deploy will deploy a new Tiller to the Kubernetes cluster configured with KubectlOptions following best
 // practices. Specifically, this will:
 // - Require a Namespace and ServiceAccount, so that you will have to explicitly and consciously deploy a super user
-//   helm server to get that.
+//   Tiller to get that.
 // - Generate a new set of TLS certs.
 // - Store the TLS certs into a Kubernetes Secret into a Namespace that only cluster admins have access to.
-// - Deploy Helm server using the generated TLS certs, Namespace, and ServiceAccount. Additionally, set the flags so
+// - Deploy Tiller using the generated TLS certs, Namespace, and ServiceAccount. Additionally, set the flags so
 //   that the release info is stored in a Secret as opposed to ConfigMap.
 func Deploy(
 	kubectlOptions *kubectl.KubectlOptions,
@@ -103,12 +103,12 @@ func Deploy(
 		"--wait",
 	)
 	if err != nil {
-		logger.Errorf("Error deploying Helm server: %s", err)
+		logger.Errorf("Error deploying Tiller: %s", err)
 		return err
 	}
-	logger.Infof("Successfully deployed helm server in namespace %s with service account %s", tillerNamespace, serviceAccount)
+	logger.Infof("Successfully deployed Tiller in namespace %s with service account %s", tillerNamespace, serviceAccount)
 
-	logger.Info("Done deploying helm server")
+	logger.Info("Done deploying Tiller")
 	return nil
 }
 
@@ -152,7 +152,7 @@ func loadPrivateKeyFromDisk(tlsOptions tls.TLSOptions, path string) (interface{}
 }
 
 // generateCertificateKeyPair will generate the CA TLS certificate key pair and use that generate another, signed, TLS
-// certificate key pair that will be used by the Helm server.
+// certificate key pair that will be used by the Tiller.
 func generateCertificateKeyPairs(tlsOptions tls.TLSOptions, tillerNamespace string, tmpStorePath string) (tls.CertificateKeyPairPath, tls.CertificateKeyPairPath, error) {
 	logger := logging.GetProjectLogger()
 

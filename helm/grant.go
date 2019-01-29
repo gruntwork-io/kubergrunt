@@ -144,7 +144,7 @@ func validateTillerDeployed(kubectlOptions *kubectl.KubectlOptions, tillerNamesp
 	return nil
 }
 
-// grantAccessToRBACGroups will grant access to the deployed Tiller server to the provided RBAC groups.
+// grantAccessToRBACEntities will grant access to the deployed Tiller server to the provided RBAC groups.
 // The granting process is as follows:
 // For each RBAC group:
 // - Create a new signed certificate from the provided CA keypair.

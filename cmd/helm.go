@@ -17,7 +17,7 @@ import (
 var (
 	// Shared configurations
 	tillerNamespaceFlag = cli.StringFlag{
-		Name:  "namespace",
+		Name:  "tiller-namespace",
 		Usage: "Kubernetes namespace that Tiller will reside in.",
 	}
 	resourceNamespaceFlag = cli.StringFlag{
@@ -110,7 +110,7 @@ var (
 		Usage: "The name of the RBAC user that should be granted access to Tiller. Pass in multiple times for multiple users.",
 	}
 	grantedServiceAccountsFlag = cli.StringSliceFlag{
-		Name:  "service-account",
+		Name:  "rbac-service-account",
 		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
 	}
 
@@ -136,15 +136,15 @@ var (
 	}
 	configuringRBACUserFlag = cli.StringFlag{
 		Name:  "rbac-user",
-		Usage: "Name of RBAC user that configuration is for. Only one of --rbac-user, --rbac-group, or --service-account can be specified.",
+		Usage: "Name of RBAC user that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 	configuringRBACGroupFlag = cli.StringFlag{
 		Name:  "rbac-group",
-		Usage: "Name of RBAC group that configuration is for. Only one of --rbac-user, --rbac-group, or --service-account can be specified.",
+		Usage: "Name of RBAC group that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 	configuringServiceAccountFlag = cli.StringFlag{
-		Name:  "service-account",
-		Usage: "Name of the Service Account that configuration is for. Only one of --rbac-user, --rbac-group, or --service-account can be specified.",
+		Name:  "rbac-service-account",
+		Usage: "Name of the Service Account that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 )
 
@@ -374,7 +374,7 @@ func configureHelmClient(cliContext *cli.Context) error {
 		entityName = configuringServiceAccount
 	}
 	if setEntities != 1 {
-		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --service-account must be set"}
+		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
 	}
 
 	// Get optional info
@@ -401,7 +401,7 @@ func grantHelmAccess(cliContext *cli.Context) error {
 	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
 	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
 	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
-		return entrypoint.NewRequiredArgsError("At least one --rbac-group or --service-account is required")
+		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
 	}
 	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
 }
