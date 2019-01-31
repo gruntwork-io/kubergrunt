@@ -38,15 +38,7 @@ func GrantAccess(
 		"Granting access Tiller server deployed in namespace %s to:",
 		tillerNamespace,
 	)
-	if len(rbacGroups) > 0 {
-		logger.Infof("\t- the RBAC groups %v", rbacGroups)
-	}
-	if len(rbacUsers) > 0 {
-		logger.Infof("\t- the RBAC users %v", rbacUsers)
-	}
-	if len(serviceAccounts) > 0 {
-		logger.Infof("\t- the service accounts %v", serviceAccounts)
-	}
+	logEntities(rbacGroups, rbacUsers, serviceAccounts)
 
 	logger.Info("Checking if Tiller is deployed in the namespace.")
 	if err := validateTillerDeployed(kubectlOptions, tillerNamespace); err != nil {
@@ -96,13 +88,24 @@ func GrantAccess(
 	logger.Infof("Successfully granted access to deployed Tiller in namespace %s to Service Accounts", tillerNamespace)
 
 	logger.Infof("Successfully granted access to deployed Tiller server in namespace %s to:", tillerNamespace)
-	logger.Infof("\t- the RBAC users %v", rbacUsers)
-	logger.Infof("\t- the RBAC groups %v", rbacGroups)
-	logger.Infof("\t- the ServiceAccounts %v", serviceAccounts)
+	logEntities(rbacGroups, rbacUsers, serviceAccounts)
 
 	// Print follow up instructions
 	fmt.Printf("\n%s\n", fmt.Sprintf(Instructions, tillerNamespace, tillerNamespace))
 	return nil
+}
+
+func logEntities(rbacGroups []string, rbacUsers []string, serviceAccounts []string) {
+	logger := logging.GetProjectLogger()
+	if len(rbacGroups) > 0 {
+		logger.Infof("\t- the RBAC groups %v", rbacGroups)
+	}
+	if len(rbacUsers) > 0 {
+		logger.Infof("\t- the RBAC users %v", rbacUsers)
+	}
+	if len(serviceAccounts) > 0 {
+		logger.Infof("\t- the service accounts %v", serviceAccounts)
+	}
 }
 
 // validateTillerDeployed will look for a valid Tiller instance deployed into the provided namespace.
