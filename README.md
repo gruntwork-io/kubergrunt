@@ -39,7 +39,7 @@ The following commands are available as part of `kubergrunt`:
     * [undeploy](#undeploy)
     * [configure](#helm-configure)
     * [grant](#grant)
-    * [revoke](#revoke)
+    <!-- not implemented * [revoke](#revoke) -->
 
 ### eks
 
@@ -272,6 +272,8 @@ kubergrunt helm grant \
 
 See the command help for all the available options: `kubergrunt helm grant --help`.
 
+<!-- Not implemented
+
 #### revoke
 
 This subcommand will revoke access to an installed helm server for a given RBAC role. This will:
@@ -289,6 +291,8 @@ kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 ```
 
 See the command help for all the available options: `kubergrunt helm revoke --help`.
+
+-->
 
 
 ## Who maintains this project?
