@@ -3,10 +3,9 @@
 # kubergrunt
 
 `kubergrunt` is an encompassing tool that attempts to fill in the gaps between Terraform, Helm, and Kubectl for managing
-a Kubernetes Cluster. The binaries are all built as part of the CI pipeline on each release of the package, and is
-appended to the corresponding release in the [Releases Page](/../../releases).
+a Kubernetes Cluster.
 
-Some of the features of `kubergrunt` includes:
+Some of the features of `kubergrunt` include:
 
 * configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
   in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
@@ -16,13 +15,16 @@ Some of the features of `kubergrunt` includes:
 
 ## Installation
 
-You can install `kubergrunt` using the [Gruntwork Installer](https://github.com/gruntwork-io/gruntwork-installer):
+The binaries are all built as part of the CI pipeline on each release of the package, and is appended to the
+corresponding release in the [Releases Page](/../../releases). You can download the corresponding binary for your
+platform from the releases page.
+
+Alternatively, you can install `kubergrunt` using the [Gruntwork
+Installer](https://github.com/gruntwork-io/gruntwork-installer):
 
 ```bash
 gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.0.1"
 ```
-
-Alternatively, you can download the corresponding binary for your platform directly from the [Releases Page](/../../releases).
 
 
 ## Commands
@@ -94,15 +96,14 @@ The `configure` subcommand of `kubergrunt eks` assumes you will be using this me
 cluster provided by EKS. If you wish to use `aws-iam-authenticator` instead, replace the auth info clause of the `kubectl`
 config context.
 
-See [How do I authenticate kubectl to the EKS cluster?](../eks-cluster-control-plane/README.md#how-to-authenticate-kubectl) for more information on
-authenticating `kubectl` with EKS.
 
 #### deploy
 
 This subcommand will initiate a rolling deployment of the current AMI config to the EC2 instances in your EKS cluster.
 This command will not deploy or update an application deployed on your Kubernetes cluster (e.g `Deployment` resource,
-`Pod` resource, etc). For that, refer to the [`k8s-service` module documentation](../k8s-service). Instead, this command
-is for managing and deploying an update to the EC2 instances underlying your EKS cluster.
+`Pod` resource, etc). We provide helm charts that you can use to deploy your applications on to a Kubernetes cluster.
+See our [`helm-kubernetes-services` repo](https://github.com/gruntwork-io/helm-kubernetes-services/) for more info.
+Instead, this command is for managing and deploying an update to the EC2 instances underlying your EKS cluster.
 
 Terraform and AWS do not provide a way to automatically roll out a change to the Instances in an EKS Cluster. Due to
 Terraform limitations (see [here for a
@@ -137,7 +138,8 @@ Note that to minimize service disruption from this command, your services should
 PodDisruptionBudget](https://kubernetes.io/docs/tasks/run-application/configure-pdb/), [a readiness
 probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#define-readiness-probes)
 that fails on container shutdown events, and implement graceful handling of SIGTERM in the container. You can learn more
-about these features in [our blog post covering them](TODO).
+about these features in [our blog post series covering
+them](https://blog.gruntwork.io/zero-downtime-server-updates-for-your-kubernetes-cluster-902009df5b33).
 
 Currently `kubergrunt` does not implement any checks for these resources to be implemented. However in the future, we
 plan to bake in checks into the deployment command to verify that all services have a disruption budget set, and warn
@@ -165,8 +167,9 @@ basic helm server, this subcommand contains features such as:
   particular Tiller install.
 - Tying certificate access to RBAC roles to harden access to the Tiller server.
 
-Note that this command does not create `Namespaces` or `ServiceAccounts`, delegating that responsibility to other
-systems (see [k8s-helm-server module](../k8s-helm-server) for example).
+**Note**: This command does not create `Namespaces` or `ServiceAccounts`, delegating that responsibility to other
+systems. Checkout our [terraform-kubernetes-helm module](https://github.com/gruntwork-io/terraform-kubernetes-helm) for
+an end to end implementation.
 
 For example, to setup a basic install of helm in the Kubernetes namespace `tiller-world` with the `ServiceAccount`
 `tiller`:
