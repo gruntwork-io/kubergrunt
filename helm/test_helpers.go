@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -78,9 +76,8 @@ func grantAndConfigureClientAsServiceAccount(
 }
 
 func getHelmHome(t *testing.T) string {
-	home, err := homedir.Dir()
+	helmHome, err := GetDefaultHelmHome()
 	require.NoError(t, err)
-	helmHome := filepath.Join(home, ".helm")
 	return helmHome
 }
 

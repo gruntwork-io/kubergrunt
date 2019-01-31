@@ -125,8 +125,8 @@ var (
 	}
 	// This is also used in configure
 	helmHomeFlag = cli.StringFlag{
-		Name:  "home",
-		Usage: "Home directory that is configured for accessing deployed Tiller server.",
+		Name:  "helm-home",
+		Usage: "Home directory that is configured for accessing deployed Tiller server. If unset, defaults to ~/.helm",
 	}
 
 	// Configurations for configuring the helm client
@@ -168,6 +168,7 @@ func SetupHelmCommand() cli.Command {
 You can optionally grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
+					helmHomeFlag,
 					serviceAccountFlag,
 					tillerNamespaceFlag,
 					resourceNamespaceFlag,
@@ -293,6 +294,10 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil && setEntities > 0 {
 		return err
 	}
+	helmHome, err := parseHelmHomeWithDefault(cliContext)
+	if err != nil {
+		return err
+	}
 
 	return helm.Deploy(
 		kubectlOptions,
@@ -300,6 +305,7 @@ func deployHelmServer(cliContext *cli.Context) error {
 		resourceNamespace,
 		serviceAccount,
 		tlsOptions,
+		helmHome,
 		rbacEntity,
 	)
 }
@@ -312,10 +318,6 @@ func undeployHelmServer(cliContext *cli.Context) error {
 	}
 
 	// Get required info
-	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
-	if err != nil {
-		return err
-	}
 	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
 	if err != nil {
 		return err
@@ -328,6 +330,10 @@ func undeployHelmServer(cliContext *cli.Context) error {
 	// Get optional info
 	force := cliContext.Bool(forceUndeployFlag.Name)
 	undeployReleases := cliContext.Bool(undeployReleasesFlag.Name)
+	helmHome, err := parseHelmHomeWithDefault(cliContext)
+	if err != nil {
+		return err
+	}
 
 	return helm.Undeploy(
 		kubectlOptions,
@@ -346,10 +352,6 @@ func configureHelmClient(cliContext *cli.Context) error {
 	}
 
 	// Get required info
-	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
-	if err != nil {
-		return err
-	}
 	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
 	if err != nil {
 		return err
@@ -371,6 +373,10 @@ func configureHelmClient(cliContext *cli.Context) error {
 
 	// Get optional info
 	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
+	helmHome, err := parseHelmHomeWithDefault(cliContext)
+	if err != nil {
+		return err
+	}
 
 	return helm.ConfigureClient(
 		kubectlOptions,
@@ -469,6 +475,15 @@ func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, er
 		distinguishedName.Country = []string{country}
 	}
 	return distinguishedName, nil
+}
+
+// parseHelmHomeWithDefault will take the helm home option and return it, or the default ~/.helm.
+func parseHelmHomeWithDefault(cliContext *cli.Context) (string, error) {
+	helmHome := cliContext.String(helmHomeFlag.Name)
+	if helmHome == "" {
+		return helm.GetDefaultHelmHome()
+	}
+	return helmHome, nil
 }
 
 // parseConfigurationRBACEntity will take the RBAC entity options and return the configured RBAC entity. This returns

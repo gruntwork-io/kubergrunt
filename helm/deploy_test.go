@@ -84,7 +84,15 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		// server so that it crashes should the release removal fail.
 		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
-	assert.NoError(t, Deploy(kubectlOptions, namespaceName, serviceAccountName, tlsOptions))
+	assert.NoError(t, Deploy(
+		kubectlOptions,
+		namespaceName,
+		namespaceName,
+		serviceAccountName,
+		tlsOptions,
+		getHelmHome(t),
+		nil,
+	))
 
 	// Grant and configure client as a new service account, testing the flow
 	serviceAccountKubectlOptions := grantAndConfigureClientAsServiceAccount(t, terratestKubectlOptions, kubectlOptions, tlsOptions)
