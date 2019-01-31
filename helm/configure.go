@@ -24,7 +24,7 @@ func ConfigureClient(
 	tillerNamespace string,
 	resourceNamespace string,
 	setKubectlNamespace bool,
-	rbacEntityName string,
+	rbacEntity RBACEntity,
 ) error {
 	logger := logging.GetProjectLogger()
 	logger.Infof("Setting up local helm client to access Tiller server deployed in namespace %s.", tillerNamespace)
@@ -38,7 +38,7 @@ func ConfigureClient(
 		return err
 	}
 	// - Access to TLS certs. If unavailable, mention they need to be granted access.
-	secret, err := getClientCertsSecret(kubectlOptions, tillerNamespace, rbacEntityName)
+	secret, err := getClientCertsSecret(kubectlOptions, tillerNamespace, rbacEntity)
 	if err != nil {
 		logger.Errorf("You do not have permissions to access the client certs for Tiller deployed in namespace %s, or they do not exist.", tillerNamespace)
 		return err
@@ -94,9 +94,9 @@ func verifyAccessToTillerPod(kubectlOptions *kubectl.KubectlOptions, tillerNames
 func getClientCertsSecret(
 	kubectlOptions *kubectl.KubectlOptions,
 	tillerNamespace string,
-	rbacEntityName string,
+	rbacEntity RBACEntity,
 ) (*corev1.Secret, error) {
-	clientSecretName := getTillerClientCertSecretName(rbacEntityName)
+	clientSecretName := getTillerClientCertSecretName(rbacEntity.EntityID())
 	return kubectl.GetSecret(kubectlOptions, tillerNamespace, clientSecretName)
 }
 

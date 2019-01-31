@@ -360,18 +360,21 @@ func configureHelmClient(cliContext *cli.Context) error {
 	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
 	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
 	setEntities := 0
-	var entityName string
+	var rbacEntity helm.RBACEntity
 	if configuringRBACUser != "" {
 		setEntities += 1
-		entityName = configuringRBACUser
+		rbacEntity = helm.UserInfo{Name: configuringRBACUser}
 	}
 	if configuringRBACGroup != "" {
 		setEntities += 1
-		entityName = configuringRBACGroup
+		rbacEntity = helm.GroupInfo{Name: configuringRBACGroup}
 	}
 	if configuringServiceAccount != "" {
 		setEntities += 1
-		entityName = configuringServiceAccount
+		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
+		if err != nil {
+			return err
+		}
 	}
 	if setEntities != 1 {
 		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
@@ -380,7 +383,14 @@ func configureHelmClient(cliContext *cli.Context) error {
 	// Get optional info
 	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
 
-	return helm.ConfigureClient(kubectlOptions, helmHome, tillerNamespace, resourceNamespace, setKubectlNamespace, entityName)
+	return helm.ConfigureClient(
+		kubectlOptions,
+		helmHome,
+		tillerNamespace,
+		resourceNamespace,
+		setKubectlNamespace,
+		rbacEntity,
+	)
 }
 
 // grantHelmAccess is the action function for the helm grant command.

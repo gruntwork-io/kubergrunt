@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -15,32 +14,6 @@ import (
 	"github.com/gruntwork-io/kubergrunt/logging"
 	"github.com/gruntwork-io/kubergrunt/tls"
 )
-
-type RBACType int
-
-const (
-	Group RBACType = iota
-	User
-	ServiceAccount
-)
-
-type ServiceAccountInfo struct {
-	Name      string
-	Namespace string
-}
-
-// extractServiceAccountInfo takes a service account identifier and extract out the namespace and name.
-func extractServiceAccountInfo(serviceAccountID string) (ServiceAccountInfo, error) {
-	splitServiceAccount := strings.Split(serviceAccountID, "/")
-	if len(splitServiceAccount) != 2 {
-		return ServiceAccountInfo{}, errors.WithStackTrace(InvalidServiceAccountInfo{serviceAccountID})
-	}
-	serviceAccountInfo := ServiceAccountInfo{
-		Namespace: splitServiceAccount[0],
-		Name:      splitServiceAccount[1],
-	}
-	return serviceAccountInfo, nil
-}
 
 // GrantAccess grants the provided RBAC groups and/or service accounts access to the Tiller Pod available in the
 // provided Tiller namespace.
@@ -98,30 +71,34 @@ func GrantAccess(
 	logger.Infof("Successfully downloaded CA TLS certificates for Tiller deployed in namespace %s.", tillerNamespace)
 
 	logger.Infof("Granting access to deployed Tiller in namespace %s to RBAC groups", tillerNamespace)
-	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, Group, rbacGroups); err != nil {
+	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, convertToGroupInfos(rbacGroups)); err != nil {
 		logger.Errorf("Error granting access to deployed Tiller in namespace %s to RBAC groups: %s", tillerNamespace, err)
 		return err
 	}
 	logger.Infof("Successfully granted access to deployed Tiller in namespace %s to RBAC groups", tillerNamespace)
 
 	logger.Infof("Granting access to deployed Tiller in namespace %s to RBAC users", tillerNamespace)
-	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, User, rbacUsers); err != nil {
+	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, convertToUserInfos(rbacUsers)); err != nil {
 		logger.Errorf("Error granting access to deployed Tiller in namespace %s to RBAC users: %s", tillerNamespace, err)
 		return err
 	}
 	logger.Infof("Successfully granted access to deployed Tiller in namespace %s to RBAC users", tillerNamespace)
 
 	logger.Infof("Granting access to deployed Tiller in namespace %s to Service Accounts", tillerNamespace)
-	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, ServiceAccount, serviceAccounts); err != nil {
+	serviceAccountInfos, err := convertToServiceAccountInfos(serviceAccounts)
+	if err != nil {
+		return err
+	}
+	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, serviceAccountInfos); err != nil {
 		logger.Errorf("Error granting access to deployed Tiller in namespace %s to Service Accounts: %s", tillerNamespace, err)
 		return err
 	}
 	logger.Infof("Successfully granted access to deployed Tiller in namespace %s to Service Accounts", tillerNamespace)
 
-	logger.Infof(
-		"Successfully granted access to deployed Tiller server in namespace %s to the RBAC groups %v and service accounts %v.",
-		tillerNamespace, rbacGroups, serviceAccounts,
-	)
+	logger.Infof("Successfully granted access to deployed Tiller server in namespace %s to:", tillerNamespace)
+	logger.Infof("\t- the RBAC users %v", rbacUsers)
+	logger.Infof("\t- the RBAC groups %v", rbacGroups)
+	logger.Infof("\t- the ServiceAccounts %v", serviceAccounts)
 
 	// Print follow up instructions
 	fmt.Printf("\n%s\n", fmt.Sprintf(Instructions, tillerNamespace, tillerNamespace))
@@ -157,15 +134,14 @@ func grantAccessToRBACEntities(
 	tlsOptions tls.TLSOptions,
 	caKeyPairPath tls.CertificateKeyPairPath,
 	tillerNamespace string,
-	entityType RBACType,
-	rbacEntities []string,
+	rbacEntities []RBACEntity,
 ) error {
 	logger := logging.GetProjectLogger()
 
 	numEntities := len(rbacEntities)
 	for idx, rbacEntity := range rbacEntities {
 		logger.Infof("Generating and storing certificate key pair for %s (%d of %d)", rbacEntity, idx+1, numEntities)
-		clientSecretName, err := generateAndStoreSignedCertificateKeyPair(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, entityType, rbacEntity)
+		clientSecretName, err := generateAndStoreSignedCertificateKeyPair(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, rbacEntity)
 		if err != nil {
 			logger.Errorf("Error generating and storing certificate key pair for %s", rbacEntity)
 			return err
@@ -173,7 +149,7 @@ func grantAccessToRBACEntities(
 		logger.Infof("Successfully generated and stored certificate key pair for %s", rbacEntity)
 
 		logger.Infof("Creating and binding RBAC roles to %s", rbacEntity)
-		err = createAndBindRBACRolesForTillerAccess(kubectlOptions, tillerNamespace, clientSecretName, entityType, rbacEntity)
+		err = createAndBindRBACRolesForTillerAccess(kubectlOptions, tillerNamespace, clientSecretName, rbacEntity)
 		if err != nil {
 			logger.Errorf("Error creating and binding RBAC roles to %s", rbacEntity)
 			return err
@@ -223,8 +199,7 @@ func generateAndStoreSignedCertificateKeyPair(
 	tlsOptions tls.TLSOptions,
 	caKeyPairPath tls.CertificateKeyPairPath,
 	tillerNamespace string,
-	entityType RBACType,
-	rbacEntity string,
+	rbacEntity RBACEntity,
 ) (string, error) {
 	logger := logging.GetProjectLogger()
 
@@ -248,23 +223,8 @@ func generateAndStoreSignedCertificateKeyPair(
 	}
 	logger.Infof("Successfully generated client certificates for entity %s", rbacEntity)
 
-	var entityKey, entityName string
-	switch entityType {
-	case Group:
-		entityName = rbacEntity
-		entityKey = "tiller-client-rbac-group"
-	case User:
-		entityName = rbacEntity
-		entityKey = "tiller-client-rbac-user"
-	case ServiceAccount:
-		serviceAccountInfo, err := extractServiceAccountInfo(rbacEntity)
-		if err != nil {
-			return "", err
-		}
-		entityName = serviceAccountInfo.Name
-		entityKey = "tiller-client-service-account"
-	}
-	clientSecretName := getTillerClientCertSecretName(entityName)
+	entityKey := fmt.Sprintf("tiller-client-rbac-%s", rbacEntity.EntityType())
+	clientSecretName := getTillerClientCertSecretName(rbacEntity.EntityID())
 	logger.Infof("Uploading client certificate key pair as secret in namespace %s with name %s", tillerNamespace, clientSecretName)
 	err = StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
@@ -274,7 +234,7 @@ func generateAndStoreSignedCertificateKeyPair(
 			"gruntwork.io/tiller-namespace":           tillerNamespace,
 			"gruntwork.io/tiller-credentials":         "true",
 			"gruntwork.io/tiller-credentials-type":    "client",
-			fmt.Sprintf("gruntwork.io/%s", entityKey): entityName,
+			fmt.Sprintf("gruntwork.io/%s", entityKey): rbacEntity.EntityID(),
 		},
 		map[string]string{},
 		"client",
@@ -296,8 +256,7 @@ func createAndBindRBACRolesForTillerAccess(
 	kubectlOptions *kubectl.KubectlOptions,
 	tillerNamespace string,
 	clientSecretName string,
-	entityType RBACType,
-	rbacEntity string,
+	rbacEntity RBACEntity,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -327,18 +286,7 @@ func createAndBindRBACRolesForTillerAccess(
 			},
 		},
 	}
-	switch entityType {
-	case User:
-		rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", rbacEntity, tillerNamespace)
-	case Group:
-		rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", rbacEntity, tillerNamespace)
-	case ServiceAccount:
-		serviceAccountInfo, err := extractServiceAccountInfo(rbacEntity)
-		if err != nil {
-			return err
-		}
-		rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", serviceAccountInfo.Name, tillerNamespace)
-	}
+	rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", rbacEntity.EntityID(), tillerNamespace)
 	rbacRole.Namespace = tillerNamespace
 	_, err = client.RbacV1().Roles(tillerNamespace).Create(&rbacRole)
 	if err != nil {
@@ -348,41 +296,15 @@ func createAndBindRBACRolesForTillerAccess(
 	logger.Infof("Successfully created RBAC role %s", rbacRole.Name)
 
 	logger.Infof("Creating binding for role %s to %s", rbacRole.Name, rbacEntity)
-	var subject rbacv1.Subject
-	switch entityType {
-	case Group:
-		subject = rbacv1.Subject{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Group",
-			Name:     rbacEntity,
-		}
-	case User:
-		subject = rbacv1.Subject{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "User",
-			Name:     rbacEntity,
-		}
-	case ServiceAccount:
-		serviceAccountInfo, err := extractServiceAccountInfo(rbacEntity)
-		if err != nil {
-			return err
-		}
-		subject = rbacv1.Subject{
-			APIGroup:  "",
-			Kind:      "ServiceAccount",
-			Name:      serviceAccountInfo.Name,
-			Namespace: serviceAccountInfo.Namespace,
-		}
-	}
 	binding := rbacv1.RoleBinding{
-		Subjects: []rbacv1.Subject{subject},
+		Subjects: []rbacv1.Subject{rbacEntity.Subject()},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
 			Name:     rbacRole.Name,
 		},
 	}
-	binding.Name = fmt.Sprintf("%s-%s-binding", subject.Name, rbacRole.Name)
+	binding.Name = fmt.Sprintf("%s-%s-binding", rbacEntity.EntityID(), rbacRole.Name)
 	binding.Namespace = tillerNamespace
 	_, err = client.RbacV1().RoleBindings(tillerNamespace).Create(&binding)
 	if err != nil {

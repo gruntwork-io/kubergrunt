@@ -64,13 +64,14 @@ func grantAndConfigureClientAsServiceAccount(
 		[]string{fmt.Sprintf("%s/%s", terratestKubectlOptions.Namespace, serviceAccountName)},
 	))
 
+	serviceAccountInfo := ServiceAccountInfo{Name: serviceAccountName, Namespace: terratestKubectlOptions.Namespace}
 	require.NoError(t, ConfigureClient(
 		serviceAccountKubectlOptions,
 		getHelmHome(t),
 		terratestKubectlOptions.Namespace,
 		terratestKubectlOptions.Namespace,
 		true,
-		serviceAccountName,
+		serviceAccountInfo,
 	))
 
 	return serviceAccountKubectlOptions
