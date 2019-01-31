@@ -4,6 +4,24 @@ import (
 	"fmt"
 )
 
+// InvalidServiceAccountInfo error is returned when the encoded service account is not encoded correctly.
+type InvalidServiceAccountInfo struct {
+	EncodedServiceAccount string
+}
+
+func (err InvalidServiceAccountInfo) Error() string {
+	return fmt.Sprintf("Invalid encoding for ServiceAccount string %s. Expected NAMESPACE/NAME.", err.EncodedServiceAccount)
+}
+
+// HelmValidationError is returned when a command validation fails.
+type HelmValidationError struct {
+	Message string
+}
+
+func (err HelmValidationError) Error() string {
+	return err.Message
+}
+
 // MultiHelmError is returned when there are multiple errors in a helm action.
 type MultiHelmError struct {
 	Action string

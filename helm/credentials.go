@@ -15,6 +15,7 @@ func StoreCertificateKeyPairAsKubernetesSecret(
 	annotations map[string]string,
 	nameBase string,
 	certificateKeyPairPath tls.CertificateKeyPairPath,
+	caCertPath string,
 ) error {
 	secret := kubectl.PrepareSecret(secretNamespace, secretName, labels, annotations)
 	err := kubectl.AddToSecretFromFile(secret, fmt.Sprintf("%s.crt", nameBase), certificateKeyPairPath.CertificatePath)
@@ -29,5 +30,14 @@ func StoreCertificateKeyPairAsKubernetesSecret(
 	if err != nil {
 		return err
 	}
+
+	// If we also want to store the CA certificate that can be used to validate server or client
+	if caCertPath != "" {
+		err = kubectl.AddToSecretFromFile(secret, "ca.crt", caCertPath)
+		if err != nil {
+			return err
+		}
+	}
+
 	return kubectl.CreateSecret(kubectlOptions, secret)
 }

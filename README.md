@@ -30,12 +30,14 @@ Alternatively, you can download the corresponding binary for your platform direc
 The following commands are available as part of `kubergrunt`:
 
 1. [eks](#eks)
+    * [verify](#verify)
     * [configure](#configure)
     * [token](#token)
     * [deploy](#deploy)
 1. [helm](#helm)
     * [deploy](#helm-deploy)
     * [undeploy](#undeploy)
+    * [configure](#helm-configure)
     * [grant](#grant)
     * [revoke](#revoke)
 
@@ -172,7 +174,7 @@ For example, to setup a basic install of helm in the Kubernetes namespace `tille
 ```bash
 # Note that most of the arguments here are used to setup the Certificate Authority for TLS
 kubergrunt helm deploy \
-    --namespace tiller-world \
+    --tiller-namespace tiller-world \
     --service-account tiller \
     --tls-common-name tiller \
     --tls-org Gruntwork \
@@ -209,24 +211,66 @@ wanted to uninstall it:
 kubergrunt helm undeploy --helm-home $HOME/.helm
 ```
 
+#### (helm) configure
+
+This subcommand will setup the installed `helm` client to be able to access the specified Helm server. Specifically,
+this will:
+
+- Download the client TLS certificate key pair generated with the [`grant`](#grant) command.
+- Install the TLS certificate key pair in the helm home directory.
+- Install an environment file that sets up environment variables to target the specific helm server. This environment
+  file needs to be loaded before issuing any commands, at it sets the necessary environment variables to signal to the
+  helm client which helm server to use. The environment variables it sets are:
+  - `HELM_HOME`: The helm client home directory where the TLS certs are located.
+  - `TILLER_NAMESPACE`: The namespace where the helm server is installed.
+  - `HELM_TLS_VERIFY`: This will be set to true to enable TLS verification.
+  - `HELM_TLS_ENABLE`: This will be set to true to enable TLS authentication.
+
+You can also optionally set the current kubectl context to set the default namespace to be compatible with this Tiller
+install.
+
+Afterwards, you can source the environment file to setup your shell to access the proper helm client.
+
+For example, if you want to setup helm to target a server install in the namespace `dev` with the default helm home
+directory:
+
+```bash
+# This is for linux
+# Setup helm
+kubergrunt helm configure --home-dir $HOME/.helm --tiller-namespace dev --rbac-user me
+# Source the environment file
+source $HOME/.helm/env
+# Verify connection. This should display info about both the client and server.
+helm version
+```
+
+See the command help for all the available options: `kubergrunt helm configure --help`.
+
 #### grant
 
-This subcommand will grant access to an installed helm server to a given RBAC role. This will:
+This subcommand will grant access to an installed helm server to a given RBAC entity (`User`, `Group`, or
+`ServiceAccount`). This will:
 
 - Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
 - Issue a new TLS certificate keypair using the CA keypair.
-- Upload the new TLS certificate keypair to a new Secret in a new Namespace that only the granted RBAC role has access
+- Upload the new TLS certificate keypair to a new Secret in a new Namespace that only the granted RBAC entity has access
   to. This access is readonly.
 - Remove the local copies of the downloaded and generated certificates.
 
 This command assumes that the authenticated entitiy running the command has enough permissions to access the generated
 CA `Secret`.
 
-For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC role `dev`:
+For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC group `developers`:
 
 ```bash
-kubergrunt helm grant --tiller-namespace tiller-world --rbac-role dev
+kubergrunt helm grant \
+    --tls-common-name developers \
+    --tls-org YourCo \
+    --tiller-namespace tiller-world \
+    --rbac-group developers
 ```
+
+See the command help for all the available options: `kubergrunt helm grant --help`.
 
 #### revoke
 
@@ -241,8 +285,11 @@ This subcommand will revoke access to an installed helm server for a given RBAC 
 For example, to revoke access to a Tiller server deployed in the namespace `tiller-world` from the RBAC role `dev`:
 
 ```bash
-kubergrunt helm revoke --tiller-namespace tiller-world --rbac-role dev
+kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 ```
+
+See the command help for all the available options: `kubergrunt helm revoke --help`.
+
 
 ## Who maintains this project?
 

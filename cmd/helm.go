@@ -15,14 +15,20 @@ import (
 )
 
 var (
+	// Shared configurations
+	tillerNamespaceFlag = cli.StringFlag{
+		Name:  "tiller-namespace",
+		Usage: "Kubernetes namespace that Tiller will reside in.",
+	}
+	resourceNamespaceFlag = cli.StringFlag{
+		Name:  "resource-namespace",
+		Usage: "Kubernetes namespace where the resources deployed by Tiller reside. If unspecified, defaults to the Tiller namespace.",
+	}
+
 	// Configurations for how helm is installed
 	serviceAccountFlag = cli.StringFlag{
 		Name:  "service-account",
 		Usage: "The name of the ServiceAccount that Tiller should use.",
-	}
-	namespaceFlag = cli.StringFlag{
-		Name:  "namespace",
-		Usage: "Kubernetes namespace to install Tiller in.",
 	}
 
 	// Configurations for how to authenticate with the Kubernetes cluster.
@@ -95,9 +101,17 @@ var (
 	}
 
 	// Configurations for granting and revoking access to clients
-	grantedRbacRoleFlag = cli.StringFlag{
-		Name:  "rbac-role",
-		Usage: "The name of the RBAC role that should be granted access to tiller.",
+	grantedRbacGroupsFlag = cli.StringSliceFlag{
+		Name:  "rbac-group",
+		Usage: "The name of the RBAC group that should be granted access to tiller. Pass in multiple times for multiple groups.",
+	}
+	grantedRbacUsersFlag = cli.StringSliceFlag{
+		Name:  "rbac-user",
+		Usage: "The name of the RBAC user that should be granted access to Tiller. Pass in multiple times for multiple users.",
+	}
+	grantedServiceAccountsFlag = cli.StringSliceFlag{
+		Name:  "rbac-service-account",
+		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
 	}
 
 	// Configurations for undeploying helm
@@ -109,9 +123,28 @@ var (
 		Name:  "undeploy-releases",
 		Usage: "Undeploy all releases managed by the target Helm server before undeploying the server.",
 	}
+	// This is also used in configure
 	helmHomeFlag = cli.StringFlag{
 		Name:  "home",
-		Usage: "Home directory that is configured for accessing the helm server being removed.",
+		Usage: "Home directory that is configured for accessing deployed Tiller server.",
+	}
+
+	// Configurations for configuring the helm client
+	setKubectlNamespaceFlag = cli.BoolFlag{
+		Name:  "set-kubectl-namespace",
+		Usage: "Set the kubectl context default namespace to match the namespace that Tiller deploys resources into.",
+	}
+	configuringRBACUserFlag = cli.StringFlag{
+		Name:  "rbac-user",
+		Usage: "Name of RBAC user that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+	}
+	configuringRBACGroupFlag = cli.StringFlag{
+		Name:  "rbac-group",
+		Usage: "Name of RBAC group that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+	}
+	configuringServiceAccountFlag = cli.StringFlag{
+		Name:  "rbac-service-account",
+		Usage: "Name of the Service Account that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 )
 
@@ -134,7 +167,7 @@ func SetupHelmCommand() cli.Command {
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
 					serviceAccountFlag,
-					namespaceFlag,
+					tillerNamespaceFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
 					tlsOrgUnitFlag,
@@ -160,7 +193,31 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 					forceUndeployFlag,
 					undeployReleasesFlag,
 					helmHomeFlag,
-					namespaceFlag,
+					tillerNamespaceFlag,
+					helmKubectlContextNameFlag,
+					helmKubeconfigFlag,
+				},
+			},
+			cli.Command{
+				Name:  "configure",
+				Usage: "Setup local helm client to be able to access Tiller.",
+				Description: `Setup local helm client to be able to access the deployed Tiller located at the provided namespace. This assumes that an administrator has granted you access to the Tiller install already. This will:
+
+- Download the client TLS certificate key pair that you have access to.
+- Install the TLS certificate key pair in the helm home directory. The helm home directory can be modified with the --helm-home option.
+- Install an environment file compatible with your platform that can be sourced to setup variables to configure default parameters for the helm client to access the Tiller install.
+- Optionally set the kubectl context default namespace to be the one that Tiller manages. Note that this will update the kubeconfig file.
+
+You must pass in an identifier for your account. This is either the name of the RBAC user (--rbac-user), RBAC group (--rbac-group), or ServiceAccount (--service-account) that you are authenticating as.`,
+				Action: configureHelmClient,
+				Flags: []cli.Flag{
+					helmHomeFlag,
+					configuringRBACUserFlag,
+					configuringRBACGroupFlag,
+					configuringServiceAccountFlag,
+					tillerNamespaceFlag,
+					resourceNamespaceFlag,
+					setKubectlNamespaceFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -168,11 +225,23 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 			cli.Command{
 				Name:        "grant",
 				Usage:       "Grant access to a deployed Helm server.",
-				Description: "Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC role.",
+				Description: "Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.",
 				Action:      grantHelmAccess,
 				Flags: []cli.Flag{
-					namespaceFlag,
-					grantedRbacRoleFlag,
+					tillerNamespaceFlag,
+					grantedRbacGroupsFlag,
+					grantedRbacUsersFlag,
+					grantedServiceAccountsFlag,
+					tlsCommonNameFlag,
+					tlsOrgFlag,
+					tlsOrgUnitFlag,
+					tlsCityFlag,
+					tlsStateFlag,
+					tlsCountryFlag,
+					tlsValidityFlag,
+					tlsAlgorithmFlag,
+					tlsECDSACurveFlag,
+					tlsRSABitsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -180,11 +249,12 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 			cli.Command{
 				Name:        "revoke",
 				Usage:       "Revoke access to a deployed Helm server.",
-				Description: "Revoke access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC role.",
+				Description: "Revoke access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.",
 				Action:      revokeHelmAccess,
 				Flags: []cli.Flag{
-					namespaceFlag,
-					grantedRbacRoleFlag,
+					tillerNamespaceFlag,
+					grantedRbacGroupsFlag,
+					grantedServiceAccountsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -193,6 +263,7 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 	}
 }
 
+// deployHelmServer is the action function for helm deploy command.
 func deployHelmServer(cliContext *cli.Context) error {
 	// Check if the required commands are installed
 	if err := shell.CommandInstalledE("helm"); err != nil {
@@ -207,17 +278,154 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	namespace, err := entrypoint.StringFlagRequiredE(cliContext, namespaceFlag.Name)
-	if err != nil {
-		return err
-	}
-	distinguishedName, err := tlsDistinguishedNameFlagsAsPkixName(cliContext)
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
 	if err != nil {
 		return err
 	}
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
+	}
+	tlsOptions, err := parseTLSArgs(cliContext)
+	if err != nil {
+		return err
+	}
+
+	return helm.Deploy(
+		kubectlOptions,
+		tillerNamespace,
+		serviceAccount,
+		tlsOptions,
+	)
+}
+
+// undeployHelmServer is the action command for the helm undeploy command.
+func undeployHelmServer(cliContext *cli.Context) error {
+	// Check if the required commands are installed
+	if err := shell.CommandInstalledE("helm"); err != nil {
+		return err
+	}
+
+	// Get required info
+	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
+	if err != nil {
+		return err
+	}
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
+	// Get optional info
+	force := cliContext.Bool(forceUndeployFlag.Name)
+	undeployReleases := cliContext.Bool(undeployReleasesFlag.Name)
+
+	return helm.Undeploy(
+		kubectlOptions,
+		tillerNamespace,
+		helmHome,
+		force,
+		undeployReleases,
+	)
+}
+
+// configureHelmClient is the action function for the helm configure command.
+func configureHelmClient(cliContext *cli.Context) error {
+	// Check if the required commands are installed
+	if err := shell.CommandInstalledE("helm"); err != nil {
+		return err
+	}
+
+	// Get required info
+	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
+	if err != nil {
+		return err
+	}
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	resourceNamespace, err := entrypoint.StringFlagRequiredE(cliContext, resourceNamespaceFlag.Name)
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
+	// Get mutexed info (entity name)
+	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
+	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
+	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
+	setEntities := 0
+	var rbacEntity helm.RBACEntity
+	if configuringRBACUser != "" {
+		setEntities += 1
+		rbacEntity = helm.UserInfo{Name: configuringRBACUser}
+	}
+	if configuringRBACGroup != "" {
+		setEntities += 1
+		rbacEntity = helm.GroupInfo{Name: configuringRBACGroup}
+	}
+	if configuringServiceAccount != "" {
+		setEntities += 1
+		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
+		if err != nil {
+			return err
+		}
+	}
+	if setEntities != 1 {
+		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+	}
+
+	// Get optional info
+	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
+
+	return helm.ConfigureClient(
+		kubectlOptions,
+		helmHome,
+		tillerNamespace,
+		resourceNamespace,
+		setKubectlNamespace,
+		rbacEntity,
+	)
+}
+
+// grantHelmAccess is the action function for the helm grant command.
+func grantHelmAccess(cliContext *cli.Context) error {
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+	tlsOptions, err := parseTLSArgs(cliContext)
+	if err != nil {
+		return err
+	}
+	rbacGroups := cliContext.StringSlice(grantedRbacGroupsFlag.Name)
+	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
+	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
+	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
+		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
+	}
+	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
+}
+
+// revokeHelmAccess is the action function for the helm revoke command.
+func revokeHelmAccess(cliContext *cli.Context) error {
+	return nil
+}
+
+// parseTLSArgs will take CLI args pertaining to TLS and extract out a TLSOptions struct.
+func parseTLSArgs(cliContext *cli.Context) (tls.TLSOptions, error) {
+	distinguishedName, err := tlsDistinguishedNameFlagsAsPkixName(cliContext)
+	if err != nil {
+		return tls.TLSOptions{}, err
 	}
 
 	// Get additional options
@@ -236,54 +444,9 @@ func deployHelmServer(cliContext *cli.Context) error {
 		RSABits:             tlsRSABits,
 	}
 	if err := tlsOptions.Validate(); err != nil {
-		return err
+		return tlsOptions, err
 	}
-
-	return helm.Deploy(
-		kubectlOptions,
-		namespace,
-		serviceAccount,
-		tlsOptions,
-	)
-}
-
-func undeployHelmServer(cliContext *cli.Context) error {
-	// Check if the required commands are installed
-	if err := shell.CommandInstalledE("helm"); err != nil {
-		return err
-	}
-
-	// Get required info
-	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
-	if err != nil {
-		return err
-	}
-	namespace, err := entrypoint.StringFlagRequiredE(cliContext, namespaceFlag.Name)
-	if err != nil {
-		return err
-	}
-	kubectlOptions, err := parseKubectlOptions(cliContext)
-	if err != nil {
-		return err
-	}
-
-	force := cliContext.Bool(forceUndeployFlag.Name)
-	undeployReleases := cliContext.Bool(undeployReleasesFlag.Name)
-
-	return helm.Undeploy(
-		kubectlOptions,
-		namespace,
-		helmHome,
-		force,
-		undeployReleases,
-	)
-}
-func grantHelmAccess(cliContext *cli.Context) error {
-	return nil
-}
-
-func revokeHelmAccess(cliContext *cli.Context) error {
-	return nil
+	return tlsOptions, nil
 }
 
 // tlsDistinguishedNameFlagsAsPkixName takes the CLI args related to setting up the Distinguished Name identifier of

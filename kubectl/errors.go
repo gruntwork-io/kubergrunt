@@ -4,6 +4,16 @@ import (
 	"fmt"
 )
 
+// KubeContextNotFound error is returned when the specified Kubernetes context is unabailable in the specified
+// kubeconfig.
+type KubeContextNotFound struct {
+	Options *KubectlOptions
+}
+
+func (err KubeContextNotFound) Error() string {
+	return fmt.Sprintf("Context %s does not exist in config %s", err.Options.ContextName, err.Options.ConfigPath)
+}
+
 // ContextAlreadyExistsError is returned when trying to create a new context with a name that is already in the config
 type ContextAlreadyExistsError struct {
 	contextName string
