@@ -30,9 +30,16 @@ Alternatively, you can download the corresponding binary for your platform direc
 The following commands are available as part of `kubergrunt`:
 
 1. [eks](#eks)
+    * [verify](#verify)
     * [configure](#configure)
     * [token](#token)
     * [deploy](#deploy)
+1. [helm](#helm)
+    * [deploy](#helm-deploy)
+    * [undeploy](#undeploy)
+    * [configure](#helm-configure)
+    * [grant](#grant)
+    <!-- not implemented * [revoke](#revoke) -->
 
 ### eks
 
@@ -135,6 +142,158 @@ about these features in [our blog post covering them](TODO).
 Currently `kubergrunt` does not implement any checks for these resources to be implemented. However in the future, we
 plan to bake in checks into the deployment command to verify that all services have a disruption budget set, and warn
 the user of any services that do not have a check.
+
+
+### helm
+
+The `helm` subcommand of `kubergrunt` provides the ability to manage various Helm Server (Tiller) installs on your
+Kubernetes cluster, in addition to setting up operator machines to authenticate with the designated Helm Server for the
+operator.
+
+**Note**: The `helm` subcommand requires the `helm` client to be installed on the operators' machine. Refer to the
+[official docs](https://docs.helm.sh/) for instructions on installing the client.
+
+
+#### (helm) deploy
+
+This subcommand will install and setup the Helm Server on the designated Kubernetes cluster. In addition to providing a
+basic helm server, this subcommand contains features such as:
+
+- Provisioning and managing TLS certs for a particular Tiller install.
+- Defaulting to use `Secrets` for Tiller release storage (as opposed to ConfigMaps).
+- Specifying [ServiceAccounts](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/) for a
+  particular Tiller install.
+- Tying certificate access to RBAC roles to harden access to the Tiller server.
+
+Note that this command does not create `Namespaces` or `ServiceAccounts`, delegating that responsibility to other
+systems (see [k8s-helm-server module](../k8s-helm-server) for example).
+
+For example, to setup a basic install of helm in the Kubernetes namespace `tiller-world` with the `ServiceAccount`
+`tiller`:
+
+```bash
+# Note that most of the arguments here are used to setup the Certificate Authority for TLS
+kubergrunt helm deploy \
+    --tiller-namespace tiller-world \
+    --service-account tiller \
+    --tls-common-name tiller \
+    --tls-org Gruntwork \
+    --tls-org-unit IT \
+    --tls-city Phoenix \
+    --tls-state AZ \
+    --tls-country US
+```
+
+This will:
+
+- Generate a new Certificate Authority keypair.
+- Generate a new TLS certificate signed by the generated Certificate Authority keypair.
+- Store the Certificate Authority private key in a new `Secret` in the `kube-system` namespace.
+- Launch Tiller using the generated TLS certificate in the specified `Namespace` with the specified `ServiceAccount`.
+
+#### undeploy
+
+This subcommand will uninstall the Helm Server from the designated Kubernetes cluster and delete all Secrets related to
+the installed Helm Server. This subcommand relies on the `helm reset` command, which requires a helm client that can
+access the Helm Server pod being uninstalled. See the [`configure`](#helm-configure) subcommand for more details on
+setting up your helm client.
+
+**Note**: By default, this will not uninstall the Helm server if there are any deployed releases. You can force removal
+of the server using the `--force` option, but this will not delete any releases. Given the destructive nature of such an
+operation, we intentionally added a second option for removing the releases (`--undeploy-releases`).
+
+For example, if you had a deployed a Helm server into the namespace `dev` using the [`deploy`](#helm-deploy) command and
+wanted to uninstall it:
+
+```bash
+# The helm-home option should point to a helm home directory that has been configured for the Helm server being
+# undeployed.
+kubergrunt helm undeploy --helm-home $HOME/.helm
+```
+
+#### (helm) configure
+
+This subcommand will setup the installed `helm` client to be able to access the specified Helm server. Specifically,
+this will:
+
+- Download the client TLS certificate key pair generated with the [`grant`](#grant) command.
+- Install the TLS certificate key pair in the helm home directory.
+- Install an environment file that sets up environment variables to target the specific helm server. This environment
+  file needs to be loaded before issuing any commands, at it sets the necessary environment variables to signal to the
+  helm client which helm server to use. The environment variables it sets are:
+  - `HELM_HOME`: The helm client home directory where the TLS certs are located.
+  - `TILLER_NAMESPACE`: The namespace where the helm server is installed.
+  - `HELM_TLS_VERIFY`: This will be set to true to enable TLS verification.
+  - `HELM_TLS_ENABLE`: This will be set to true to enable TLS authentication.
+
+You can also optionally set the current kubectl context to set the default namespace to be compatible with this Tiller
+install.
+
+Afterwards, you can source the environment file to setup your shell to access the proper helm client.
+
+For example, if you want to setup helm to target a server install in the namespace `dev` with the default helm home
+directory:
+
+```bash
+# This is for linux
+# Setup helm
+kubergrunt helm configure --home-dir $HOME/.helm --tiller-namespace dev --rbac-user me
+# Source the environment file
+source $HOME/.helm/env
+# Verify connection. This should display info about both the client and server.
+helm version
+```
+
+See the command help for all the available options: `kubergrunt helm configure --help`.
+
+#### grant
+
+This subcommand will grant access to an installed helm server to a given RBAC entity (`User`, `Group`, or
+`ServiceAccount`). This will:
+
+- Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
+- Issue a new TLS certificate keypair using the CA keypair.
+- Upload the new TLS certificate keypair to a new Secret in a new Namespace that only the granted RBAC entity has access
+  to. This access is readonly.
+- Remove the local copies of the downloaded and generated certificates.
+
+This command assumes that the authenticated entitiy running the command has enough permissions to access the generated
+CA `Secret`.
+
+For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC group `developers`:
+
+```bash
+kubergrunt helm grant \
+    --tls-common-name developers \
+    --tls-org YourCo \
+    --tiller-namespace tiller-world \
+    --rbac-group developers
+```
+
+See the command help for all the available options: `kubergrunt helm grant --help`.
+
+<!-- Not implemented
+
+#### revoke
+
+This subcommand will revoke access to an installed helm server for a given RBAC role. This will:
+
+- Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
+- Download the TLS certificate keypair for the RBAC role.
+- Revoke the certificate in the CA.
+- Update the CA certificate keypair in both the `Secret` and the installed Tiller server.
+- Restart Tiller.
+
+For example, to revoke access to a Tiller server deployed in the namespace `tiller-world` from the RBAC role `dev`:
+
+```bash
+kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
+```
+
+See the command help for all the available options: `kubergrunt helm revoke --help`.
+
+-->
+
 
 ## Who maintains this project?
 
