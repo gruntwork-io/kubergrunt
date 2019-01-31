@@ -4,6 +4,15 @@ import (
 	"fmt"
 )
 
+// UnknownRBACEntityType error is returned when the RBAC entity type is something unexpected
+type UnknownRBACEntityType struct {
+	RBACEntityType string
+}
+
+func (err UnknownRBACEntityType) Error() string {
+	return fmt.Sprintf("%s is an unknown RBAC entity type", err.RBACEntityType)
+}
+
 // InvalidServiceAccountInfo error is returned when the encoded service account is not encoded correctly.
 type InvalidServiceAccountInfo struct {
 	EncodedServiceAccount string

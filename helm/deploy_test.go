@@ -76,6 +76,12 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	k8s.CreateNamespace(t, terratestKubectlOptions, namespaceName)
 	terratestKubectlOptions.Namespace = namespaceName
 
+	// Create a test service account we can use for auth
+	testServiceAccountName, testServiceAccountKubectlOptions := createServiceAccountForAuth(t, terratestKubectlOptions)
+	defer k8s.DeleteConfigContextE(t, testServiceAccountKubectlOptions.ContextName)
+	testServiceAccountInfo := ServiceAccountInfo{Name: testServiceAccountName, Namespace: terratestKubectlOptions.Namespace}
+
+	// Create a service account for Tiller
 	k8s.CreateServiceAccount(t, terratestKubectlOptions, serviceAccountName)
 	bindNamespaceAdminRole(t, terratestKubectlOptions, serviceAccountName)
 
@@ -84,6 +90,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		// server so that it crashes should the release removal fail.
 		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
+	// Deploy, Grant, and Configure
 	assert.NoError(t, Deploy(
 		kubectlOptions,
 		namespaceName,
@@ -91,12 +98,8 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		serviceAccountName,
 		tlsOptions,
 		getHelmHome(t),
-		nil,
+		testServiceAccountInfo,
 	))
-
-	// Grant and configure client as a new service account, testing the flow
-	serviceAccountKubectlOptions := grantAndConfigureClientAsServiceAccount(t, terratestKubectlOptions, kubectlOptions, tlsOptions)
-	defer k8s.DeleteConfigContextE(t, serviceAccountKubectlOptions.ContextName)
 
 	// Check tiller pod is in chosen namespace
 	tillerPodName := validateTillerPodDeployedInNamespace(t, terratestKubectlOptions)
@@ -111,10 +114,10 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	validateTillerPodUsesTLS(t, terratestKubectlOptions)
 
 	// Check that we can deploy a helm chart
-	validateHelmChartDeploy(t, serviceAccountKubectlOptions, namespaceName)
+	validateHelmChartDeploy(t, testServiceAccountKubectlOptions, namespaceName)
 
 	// Check that the rendered helm env file works
-	validateHelmEnvFile(t, serviceAccountKubectlOptions)
+	validateHelmEnvFile(t, testServiceAccountKubectlOptions)
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed into the provided namespace and
