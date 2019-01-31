@@ -302,7 +302,7 @@ send an email to [support@gruntwork.io](mailto:support@gruntwork.io?Subject=kube
 
 Gruntwork can help with:
 
-* Setup, customization, and support for this Module.
+* Setup, customization, and support for this project.
 * Modules and submodules for other types of infrastructure, such as VPCs, Docker clusters, databases, and continuous
   integration.
 * Modules and Submodules that meet compliance requirements, such as HIPAA.
@@ -328,4 +328,4 @@ MINOR, and PATCH versions on each release to indicate any incompatibilities.
 
 Please see [LICENSE](/LICENSE) for how the code in this repo is licensed.
 
-Copyright &copy; 2018 Gruntwork, Inc.
+Copyright &copy; 2019 Gruntwork, Inc.

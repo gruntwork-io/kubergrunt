@@ -1,6 +1,6 @@
 # Contribution Guidelines
 
-Contributions to this Module are very welcome! We follow a fairly standard [pull request process](
+Contributions to this project are very welcome! We follow a fairly standard [pull request process](
 https://help.github.com/articles/about-pull-requests/) for contributions, subject to the following guidelines:
  
 1. [File a GitHub issue](#file-a-github-issue)
@@ -28,59 +28,15 @@ coding.
 We also recommend updating the automated tests *before* updating any code (see [Test Driven 
 Development](https://en.wikipedia.org/wiki/Test-driven_development)). That means you add or update a test case, 
 verify that it's failing with a clear error message, and *then* make the code changes to get that test to pass. This 
-ensures the tests stay up to date and verify all the functionality in this Module, including whatever new 
-functionality you're adding in your contribution. Check out the
-[tests](https://github.com/gruntwork-io/terraform-google-gke/tree/master/test) folder for instructions on running the
-automated tests. 
+ensures the tests stay up to date and verify all the functionality in this project, including whatever new 
+functionality you're adding in your contribution.
 
 ## Update the code
 
 At this point, make your code changes and use your new test case to verify that everything is working. As you work,
-keep in mind two things:
-
-1. Backwards compatibility
-1. Downtime
-
-### Backwards compatibility
-
-Please make every effort to avoid unnecessary backwards incompatible changes. With Terraform code, this means:
-
-1. Do not delete, rename, or change the type of input variables.
-1. If you add an input variable, it should have a `default`.
-1. Do not delete, rename, or change the type of output variables.
-1. Do not delete or rename a module in the `modules` folder.
-
-If a backwards incompatible change cannot be avoided, please make sure to call that out when you submit a pull request, 
-explaining why the change is absolutely necessary. 
-
-### Downtime
-
-Bear in mind that the Terraform code in this Module is used by real companies to run real infrastructure in 
-production, and certain types of changes could cause downtime. For example, consider the following:
-
-1. If you rename a resource (e.g. `aws_instance "foo"` -> `aws_instance "bar"`), Terraform will see that as deleting
-   the old resource and creating a new one.
-1. If you change certain attributes of a resource (e.g. the `name` of an `aws_elb`), the cloud provider (e.g. AWS) may
-   treat that as an instruction to delete the old resource and a create a new one. 
-   
-Deleting certain types of resources (e.g. virtual servers, load balancers) can cause downtime, so when making code
-changes, think carefully about how to avoid that. For example, can you avoid downtime by using 
-[create_before_destroy](https://www.terraform.io/docs/configuration/resources.html#create_before_destroy)? Or via
-the `terraform state` command? If so, make sure to note this in our pull request. If downtime cannot be avoided, 
-please make sure to call that out when you submit a pull request. 
-
-
-### Formatting and pre-commit hooks
-
-You must run `terraform fmt` on the code before committing. You can configure your computer to do this automatically 
-using pre-commit hooks managed using [pre-commit](http://pre-commit.com/):
-
-1. [Install pre-commit](http://pre-commit.com/#install). E.g.: `brew install pre-commit`.
-1. Install the hooks: `pre-commit install`.
-
-That's it! Now just write your code, and every time you commit, `terraform fmt` will be run on the files you're 
-committing.
-
+please make every effort to avoid unnecessary backwards incompatible changes. If a backwards incompatible change cannot
+be avoided, please make sure to call that out when you submit a pull request, explaining why the change is absolutely
+necessary. 
 
 ## Create a pull request
 
