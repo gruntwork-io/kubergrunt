@@ -20,11 +20,14 @@ import (
 // - Store the TLS certs into a Kubernetes Secret into a Namespace that only cluster admins have access to.
 // - Deploy Tiller using the generated TLS certs, Namespace, and ServiceAccount. Additionally, set the flags so
 //   that the release info is stored in a Secret as opposed to ConfigMap.
+// Additionally, if an RBAC entity is passed in, grant access to it and configure the local client.
 func Deploy(
 	kubectlOptions *kubectl.KubectlOptions,
 	tillerNamespace string,
+	resourceNamespace string,
 	serviceAccount string,
 	tlsOptions tls.TLSOptions,
+	localClientRBACEntity RBACEntity,
 ) error {
 	logger := logging.GetProjectLogger()
 

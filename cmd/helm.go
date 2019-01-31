@@ -22,7 +22,7 @@ var (
 	}
 	resourceNamespaceFlag = cli.StringFlag{
 		Name:  "resource-namespace",
-		Usage: "Kubernetes namespace where the resources deployed by Tiller reside. If unspecified, defaults to the Tiller namespace.",
+		Usage: "Kubernetes namespace where the resources deployed by Tiller reside.",
 	}
 
 	// Configurations for how helm is installed
@@ -136,15 +136,15 @@ var (
 	}
 	configuringRBACUserFlag = cli.StringFlag{
 		Name:  "rbac-user",
-		Usage: "Name of RBAC user that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Usage: "Name of RBAC user that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 	configuringRBACGroupFlag = cli.StringFlag{
 		Name:  "rbac-group",
-		Usage: "Name of RBAC group that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Usage: "Name of RBAC group that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 	configuringServiceAccountFlag = cli.StringFlag{
 		Name:  "rbac-service-account",
-		Usage: "Name of the Service Account that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Usage: "Name of the Service Account that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 )
 
@@ -163,11 +163,14 @@ func SetupHelmCommand() cli.Command {
   - Provision TLS certs for the new Helm Server.
   - Setup an RBAC role restricted to the specified namespace and bind it to the specified ServiceAccount.
   - Default to use Secrets for storing Helm Server releases (as opposed to ConfigMaps).
-  - Store the private key of the TLS certs in a Secret resource in the kube-system namespace.`,
+  - Store the private key of the TLS certs in a Secret resource in the kube-system namespace.
+
+You can optionally grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
 					serviceAccountFlag,
 					tillerNamespaceFlag,
+					resourceNamespaceFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
 					tlsOrgUnitFlag,
@@ -178,6 +181,9 @@ func SetupHelmCommand() cli.Command {
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					configuringRBACUserFlag,
+					configuringRBACGroupFlag,
+					configuringServiceAccountFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -269,6 +275,10 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	resourceNamespace, err := entrypoint.StringFlagRequiredE(cliContext, resourceNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
@@ -278,11 +288,19 @@ func deployHelmServer(cliContext *cli.Context) error {
 		return err
 	}
 
+	// Get optional info
+	rbacEntity, setEntities, err := parseConfigurationRBACEntity(cliContext)
+	if err != nil && setEntities > 0 {
+		return err
+	}
+
 	return helm.Deploy(
 		kubectlOptions,
 		tillerNamespace,
+		resourceNamespace,
 		serviceAccount,
 		tlsOptions,
+		rbacEntity,
 	)
 }
 
@@ -337,34 +355,18 @@ func configureHelmClient(cliContext *cli.Context) error {
 		return err
 	}
 	resourceNamespace, err := entrypoint.StringFlagRequiredE(cliContext, resourceNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
 	}
 
 	// Get mutexed info (entity name)
-	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
-	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
-	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
-	setEntities := 0
-	var rbacEntity helm.RBACEntity
-	if configuringRBACUser != "" {
-		setEntities += 1
-		rbacEntity = helm.UserInfo{Name: configuringRBACUser}
-	}
-	if configuringRBACGroup != "" {
-		setEntities += 1
-		rbacEntity = helm.GroupInfo{Name: configuringRBACGroup}
-	}
-	if configuringServiceAccount != "" {
-		setEntities += 1
-		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
-		if err != nil {
-			return err
-		}
-	}
-	if setEntities != 1 {
-		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+	rbacEntity, _, err := parseConfigurationRBACEntity(cliContext)
+	if err != nil {
+		return err
 	}
 
 	// Get optional info
@@ -467,4 +469,34 @@ func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, er
 		distinguishedName.Country = []string{country}
 	}
 	return distinguishedName, nil
+}
+
+// parseConfigurationRBACEntity will take the RBAC entity options and return the configured RBAC entity. This returns
+// the set entities count so that upstream can allow none set.
+func parseConfigurationRBACEntity(cliContext *cli.Context) (helm.RBACEntity, int, error) {
+	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
+	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
+	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
+	setEntities := 0
+	var rbacEntity helm.RBACEntity
+	var err error
+	if configuringRBACUser != "" {
+		setEntities += 1
+		rbacEntity = helm.UserInfo{Name: configuringRBACUser}
+	}
+	if configuringRBACGroup != "" {
+		setEntities += 1
+		rbacEntity = helm.GroupInfo{Name: configuringRBACGroup}
+	}
+	if configuringServiceAccount != "" {
+		setEntities += 1
+		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
+		if err != nil {
+			return rbacEntity, setEntities, err
+		}
+	}
+	if setEntities != 1 {
+		return rbacEntity, setEntities, MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+	}
+	return rbacEntity, setEntities, nil
 }
