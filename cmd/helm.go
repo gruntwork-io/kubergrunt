@@ -246,19 +246,6 @@ You must pass in an identifier for your account. This is either the name of the 
 					helmKubeconfigFlag,
 				},
 			},
-			cli.Command{
-				Name:        "revoke",
-				Usage:       "Revoke access to a deployed Helm server.",
-				Description: "Revoke access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.",
-				Action:      revokeHelmAccess,
-				Flags: []cli.Flag{
-					tillerNamespaceFlag,
-					grantedRbacGroupsFlag,
-					grantedServiceAccountsFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-				},
-			},
 		},
 	}
 }
@@ -414,11 +401,6 @@ func grantHelmAccess(cliContext *cli.Context) error {
 		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
 	}
 	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
-}
-
-// revokeHelmAccess is the action function for the helm revoke command.
-func revokeHelmAccess(cliContext *cli.Context) error {
-	return nil
 }
 
 // parseTLSArgs will take CLI args pertaining to TLS and extract out a TLSOptions struct.
