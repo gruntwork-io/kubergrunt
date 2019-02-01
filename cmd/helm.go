@@ -165,7 +165,7 @@ func SetupHelmCommand() cli.Command {
   - Default to use Secrets for storing Helm Server releases (as opposed to ConfigMaps).
   - Store the private key of the TLS certs in a Secret resource in the kube-system namespace.
 
-You can optionally grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
+Additionally, this command will grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
 					helmHomeFlag,
@@ -289,11 +289,13 @@ func deployHelmServer(cliContext *cli.Context) error {
 		return err
 	}
 
-	// Get optional info
-	rbacEntity, setEntities, err := parseConfigurationRBACEntity(cliContext)
-	if err != nil && setEntities > 0 {
+	// Get mutexed info (entity name)
+	rbacEntity, err := parseConfigurationRBACEntity(cliContext)
+	if err != nil {
 		return err
 	}
+
+	// Get optional info
 	helmHome, err := parseHelmHomeWithDefault(cliContext)
 	if err != nil {
 		return err
@@ -366,7 +368,7 @@ func configureHelmClient(cliContext *cli.Context) error {
 	}
 
 	// Get mutexed info (entity name)
-	rbacEntity, _, err := parseConfigurationRBACEntity(cliContext)
+	rbacEntity, err := parseConfigurationRBACEntity(cliContext)
 	if err != nil {
 		return err
 	}
@@ -486,9 +488,8 @@ func parseHelmHomeWithDefault(cliContext *cli.Context) (string, error) {
 	return helmHome, nil
 }
 
-// parseConfigurationRBACEntity will take the RBAC entity options and return the configured RBAC entity. This returns
-// the set entities count so that upstream can allow none set.
-func parseConfigurationRBACEntity(cliContext *cli.Context) (helm.RBACEntity, int, error) {
+// parseConfigurationRBACEntity will take the RBAC entity options and return the configured RBAC entity.
+func parseConfigurationRBACEntity(cliContext *cli.Context) (helm.RBACEntity, error) {
 	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
 	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
 	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
@@ -507,11 +508,11 @@ func parseConfigurationRBACEntity(cliContext *cli.Context) (helm.RBACEntity, int
 		setEntities += 1
 		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
 		if err != nil {
-			return rbacEntity, setEntities, err
+			return rbacEntity, err
 		}
 	}
 	if setEntities != 1 {
-		return rbacEntity, setEntities, MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+		return rbacEntity, MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
 	}
-	return rbacEntity, setEntities, nil
+	return rbacEntity, nil
 }

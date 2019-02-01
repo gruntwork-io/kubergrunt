@@ -172,6 +172,8 @@ basic helm server, this subcommand contains features such as:
 **Note**: This command does not create `Namespaces` or `ServiceAccounts`, delegating that responsibility to other
 systems.
 
+<!-- TODO: https://github.com/gruntwork-io/kubergrunt/issues/15 -->
+
 For example, to setup a basic install of helm in the Kubernetes namespace `tiller-world` that manages resources in the
 Kubernetes namespace `dev` with the service account `tiller`:
 
@@ -196,7 +198,7 @@ This will:
 - Store the Certificate Authority private key in a new `Secret` in the `kube-system` namespace.
 - Launch Tiller using the generated TLS certificate in the specified `Namespace` with the specified `ServiceAccount`.
 
-You can also optionally grant access to an RBAC entity and configure the local helm client to use that using one of `--rbac-user`, `--rbac-group`, `--rbac-service-account` options.,
+This command will also grant access to an RBAC entity and configure the local helm client to use that using one of `--rbac-user`, `--rbac-group`, `--rbac-service-account` options.
 
 #### undeploy
 
