@@ -28,6 +28,7 @@ func Deploy(
 	resourceNamespace string,
 	serviceAccount string,
 	tlsOptions tls.TLSOptions,
+	clientTLSOptions tls.TLSOptions,
 	helmHome string,
 	localClientRBACEntity RBACEntity,
 ) error {
@@ -117,7 +118,7 @@ func Deploy(
 	if localClientRBACEntity != nil {
 		err := grantAndConfigureLocalClient(
 			kubectlOptions,
-			tlsOptions,
+			clientTLSOptions,
 			tillerNamespace,
 			resourceNamespace,
 			helmHome,

@@ -97,6 +97,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		namespaceName,
 		serviceAccountName,
 		tlsOptions,
+		tlsOptions,
 		getHelmHome(t),
 		testServiceAccountInfo,
 	))

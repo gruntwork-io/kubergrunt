@@ -99,6 +99,30 @@ var (
 			tls.MinimumRSABits,
 		),
 	}
+	clientTLSCommonNameFlag = cli.StringFlag{
+		Name:  "client-tls-common-name",
+		Usage: "(Required) The name that will go into the CN (CommonName) field of the identifier for the client.",
+	}
+	clientTLSOrgFlag = cli.StringFlag{
+		Name:  "client-tls-org",
+		Usage: "(Required) The name of the company that is generating this cert for the client.",
+	}
+	clientTLSOrgUnitFlag = cli.StringFlag{
+		Name:  "client-tls-org-unit",
+		Usage: "The name of the unit in --client-tls-org that is generating this cert.",
+	}
+	clientTLSCityFlag = cli.StringFlag{
+		Name:  "client-tls-city",
+		Usage: "The city where --client-tls-org is located.",
+	}
+	clientTLSStateFlag = cli.StringFlag{
+		Name:  "client-tls-state",
+		Usage: "The state where --client-tls-org is located.",
+	}
+	clientTLSCountryFlag = cli.StringFlag{
+		Name:  "client-tls-country",
+		Usage: "The country where --client-tls-org is located.",
+	}
 
 	// Configurations for granting and revoking access to clients
 	grantedRbacGroupsFlag = cli.StringSliceFlag{
@@ -182,6 +206,12 @@ Additionally, this command will grant access to an RBAC entity and configure the
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					clientTLSCommonNameFlag,
+					clientTLSOrgFlag,
+					clientTLSOrgUnitFlag,
+					clientTLSCityFlag,
+					clientTLSStateFlag,
+					clientTLSCountryFlag,
 					configuringRBACUserFlag,
 					configuringRBACGroupFlag,
 					configuringServiceAccountFlag,
@@ -284,7 +314,11 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	tlsOptions, err := parseTLSArgs(cliContext)
+	tlsOptions, err := parseTLSArgs(cliContext, false)
+	if err != nil {
+		return err
+	}
+	clientTLSOptions, err := parseTLSArgs(cliContext, true)
 	if err != nil {
 		return err
 	}
@@ -307,6 +341,7 @@ func deployHelmServer(cliContext *cli.Context) error {
 		resourceNamespace,
 		serviceAccount,
 		tlsOptions,
+		clientTLSOptions,
 		helmHome,
 		rbacEntity,
 	)
@@ -400,7 +435,7 @@ func grantHelmAccess(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	tlsOptions, err := parseTLSArgs(cliContext)
+	tlsOptions, err := parseTLSArgs(cliContext, false)
 	if err != nil {
 		return err
 	}
@@ -414,8 +449,14 @@ func grantHelmAccess(cliContext *cli.Context) error {
 }
 
 // parseTLSArgs will take CLI args pertaining to TLS and extract out a TLSOptions struct.
-func parseTLSArgs(cliContext *cli.Context) (tls.TLSOptions, error) {
-	distinguishedName, err := tlsDistinguishedNameFlagsAsPkixName(cliContext)
+func parseTLSArgs(cliContext *cli.Context, isClient bool) (tls.TLSOptions, error) {
+	var distinguishedName pkix.Name
+	var err error
+	if isClient {
+		distinguishedName, err = clientTLSDistinguishedNameFlagsAsPkixName(cliContext)
+	} else {
+		distinguishedName, err = tlsDistinguishedNameFlagsAsPkixName(cliContext)
+	}
 	if err != nil {
 		return tls.TLSOptions{}, err
 	}
@@ -459,6 +500,44 @@ func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, er
 	city := cliContext.String(tlsCityFlag.Name)
 	state := cliContext.String(tlsStateFlag.Name)
 	country := cliContext.String(tlsCountryFlag.Name)
+
+	distinguishedName := pkix.Name{
+		CommonName:   commonName,
+		Organization: []string{org},
+	}
+	if orgUnit != "" {
+		distinguishedName.OrganizationalUnit = []string{orgUnit}
+	}
+	if city != "" {
+		distinguishedName.Locality = []string{city}
+	}
+	if state != "" {
+		distinguishedName.Province = []string{state}
+	}
+	if country != "" {
+		distinguishedName.Country = []string{country}
+	}
+	return distinguishedName, nil
+}
+
+// clientTLSDistinguishedNameFlagsAsPkixName takes the CLI args related to setting up the Distinguished Name identifier of
+// the client side TLS certificate and converts them to the pkix.Name struct.
+func clientTLSDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, error) {
+	// The CommonName and Org are required for a valid TLS cert
+	commonName, err := entrypoint.StringFlagRequiredE(cliContext, clientTLSCommonNameFlag.Name)
+	if err != nil {
+		return pkix.Name{}, err
+	}
+	org, err := entrypoint.StringFlagRequiredE(cliContext, clientTLSOrgFlag.Name)
+	if err != nil {
+		return pkix.Name{}, err
+	}
+
+	// The other fields are optional
+	orgUnit := cliContext.String(clientTLSOrgUnitFlag.Name)
+	city := cliContext.String(clientTLSCityFlag.Name)
+	state := cliContext.String(clientTLSStateFlag.Name)
+	country := cliContext.String(clientTLSCountryFlag.Name)
 
 	distinguishedName := pkix.Name{
 		CommonName:   commonName,

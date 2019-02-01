@@ -188,7 +188,10 @@ kubergrunt helm deploy \
     --tls-org-unit IT \
     --tls-city Phoenix \
     --tls-state AZ \
-    --tls-country US
+    --tls-country US \
+    --rbac-group admin \
+    --client-tls-common-name admin \
+    --client-tls-org Gruntwork
 ```
 
 This will:
