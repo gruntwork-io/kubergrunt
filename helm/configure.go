@@ -38,7 +38,7 @@ func ConfigureClient(
 		return err
 	}
 	// - Access to TLS certs. If unavailable, mention they need to be granted access.
-	secret, err := getClientCertsSecret(kubectlOptions, tillerNamespace, rbacEntity)
+	secret, err := getClientCertsSecret(kubectlOptions, rbacEntity)
 	if err != nil {
 		logger.Errorf("You do not have permissions to access the client certs for Tiller deployed in namespace %s, or they do not exist.", tillerNamespace)
 		return err
@@ -93,11 +93,10 @@ func verifyAccessToTillerPod(kubectlOptions *kubectl.KubectlOptions, tillerNames
 // authenticating with the Tiller instance deployed in the provided namespace.
 func getClientCertsSecret(
 	kubectlOptions *kubectl.KubectlOptions,
-	tillerNamespace string,
 	rbacEntity RBACEntity,
 ) (*corev1.Secret, error) {
 	clientSecretName := getTillerClientCertSecretName(rbacEntity.EntityID())
-	return kubectl.GetSecret(kubectlOptions, tillerNamespace, clientSecretName)
+	return kubectl.GetSecret(kubectlOptions, "kube-system", clientSecretName)
 }
 
 // downloadTLSCertificatesToHelmHome will take the TLS certs stored in the provided secret and save it to the helm home
