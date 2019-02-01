@@ -150,7 +150,9 @@ the user of any services that do not have a check.
 
 The `helm` subcommand of `kubergrunt` provides the ability to manage various Helm Server (Tiller) installs on your
 Kubernetes cluster, in addition to setting up operator machines to authenticate with the designated Helm Server for the
-operator.
+operator, while following the security best practices from the community.
+
+If you are not familiar with Helm, be sure to check out [our guide](/HELM_GUIDE.md).
 
 **Note**: The `helm` subcommand requires the `helm` client to be installed on the operators' machine. Refer to the
 [official docs](https://docs.helm.sh/) for instructions on installing the client.
@@ -168,16 +170,18 @@ basic helm server, this subcommand contains features such as:
 - Tying certificate access to RBAC roles to harden access to the Tiller server.
 
 **Note**: This command does not create `Namespaces` or `ServiceAccounts`, delegating that responsibility to other
-systems. Checkout our [terraform-kubernetes-helm module](https://github.com/gruntwork-io/terraform-kubernetes-helm) for
-an end to end implementation.
+systems.
 
-For example, to setup a basic install of helm in the Kubernetes namespace `tiller-world` with the `ServiceAccount`
-`tiller`:
+<!-- TODO: https://github.com/gruntwork-io/kubergrunt/issues/15 -->
+
+For example, to setup a basic install of helm in the Kubernetes namespace `tiller-world` that manages resources in the
+Kubernetes namespace `dev` with the service account `tiller`:
 
 ```bash
 # Note that most of the arguments here are used to setup the Certificate Authority for TLS
 kubergrunt helm deploy \
     --tiller-namespace tiller-world \
+    --resource-namespace dev \
     --service-account tiller \
     --tls-common-name tiller \
     --tls-org Gruntwork \
@@ -193,6 +197,8 @@ This will:
 - Generate a new TLS certificate signed by the generated Certificate Authority keypair.
 - Store the Certificate Authority private key in a new `Secret` in the `kube-system` namespace.
 - Launch Tiller using the generated TLS certificate in the specified `Namespace` with the specified `ServiceAccount`.
+
+This command will also grant access to an RBAC entity and configure the local helm client to use that using one of `--rbac-user`, `--rbac-group`, `--rbac-service-account` options.
 
 #### undeploy
 

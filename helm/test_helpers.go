@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -46,41 +44,9 @@ func getTestKubectlOptions(t *testing.T) *kubectl.KubectlOptions {
 	return kubectl.NewKubectlOptions("", kubeConfigPath)
 }
 
-func grantAndConfigureClientAsServiceAccount(
-	t *testing.T,
-	terratestKubectlOptions *k8s.KubectlOptions,
-	kubectlOptions *kubectl.KubectlOptions,
-	tlsOptions tls.TLSOptions,
-) *kubectl.KubectlOptions {
-	serviceAccountName, serviceAccountKubectlOptions := createServiceAccountForAuth(t, terratestKubectlOptions)
-
-	// Grant access to the helm client to the service account
-	require.NoError(t, GrantAccess(
-		kubectlOptions,
-		tlsOptions,
-		terratestKubectlOptions.Namespace,
-		[]string{},
-		[]string{},
-		[]string{fmt.Sprintf("%s/%s", terratestKubectlOptions.Namespace, serviceAccountName)},
-	))
-
-	serviceAccountInfo := ServiceAccountInfo{Name: serviceAccountName, Namespace: terratestKubectlOptions.Namespace}
-	require.NoError(t, ConfigureClient(
-		serviceAccountKubectlOptions,
-		getHelmHome(t),
-		terratestKubectlOptions.Namespace,
-		terratestKubectlOptions.Namespace,
-		true,
-		serviceAccountInfo,
-	))
-
-	return serviceAccountKubectlOptions
-}
-
 func getHelmHome(t *testing.T) string {
-	home, err := homedir.Dir()
+	helmHome, err := GetDefaultHelmHome()
 	require.NoError(t, err)
-	helmHome := filepath.Join(home, ".helm")
 	return helmHome
 }
 

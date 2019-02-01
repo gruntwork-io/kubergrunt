@@ -234,12 +234,13 @@ func generateAndStoreSignedCertificateKeyPair(
 		clientSecretName,
 		tillerNamespace,
 		map[string]string{
-			"gruntwork.io/tiller-namespace":           tillerNamespace,
-			"gruntwork.io/tiller-credentials":         "true",
-			"gruntwork.io/tiller-credentials-type":    "client",
+			"gruntwork.io/tiller-namespace":        tillerNamespace,
+			"gruntwork.io/tiller-credentials":      "true",
+			"gruntwork.io/tiller-credentials-type": "client",
+		},
+		map[string]string{
 			fmt.Sprintf("gruntwork.io/%s", entityKey): rbacEntity.EntityID(),
 		},
-		map[string]string{},
 		"client",
 		clientKeyPairPath,
 		caKeyPairPath.CertificatePath,

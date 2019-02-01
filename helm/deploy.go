@@ -20,11 +20,16 @@ import (
 // - Store the TLS certs into a Kubernetes Secret into a Namespace that only cluster admins have access to.
 // - Deploy Tiller using the generated TLS certs, Namespace, and ServiceAccount. Additionally, set the flags so
 //   that the release info is stored in a Secret as opposed to ConfigMap.
+// Additionally, if an RBAC entity is passed in, grant access to it and configure the local client at the specified helm
+// home directory.
 func Deploy(
 	kubectlOptions *kubectl.KubectlOptions,
 	tillerNamespace string,
+	resourceNamespace string,
 	serviceAccount string,
 	tlsOptions tls.TLSOptions,
+	helmHome string,
+	localClientRBACEntity RBACEntity,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -107,6 +112,21 @@ func Deploy(
 		return err
 	}
 	logger.Infof("Successfully deployed Tiller in namespace %s with service account %s", tillerNamespace, serviceAccount)
+
+	// If also optionally configuring the client, configure it.
+	if localClientRBACEntity != nil {
+		err := grantAndConfigureLocalClient(
+			kubectlOptions,
+			tlsOptions,
+			tillerNamespace,
+			resourceNamespace,
+			helmHome,
+			localClientRBACEntity,
+		)
+		if err != nil {
+			return err
+		}
+	}
 
 	logger.Info("Done deploying Tiller")
 	return nil
@@ -220,4 +240,36 @@ func generateSignedCertificateKeyPair(
 	}
 	logger.Info("Done generating signed TLS Certificate key pair")
 	return signedKeyPairPath, nil
+}
+
+// grantAndConfigureLocalClient will grant access to the provided RBAC entity and configure the local helm client to use
+// that entity's credentials.
+func grantAndConfigureLocalClient(
+	kubectlOptions *kubectl.KubectlOptions,
+	tlsOptions tls.TLSOptions,
+	tillerNamespace string,
+	resourceNamespace string,
+	helmHome string,
+	localClientRBACEntity RBACEntity,
+) error {
+	rbacUsers := []string{}
+	rbacGroups := []string{}
+	rbacServiceAccounts := []string{}
+	switch localClientRBACEntity.EntityType() {
+	case "user":
+		rbacUsers = append(rbacUsers, localClientRBACEntity.EntityID())
+	case "group":
+		rbacGroups = append(rbacGroups, localClientRBACEntity.EntityID())
+	case "service-account":
+		rbacServiceAccounts = append(rbacServiceAccounts, localClientRBACEntity.(ServiceAccountInfo).String())
+	default:
+		return errors.WithStackTrace(UnknownRBACEntityType{localClientRBACEntity.EntityType()})
+	}
+
+	err := GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, rbacServiceAccounts)
+	if err != nil {
+		return err
+	}
+
+	return ConfigureClient(kubectlOptions, helmHome, tillerNamespace, resourceNamespace, false, localClientRBACEntity)
 }

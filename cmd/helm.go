@@ -22,7 +22,7 @@ var (
 	}
 	resourceNamespaceFlag = cli.StringFlag{
 		Name:  "resource-namespace",
-		Usage: "Kubernetes namespace where the resources deployed by Tiller reside. If unspecified, defaults to the Tiller namespace.",
+		Usage: "Kubernetes namespace where the resources deployed by Tiller reside.",
 	}
 
 	// Configurations for how helm is installed
@@ -125,8 +125,8 @@ var (
 	}
 	// This is also used in configure
 	helmHomeFlag = cli.StringFlag{
-		Name:  "home",
-		Usage: "Home directory that is configured for accessing deployed Tiller server.",
+		Name:  "helm-home",
+		Usage: "Home directory that is configured for accessing deployed Tiller server. If unset, defaults to ~/.helm",
 	}
 
 	// Configurations for configuring the helm client
@@ -136,15 +136,15 @@ var (
 	}
 	configuringRBACUserFlag = cli.StringFlag{
 		Name:  "rbac-user",
-		Usage: "Name of RBAC user that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Usage: "Name of RBAC user that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 	configuringRBACGroupFlag = cli.StringFlag{
 		Name:  "rbac-group",
-		Usage: "Name of RBAC group that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Usage: "Name of RBAC group that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 	configuringServiceAccountFlag = cli.StringFlag{
 		Name:  "rbac-service-account",
-		Usage: "Name of the Service Account that configuration is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Usage: "Name of the Service Account that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
 )
 
@@ -163,11 +163,15 @@ func SetupHelmCommand() cli.Command {
   - Provision TLS certs for the new Helm Server.
   - Setup an RBAC role restricted to the specified namespace and bind it to the specified ServiceAccount.
   - Default to use Secrets for storing Helm Server releases (as opposed to ConfigMaps).
-  - Store the private key of the TLS certs in a Secret resource in the kube-system namespace.`,
+  - Store the private key of the TLS certs in a Secret resource in the kube-system namespace.
+
+Additionally, this command will grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
+					helmHomeFlag,
 					serviceAccountFlag,
 					tillerNamespaceFlag,
+					resourceNamespaceFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
 					tlsOrgUnitFlag,
@@ -178,6 +182,9 @@ func SetupHelmCommand() cli.Command {
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					configuringRBACUserFlag,
+					configuringRBACGroupFlag,
+					configuringServiceAccountFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
@@ -269,6 +276,10 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	resourceNamespace, err := entrypoint.StringFlagRequiredE(cliContext, resourceNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
@@ -278,11 +289,26 @@ func deployHelmServer(cliContext *cli.Context) error {
 		return err
 	}
 
+	// Get mutexed info (entity name)
+	rbacEntity, err := parseConfigurationRBACEntity(cliContext)
+	if err != nil {
+		return err
+	}
+
+	// Get optional info
+	helmHome, err := parseHelmHomeWithDefault(cliContext)
+	if err != nil {
+		return err
+	}
+
 	return helm.Deploy(
 		kubectlOptions,
 		tillerNamespace,
+		resourceNamespace,
 		serviceAccount,
 		tlsOptions,
+		helmHome,
+		rbacEntity,
 	)
 }
 
@@ -294,10 +320,6 @@ func undeployHelmServer(cliContext *cli.Context) error {
 	}
 
 	// Get required info
-	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
-	if err != nil {
-		return err
-	}
 	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
 	if err != nil {
 		return err
@@ -310,6 +332,10 @@ func undeployHelmServer(cliContext *cli.Context) error {
 	// Get optional info
 	force := cliContext.Bool(forceUndeployFlag.Name)
 	undeployReleases := cliContext.Bool(undeployReleasesFlag.Name)
+	helmHome, err := parseHelmHomeWithDefault(cliContext)
+	if err != nil {
+		return err
+	}
 
 	return helm.Undeploy(
 		kubectlOptions,
@@ -328,47 +354,31 @@ func configureHelmClient(cliContext *cli.Context) error {
 	}
 
 	// Get required info
-	helmHome, err := entrypoint.StringFlagRequiredE(cliContext, helmHomeFlag.Name)
-	if err != nil {
-		return err
-	}
 	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
 	if err != nil {
 		return err
 	}
 	resourceNamespace, err := entrypoint.StringFlagRequiredE(cliContext, resourceNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
 	kubectlOptions, err := parseKubectlOptions(cliContext)
 	if err != nil {
 		return err
 	}
 
 	// Get mutexed info (entity name)
-	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
-	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
-	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
-	setEntities := 0
-	var rbacEntity helm.RBACEntity
-	if configuringRBACUser != "" {
-		setEntities += 1
-		rbacEntity = helm.UserInfo{Name: configuringRBACUser}
-	}
-	if configuringRBACGroup != "" {
-		setEntities += 1
-		rbacEntity = helm.GroupInfo{Name: configuringRBACGroup}
-	}
-	if configuringServiceAccount != "" {
-		setEntities += 1
-		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
-		if err != nil {
-			return err
-		}
-	}
-	if setEntities != 1 {
-		return MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+	rbacEntity, err := parseConfigurationRBACEntity(cliContext)
+	if err != nil {
+		return err
 	}
 
 	// Get optional info
 	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
+	helmHome, err := parseHelmHomeWithDefault(cliContext)
+	if err != nil {
+		return err
+	}
 
 	return helm.ConfigureClient(
 		kubectlOptions,
@@ -467,4 +477,42 @@ func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, er
 		distinguishedName.Country = []string{country}
 	}
 	return distinguishedName, nil
+}
+
+// parseHelmHomeWithDefault will take the helm home option and return it, or the default ~/.helm.
+func parseHelmHomeWithDefault(cliContext *cli.Context) (string, error) {
+	helmHome := cliContext.String(helmHomeFlag.Name)
+	if helmHome == "" {
+		return helm.GetDefaultHelmHome()
+	}
+	return helmHome, nil
+}
+
+// parseConfigurationRBACEntity will take the RBAC entity options and return the configured RBAC entity.
+func parseConfigurationRBACEntity(cliContext *cli.Context) (helm.RBACEntity, error) {
+	configuringRBACUser := cliContext.String(configuringRBACUserFlag.Name)
+	configuringRBACGroup := cliContext.String(configuringRBACGroupFlag.Name)
+	configuringServiceAccount := cliContext.String(configuringServiceAccountFlag.Name)
+	setEntities := 0
+	var rbacEntity helm.RBACEntity
+	var err error
+	if configuringRBACUser != "" {
+		setEntities += 1
+		rbacEntity = helm.UserInfo{Name: configuringRBACUser}
+	}
+	if configuringRBACGroup != "" {
+		setEntities += 1
+		rbacEntity = helm.GroupInfo{Name: configuringRBACGroup}
+	}
+	if configuringServiceAccount != "" {
+		setEntities += 1
+		rbacEntity, err = helm.ExtractServiceAccountInfo(configuringServiceAccount)
+		if err != nil {
+			return rbacEntity, err
+		}
+	}
+	if setEntities != 1 {
+		return rbacEntity, MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+	}
+	return rbacEntity, nil
 }
