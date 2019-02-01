@@ -129,7 +129,7 @@ func TestCreateCertificateSupportsCreatingCACertsAndSigning(t *testing.T) {
 func parseValidityTimestampsFromOpensslCertOut(t *testing.T, cmdOut string) (time.Time, time.Time) {
 	// This exact time for the layout is significant. DO NOT CHANGE THE TIME!
 	// It is used to guide golang where the date parts are in the input string.
-	const expectedTimeForm = "Jan 02 15:04:05 2006 GMT"
+	const expectedTimeForm = "Jan  2 15:04:05 2006 GMT"
 
 	beforeRegexp := regexp.MustCompile("Not Before: (.+ GMT)")
 	beforeRegexpMatch := beforeRegexp.FindStringSubmatch(cmdOut)
