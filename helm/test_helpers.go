@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/retry"
+	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -175,4 +177,23 @@ func copyKubeconfigToTempFile(t *testing.T) string {
 	_, err = tmpfile.Write(data)
 	require.NoError(t, err)
 	return tmpfile.Name()
+}
+
+// getCertificateSubjectInfoFromBytes will take raw bytes representing a TLS certificate, store it on disk and use openssl to
+// extract the subject info.
+func getCertificateSubjectInfoFromBytes(t *testing.T, certData []byte) string {
+	tmpCertFile, err := ioutil.TempFile("", "*.pem")
+	require.NoError(t, err)
+	defer os.Remove(tmpCertFile.Name())
+	defer tmpCertFile.Close()
+	_, err = tmpCertFile.Write(certData)
+	require.NoError(t, err)
+
+	extractCmd := shell.Command{
+		Command: "openssl",
+		Args:    []string{"x509", "-noout", "-subject", "-in", tmpCertFile.Name()},
+	}
+	out, err := shell.RunCommandAndGetOutputE(t, extractCmd)
+	require.NoError(t, err)
+	return out
 }

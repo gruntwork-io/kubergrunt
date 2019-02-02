@@ -69,6 +69,8 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	kubectlOptions := getTestKubectlOptions(t)
 	terratestKubectlOptions := k8s.NewKubectlOptions("", "")
 	tlsOptions := sampleTlsOptions(tls.ECDSAAlgorithm)
+	clientTLSOptions := sampleTlsOptions(tls.ECDSAAlgorithm)
+	clientTLSOptions.DistinguishedName.CommonName = "client"
 	namespaceName := strings.ToLower(random.UniqueId())
 	serviceAccountName := fmt.Sprintf("%s-service-account", namespaceName)
 
@@ -97,6 +99,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		namespaceName,
 		serviceAccountName,
 		tlsOptions,
+		clientTLSOptions,
 		getHelmHome(t),
 		testServiceAccountInfo,
 	))
@@ -112,6 +115,9 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 
 	// Check tiller pod TLS
 	validateTillerPodUsesTLS(t, terratestKubectlOptions)
+
+	// Check tiller pod TLS is different from client TLS
+	validateTillerAndClientTLSDifferent(t, terratestKubectlOptions, testServiceAccountInfo)
 
 	// Check that we can deploy a helm chart
 	validateHelmChartDeploy(t, testServiceAccountKubectlOptions, namespaceName)
@@ -160,6 +166,21 @@ func validateTillerPodUsesTLS(t *testing.T, terratestKubectlOptions *k8s.Kubectl
 		_, hasKey := secret.Data[expectedKey]
 		assert.True(t, hasKey)
 	}
+}
+
+// validateTillerAndClientTLSDifferent verifies that the TLS cert generated for the client is different from that
+// generated for the server.
+func validateTillerAndClientTLSDifferent(t *testing.T, terratestKubectlOptions *k8s.KubectlOptions, serviceAccountInfo ServiceAccountInfo) {
+	clientCertSecretName := getTillerClientCertSecretName(serviceAccountInfo.EntityID())
+	clientSecret := k8s.GetSecret(t, terratestKubectlOptions, clientCertSecretName)
+	clientCert := clientSecret.Data["client.crt"]
+	clientCertSubject := getCertificateSubjectInfoFromBytes(t, clientCert)
+
+	serverSecret := k8s.GetSecret(t, terratestKubectlOptions, "tiller-secret")
+	tillerCert := serverSecret.Data["tls.crt"]
+	tillerCertSubject := getCertificateSubjectInfoFromBytes(t, tillerCert)
+
+	assert.NotEqual(t, clientCertSubject, tillerCertSubject)
 }
 
 func validateGenerateCertificateKeyPair(t *testing.T, algorithm string) {
