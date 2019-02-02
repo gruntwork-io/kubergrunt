@@ -88,6 +88,9 @@ func Deploy(
 	err = RunHelm(
 		kubectlOptions,
 		"init",
+		// helm home
+		"--home",
+		helmHome,
 		// Use Secrets instead of ConfigMap to track metadata
 		"--override",
 		"spec.template.spec.containers[0].command={/tiller,--storage=secret}",
