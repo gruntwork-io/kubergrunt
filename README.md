@@ -243,13 +243,13 @@ install.
 
 Afterwards, you can source the environment file to setup your shell to access the proper helm client.
 
-For example, if you want to setup helm to target a server install in the namespace `dev` with the default helm home
-directory:
+For example, if you want to setup helm to target a Tiller installed in the namespace `dev-tiller` to manage resources in
+the namespace `dev` with the default helm home directory:
 
 ```bash
 # This is for linux
 # Setup helm
-kubergrunt helm configure --home-dir $HOME/.helm --tiller-namespace dev --rbac-user me
+kubergrunt helm configure --tiller-namespace dev-tiller --resource-namespace dev --rbac-user me
 # Source the environment file
 source $HOME/.helm/env
 # Verify connection. This should display info about both the client and server.
