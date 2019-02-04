@@ -203,6 +203,9 @@ This will:
 
 This command will also grant access to an RBAC entity and configure the local helm client to use that using one of `--rbac-user`, `--rbac-group`, `--rbac-service-account` options.
 
+This command should be run by a **cluster administrator** to deploy a new Tiller instance that can be used by their
+users to deploy resources using `helm`.
+
 #### undeploy
 
 This subcommand will uninstall the Helm Server from the designated Kubernetes cluster and delete all Secrets related to
@@ -222,6 +225,9 @@ wanted to uninstall it:
 # undeployed.
 kubergrunt helm undeploy --helm-home $HOME/.helm
 ```
+
+This command should be run by a **cluster administrator** to undeploy a deployed Tiller instance, along with all the
+`Secrets` containing the TLS certificate key pairs.
 
 #### (helm) configure
 
@@ -258,6 +264,9 @@ helm version
 
 See the command help for all the available options: `kubergrunt helm configure --help`.
 
+This command should be run by a **helm user** to setup their local `helm` client to access a deployed Tiller instance.
+Note that the user needs to have already been granted access via the `kubergrunt helm grant` command.
+
 #### grant
 
 This subcommand will grant access to an installed helm server to a given RBAC entity (`User`, `Group`, or
@@ -283,6 +292,10 @@ kubergrunt helm grant \
 ```
 
 See the command help for all the available options: `kubergrunt helm grant --help`.
+
+This command should be run by a **cluster administrator** to grant a user, group, or pod access to the deployed Tiller
+instance. The user or group should be an RBAC entity (RBAC user or RBAC group). The pod should gain access via the
+mounted `ServiceAccount`.
 
 <!-- Not implemented
 
