@@ -22,7 +22,7 @@ scaffolding command and repository management (e.g uploading a Chart).
 ## What is Tiller (the Helm Server)?
 
 Tiller is a component of Helm that runs inside the Kubernetes cluster. Tiller is what provides the functionality to
-apply the Kubernetes resource descriptions to the Kubernetes cluster. When you install a release, the helm client
+apply the Kubernetes resource descriptions to the Kubernetes cluster. When you install a release, the `helm` client
 essentially packages up the values and charts as a release, which is submitted to Tiller. Tiller will then generate
 Kubernetes YAML files from the packaged release, and then apply the generated Kubernetes YAML file from the charts on
 the cluster.
@@ -65,7 +65,7 @@ Then, using the generated CA, we will issue at least two sets of signed certific
 - A certificate for Tiller that identifies it.
 - A certificate for the Helm client that identifies it.
 
-We recommend that you issue a certificate for each unique helm client (and therefore each user of helm). This makes it
+We recommend that you issue a certificate for each unique `helm` client (and therefore each user of helm). This makes it
 easier to manage access for team changes (e.g when someone leaves the team), as well as compliance requirements (e.g
 access logs that uniquely identifies individuals).
 
@@ -150,6 +150,11 @@ RBAC roles: one to grant admin permissions to the `dev` namespace (`dev-all`) an
 `dev-tiller` namespace (`dev-tiller-all`). Finally, the configuration specifies `RoleBinding` resources to bind the new
 roles to the `ServiceAccount`.
 
+In general, you will want to restrict Tiller to have the same permissions as the users that are granted access to it. In
+this way, you can avoid having your users "escape" RBAC by having more permissions through Tiller. The key insight here
+is that clients with access to Tiller have roughly the same permissions as that granted to the Tiller pod.
+
+
 #### Namespaces: Tiller Namespace vs Resource Namespace
 
 We recommend provisioning Tiller in its own namespace, separate from the namespace where the resources will ultimately
@@ -220,3 +225,151 @@ permissions. Each of the key pairs have varying degrees of severity when comprom
   Tiller server.
 - If you possess the client key pair, then you can pose as the client and install malicious charts on the Kubernetes
   cluster.
+
+
+## Kubergrunt Approach
+
+To summarize the best practices for a secure Tiller deployment, one should:
+
+- [Deploy Tiller into its own `Namespace`, separately from the namespace where it will allow helm charts to deploy
+  into.](#deploying-tiller-into-its-own-namespace)
+- [Enable RBAC and restrict what Tiller can do by creating its own
+  `ServiceAccount`.](#enable-rbac-and-specify-tiller-serviceaccount)
+- [Ensure Tiller stores its metadata in `Secrets`.](#ensure-tiller-stores-its-metadata-using-secrets)
+- [Enable TLS verification in the server so that only authorized clients can access
+  it.](#enable-tls-verification-in-the-server)
+- [Restrict client and server access to the Tiller
+  `Namespace`.](#restrict-client-and-server-access-to-the-tiller-namespace)
+- [Enable TLS verification in the client so that it will only access servers that it
+  trusts.](#enable-tls-verification-in-the-client)
+
+`kubergrunt` includes various commands to help enable those best practices. You can read more about each individual
+commands in [the command docs](/README.md#helm).
+
+### Deploying Tiller into its own Namespace
+
+`kubergrunt helm deploy` can be used to deploy a Tiller instance into your Kubernetes cluster. This command forces the
+operator to pass in the Tiller namespace (the `Namespace` where Tiller will be deployed into), which is separate from
+the resource namespace (the `Namespace`) where Tiller will be allowed to deploy resources into.
+
+By forcing the operator to specify the namespaces directly as part of deployment, it ensures that the decision on where
+Tiller is deployed and where it will manage resources are made explicitly as opposed to following defaults that may not
+be the best for your cluster.
+
+This contrasts with the defaults set by the `helm init` command provided by the `helm` CLI, which will default to
+deploying in the `kube-system` namespace, where it has access to administrative systems of the Kubernetes cluster. While
+this is a reasonable default for getting up and running, it is important to consider all the security implications of
+having such a deployment in your cluster. This decision to deploy into `kube-system` should be made consciously, which
+is what `kubergrunt helm deploy` hopes to accomplish.
+
+### Enable RBAC and Specify Tiller ServiceAccount
+
+Like the namespaces, `kubergrunt helm deploy` also requires specifying a `ServiceAccount` when deploying Tiller. This
+`ServiceAccount` will be used by the Tiller Pod when it authenticates against the Kubernetes API.
+
+By forcing the operator to specify the `ServiceAccount` directly as part of deployment, it ensures that a conscious
+decision is made about what permissions are granted to the Tiller pod. For example, if you are going to give Tiller
+cluster admin level permissions, then you should be conscious about that decision and explicitly pass that in as a
+command line parameter.
+
+This contrasts with the defaults set by the `helm init` command provided by the `helm` CLI, which will default to the
+default `ServiceAccount` in the chosen namespace, which often times has admin level privileges in that namespace. This
+is a reasonable default for getting up and running, but it is important to consider all the security implications of
+having your Tiller pod be able to do anything in the chosen namespace.
+
+As [mentioned in this guide](#service-account), you will want to ensure that the deployed Tiller is only granted the
+same permissions as the minimum permissions granted to your clients accessing it. Otherwise, you risk having your users
+"escape" the RBAC permissions imposed on them.
+
+### Ensure Tiller Stores its Metadata using Secrets
+
+`kubergrunt helm deploy` will deploy Tiller with overrides to configure the Pod to use `Secrets` as its metadata store.
+The command does not expose a way to turn this off.
+
+### Enable TLS verification in the Server
+
+`kubergrunt helm deploy` will deploy Tiller with TLS authentication turned on (see section [Client
+Authentication](#client-authentication) for more details on TLS authentication in Tiller). The command does not expose a
+way to turn this off.
+
+As a part of this, the `kubergrunt` command will generate two new TLS certificate key pairs:
+
+- a key pair that can be used as the CA for verifying the server and the clients.
+- a key pair that can be used to identify the server.
+
+The private key for the generated CA key pair will be stored in the Kubernetes cluster as a `Secret` in the
+`kube-system` namespace. Doing so allows future operators to generate new certificate key pairs to grant additional
+clients access to the deployed Tiller instance, while protecting access to the CA key pair using the native RBAC system
+of the cluster. By placing the CA key pair in the `kube-system` namespace, it makes it difficult to accidentally grant
+access to it outside your group of trusted operators (the cluster admins).
+
+The certificate key pair that Tiller will use will be placed into a `Secret` in the Tiller namespace so that the Tiller
+pod may access it. This TLS certificate key pair will then be used as part of the TLS protocol so that clients can use
+it to verify if they are talking to the correct Tiller instance.
+
+At this point, your `helm` clients now need TLS certificate key pairs signed by the deployed CA to be able to access the
+Tiller deployment. This ensures that a malicious pod in the Kubernetes cluster won't be able to inadvertently reach the
+Tiller instance to deploy additional malicious pods that steal credentials or do damage to your cluster. This also means
+that you will need to generate additional certificate key pairs for each of your clients.
+
+`kubergrunt` helps with the certificate management by encapsulating the steps in the `kubergrunt helm grant` command.
+This command is used to issue new client TLS certificate key pairs that is trusted by the CA so that they can be used to
+authenticate against the deployed Tiller instance. This is done by:
+
+- Downloading the CA certificate key pair.
+- Generating new signed certificate key pair for each RBAC entity passed in.
+- Storing each new certificate key pair as a `Secret` in the Tiller namespace.
+
+The `Secret` containing the new certificate key pair is shared with the RBAC entity so that they can download it to
+configure their client. `kubergrunt` provides the `helm configure` subcommand for your users to use to setup their local
+`helm` client with the new certificate key pairs.
+
+Note that `helm grant` should only be run by an administrator of your cluster. This is because only administrators should
+have access to the CA certificate key pair, as that enables you to grant anyone access to the deployed Tiller instance.
+
+### Restrict Client and Server Access to the Tiller Namespace
+
+It is tempting to grant your users access to the Tiller namespace. This temptation comes from the challenge of
+identifying the minimal set of permissions that the `helm` client needs to communicate with the Tiller instance.
+
+However, granting access to the Tiller namespace has security implications that you should consider. Tiller stores its
+own server side certificate key pair in a `Secret` that the Pod needs access to. Otherwise, Tiller will not be able to
+serve the TLS certificate or decrypt the packets that come in. If you grant full access to the Tiller namespace, then
+you risk exposing these `Secrets` to your users. This is problematic because you can use these certificates to
+authenticate against the Tiller instance, circumventing the TLS authentication put in place.
+
+For these reasons, `kubergrunt helm grant` automates the process of granting users RBAC roles that grant them access to
+the TLS certificate key pairs and the Tiller instance. The RBAC roles provide the minimal set of privileges necessary to
+configure and use the `helm` client against the deployed Tiller instance, while restricting access to the `Secrets` that
+Tiller needs to operate.
+
+Additionally, you will want to restrict access by the Tiller instance in the namespace as well. This is because you
+don't want to allow your users to deploy a special helm chart that will grant them access to the Tiller namespace. For
+example, If you allow the Tiller instance deploy `Pods` and `ServiceAccounts`, then you can deploy a helm chart that
+creates enough resources to mount the Tiller `Secrets`.
+
+While `kubergrunt` does not provide any native functionality for the Tiller RBAC roles, you can see [our example in
+`terraform-kubernetes-helm`](https://github.com/gruntwork-io/terraform-kubernetes-helm/blob/master/examples/k8s-tiller-minikube/README.md)
+for a way to create the Tiller `ServiceAccount` so that it has the minimal set of permissions necessary to operate in
+the Tiller namespace.
+
+### Enable TLS Verification in the Client
+
+`kubergrunt helm configure` can be used to configure a local `helm` client to access a deployed Tiller instance. This
+involves downloading the respective client TLS certificate key pairs into the `helm` home directory so that it can
+authenticate to the Tiller instance.
+
+Once the TLS certificate key pairs are downloaded, you can enable TLS in the `helm` client by using the `--tls` option.
+This will look for the certificate key pairs in the `helm` home directory.
+
+Additionally, you will need to pass in the `--tls-verify` option to enable TLS verification of the server. This will use
+the CA certificate with the TLS certificate of the server to verify that the client is indeed talking to the intended
+Tiller instance.
+
+Since it is cumbersome to always pass in `--tls` and `--tls-verify` to all your `helm` client commands, `kubergrunt helm
+configure` will also install an environment file that you can dot source to setup default options everytime you run
+`helm`. This environment file will:
+
+- Enable TLS verification to ensure the Tiller instance the client is connecting to is trusted.
+- Enable TLS authentication, forwarding the downloaded TLS certificate information to the Tiller instance.
+- Set the Tiller namespace so that you don't have to pass it in.
