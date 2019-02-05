@@ -150,6 +150,11 @@ RBAC roles: one to grant admin permissions to the `dev` namespace (`dev-all`) an
 `dev-tiller` namespace (`dev-tiller-all`). Finally, the configuration specifies `RoleBinding` resources to bind the new
 roles to the `ServiceAccount`.
 
+In general, you will want to restrict Tiller to have the same permissions as the users that are granted access to it. In
+this way, you can avoid having your users "escape" RBAC by having more permissions through Tiller. The key insight here
+is that clients with access to Tiller have roughly the same permissions as that granted to the Tiller pod.
+
+
 #### Namespaces: Tiller Namespace vs Resource Namespace
 
 We recommend provisioning Tiller in its own namespace, separate from the namespace where the resources will ultimately
@@ -226,12 +231,17 @@ permissions. Each of the key pairs have varying degrees of severity when comprom
 
 To summarize the best practices for a secure Tiller deployment, one should:
 
-- Deploy Tiller into its own `Namespace`, separately from the namespace where it will allow helm charts to deploy into.
-- Enable RBAC and restrict what Tiller can do by creating its own `ServiceAccount`.
-- Ensure Tiller stores its metadata in `Secrets`.
-- Enable TLS verification in the server so that only authorized clients can access it.
-- Restrict client and server access to the Tiller `Namespace`.
-- Enable TLS verification in the client so that it will only access servers that it trusts.
+- [Deploy Tiller into its own `Namespace`, separately from the namespace where it will allow helm charts to deploy
+  into.](#deploying-tiller-into-its-own-namespace)
+- [Enable RBAC and restrict what Tiller can do by creating its own
+  `ServiceAccount`.](#enable-rbac-and-specify-tiller-serviceaccount)
+- [Ensure Tiller stores its metadata in `Secrets`.](#ensure-tiller-stores-its-metadata-using-secrets)
+- [Enable TLS verification in the server so that only authorized clients can access
+  it.](#enable-tls-verification-in-the-server)
+- [Restrict client and server access to the Tiller
+  `Namespace`.](#restrict-client-and-server-access-to-the-tiller-namespace)
+- [Enable TLS verification in the client so that it will only access servers that it
+  trusts.](#enable-tls-verification-in-the-client)
 
 `kubergrunt` includes various commands to help enable those best practices. You can read more about each individual
 commands in [the command docs](/README.md#helm).
@@ -267,6 +277,10 @@ default `ServiceAccount` in the chosen namespace, which often times has admin le
 is a reasonable default for getting up and running, but it is important to consider all the security implications of
 having your Tiller pod be able to do anything in the chosen namespace.
 
+As [mentioned in this guide](#service-account), you will want to ensure that the deployed Tiller is only granted the
+same permissions as the minimum permissions granted to your clients accessing it. Otherwise, you risk having your users
+"escape" the RBAC permissions imposed on them.
+
 ### Ensure Tiller Stores its Metadata using Secrets
 
 `kubergrunt helm deploy` will deploy Tiller with overrides to configure the Pod to use `Secrets` as its metadata store.
@@ -274,8 +288,9 @@ The command does not expose a way to turn this off.
 
 ### Enable TLS verification in the Server
 
-`kubergrunt helm deploy` will deploy Tiller with TLS authentication turned on. The command does not expose a way to turn
-this off.
+`kubergrunt helm deploy` will deploy Tiller with TLS authentication turned on (see section [Client
+Authentication](#client-authentication) for more details on TLS authentication in Tiller). The command does not expose a
+way to turn this off.
 
 As a part of this, the `kubergrunt` command will generate two new TLS certificate key pairs:
 
