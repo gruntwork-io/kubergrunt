@@ -45,6 +45,14 @@ func ConfigureClient(
 	}
 	logger.Info("Confirmed authorized to access specified Tiller server.")
 
+	logger.Infof("Initializing helm home %s", helmHome)
+	err = initializeHelmHome(helmHome)
+	if err != nil {
+		logger.Errorf("Error setting up helm home directory: %s", err)
+		return err
+	}
+	logger.Info("Done initializing helm home")
+
 	logger.Info("Downloading TLS certificates to access specified Tiller server.")
 	if err := downloadTLSCertificatesToHelmHome(helmHome, secret); err != nil {
 		return err
@@ -70,6 +78,14 @@ func ConfigureClient(
 		}
 		logger.Infof("Updated context %s to use namespace %s as default.", kubectlOptions.ContextName, resourceNamespace)
 	}
+
+	logger.Info("Verifying client setup")
+	err = VerifyTiller(kubectlOptions, tillerNamespace, helmHome)
+	if err != nil {
+		logger.Errorf("Error verifying client setup: %s", err)
+		return err
+	}
+	logger.Info("Validated client setup")
 
 	logger.Infof("Successfully set up local helm client to access Tiller server deployed in namespace %s. Be sure to source the environment file (%s/env) before using the helm client.", tillerNamespace, helmHome)
 	return nil
