@@ -45,6 +45,14 @@ func ConfigureClient(
 	}
 	logger.Info("Confirmed authorized to access specified Tiller server.")
 
+	logger.Infof("Initializing helm home %s", helmHome)
+	err = initializeHelmHome(helmHome)
+	if err != nil {
+		logger.Errorf("Error setting up helm home directory: %s", err)
+		return err
+	}
+	logger.Info("Done initializing helm home")
+
 	logger.Info("Downloading TLS certificates to access specified Tiller server.")
 	if err := downloadTLSCertificatesToHelmHome(helmHome, secret); err != nil {
 		return err

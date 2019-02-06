@@ -4,6 +4,38 @@ import (
 	"fmt"
 )
 
+// HelmHomeIsFileError is returned when the helm home path is a file and not a directory
+type HelmHomeIsFileError struct {
+	HelmHome string
+}
+
+func (err HelmHomeIsFileError) Error() string {
+	return fmt.Sprintf("Provided helm home path %s is a file, not a directory", err.HelmHome)
+}
+
+// RepoFileIsDirectoryError is returned when the helm repository file path is unexpectedly a directory
+type RepoFileIsDirectoryError struct {
+	RepoFilePath string
+}
+
+func (err RepoFileIsDirectoryError) Error() string {
+	return fmt.Sprintf("Helm repository path %s is a directory, not a file", err.RepoFilePath)
+}
+
+// RepositoryUnreachableError is returned when the chart repository is unreachable or does not exist.
+type RepositoryUnreachableError struct {
+	RepositoryURL   string
+	UnderlyingError error
+}
+
+func (err RepositoryUnreachableError) Error() string {
+	return fmt.Sprintf(
+		"Helm repository %s is not a valid chart repository or cannot be reached: %s",
+		err.RepositoryURL,
+		err.UnderlyingError,
+	)
+}
+
 // UnknownRBACEntityType error is returned when the RBAC entity type is something unexpected
 type UnknownRBACEntityType struct {
 	RBACEntityType string
