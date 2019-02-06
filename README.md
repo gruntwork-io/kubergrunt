@@ -120,7 +120,7 @@ To deploy a change (such as rolling out a new AMI) to all EKS workers using this
 1. Run the command:
 
 ```bash
-kubergrunt eks deploy --eks-cluster-arn CLUSTER_ARN --asg-name ASG_NAME
+kubergrunt eks deploy --region REGION --asg-name ASG_NAME
 ```
 
 When you call the command, it will:
