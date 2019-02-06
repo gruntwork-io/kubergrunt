@@ -23,17 +23,27 @@ var (
 	// Shared configurations
 	tillerNamespaceFlag = cli.StringFlag{
 		Name:  "tiller-namespace",
-		Usage: "Kubernetes namespace that Tiller will reside in.",
+		Usage: "(Required) Kubernetes namespace that Tiller will reside in.",
 	}
 	resourceNamespaceFlag = cli.StringFlag{
 		Name:  "resource-namespace",
-		Usage: "Kubernetes namespace where the resources deployed by Tiller reside.",
+		Usage: "(Required) Kubernetes namespace where the resources deployed by Tiller reside.",
 	}
 
 	// Configurations for how helm is installed
 	serviceAccountFlag = cli.StringFlag{
 		Name:  "service-account",
-		Usage: "The name of the ServiceAccount that Tiller should use.",
+		Usage: "(Required) The name of the ServiceAccount that Tiller should use.",
+	}
+	tillerImageFlag = cli.StringFlag{
+		Name:  "tiller-image",
+		Value: DefaultTillerImage,
+		Usage: "The container image to use when deploying tiller.",
+	}
+	tillerVersionFlag = cli.StringFlag{
+		Name:  "tiller-version",
+		Value: DefaultTillerVersion,
+		Usage: "The version of the container image to use when deploying tiller.",
 	}
 
 	// Configurations for how to authenticate with the Kubernetes cluster.
@@ -45,19 +55,7 @@ var (
 	}
 	helmKubeconfigFlag = cli.StringFlag{
 		Name:  KubeconfigFlagName,
-		Usage: "The path to the kubectl config file to use to authenticate with Kubernetes. Defaults to ~/.kube/config",
-	}
-
-	// Configurations for deploying Tiller
-	tillerImageFlag = cli.StringFlag{
-		Name:  "tiller-image",
-		Value: DefaultTillerImage,
-		Usage: fmt.Sprintf("The container image to use when deploying tiller. Defaults to %s", DefaultTillerImage),
-	}
-	tillerVersionFlag = cli.StringFlag{
-		Name:  "tiller-version",
-		Value: DefaultTillerVersion,
-		Usage: fmt.Sprintf("The version of the container image to use when deploying tiller. Defaults to %s", DefaultTillerVersion),
+		Usage: "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
 	}
 
 	// Configurations for setting up the TLS certificates
@@ -167,7 +165,7 @@ var (
 	// This is also used in configure
 	helmHomeFlag = cli.StringFlag{
 		Name:  "helm-home",
-		Usage: "Home directory that is configured for accessing deployed Tiller server. If unset, defaults to ~/.helm",
+		Usage: "Home directory that is configured for accessing deployed Tiller server. (default: \"~/.helm\")",
 	}
 
 	// Configurations for configuring the helm client
@@ -209,12 +207,21 @@ func SetupHelmCommand() cli.Command {
 Additionally, this command will grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
-					helmHomeFlag,
+					// Required flags
 					serviceAccountFlag,
 					tillerNamespaceFlag,
 					resourceNamespaceFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
+					clientTLSCommonNameFlag,
+					clientTLSOrgFlag,
+					configuringRBACUserFlag,
+					configuringRBACGroupFlag,
+					configuringServiceAccountFlag,
+
+					// Optional flags
+					tillerImageFlag,
+					tillerVersionFlag,
 					tlsOrgUnitFlag,
 					tlsCityFlag,
 					tlsStateFlag,
@@ -223,15 +230,11 @@ Additionally, this command will grant access to an RBAC entity and configure the
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
-					clientTLSCommonNameFlag,
-					clientTLSOrgFlag,
 					clientTLSOrgUnitFlag,
 					clientTLSCityFlag,
 					clientTLSStateFlag,
 					clientTLSCountryFlag,
-					configuringRBACUserFlag,
-					configuringRBACGroupFlag,
-					configuringServiceAccountFlag,
+					helmHomeFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 				},
