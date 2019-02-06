@@ -85,52 +85,42 @@ func Deploy(
 
 	// Actually deploy Tiller (helm init call)
 	logger.Info("Deploying Helm Server (Tiller)")
-	err = RunHelm(
+	tillerImage, err := InstallTiller(
 		kubectlOptions,
-		"init",
-		// helm home
-		"--home",
-		helmHome,
-		// Use Secrets instead of ConfigMap to track metadata
-		"--override",
-		"spec.template.spec.containers[0].command={/tiller,--storage=secret}",
-		// Enable TLS
-		"--tiller-tls",
-		"--tiller-tls-verify",
-		"--tiller-tls-cert",
-		tillerKeyPairPath.CertificatePath,
-		"--tiller-tls-key",
-		tillerKeyPairPath.PrivateKeyPath,
-		"--tls-ca-cert",
-		caKeyPairPath.CertificatePath,
-		// Specific namespace and service account
-		"--tiller-namespace",
+		caKeyPairPath,
+		tillerKeyPairPath,
 		tillerNamespace,
-		"--service-account",
 		serviceAccount,
-		// Wait until tiller is up and available
-		"--wait",
 	)
 	if err != nil {
 		logger.Errorf("Error deploying Tiller: %s", err)
 		return err
 	}
-	logger.Infof("Successfully deployed Tiller in namespace %s with service account %s", tillerNamespace, serviceAccount)
+	logger.Infof("Successfully scheduled deployment of Tiller (image: %s) in namespace %s with service account %s", tillerImage, tillerNamespace, serviceAccount)
 
-	// If also optionally configuring the client, configure it.
-	if localClientRBACEntity != nil {
-		err := grantAndConfigureLocalClient(
-			kubectlOptions,
-			clientTLSOptions,
-			tillerNamespace,
-			resourceNamespace,
-			helmHome,
-			localClientRBACEntity,
-		)
-		if err != nil {
-			return err
-		}
+	logger.Info("Waiting for Tiller to come up")
+	err = WaitForTiller(
+		kubectlOptions,
+		helmHome,
+		tillerImage,
+		tillerNamespace,
+	)
+	logger.Info("Tiller is up and available")
+
+	logger.Info("Granting access and configuring local client")
+	err = grantAndConfigureLocalClient(
+		kubectlOptions,
+		clientTLSOptions,
+		tillerNamespace,
+		resourceNamespace,
+		helmHome,
+		localClientRBACEntity,
+	)
+	if err != nil {
+		logger.Infof("Error granting access and configuring local client: %s", err)
+		return err
 	}
+	logger.Info("Successfully granted access and configured local client")
 
 	logger.Info("Done deploying Tiller")
 	return nil

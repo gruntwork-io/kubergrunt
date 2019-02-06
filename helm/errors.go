@@ -22,6 +22,25 @@ func (err InvalidServiceAccountInfo) Error() string {
 	return fmt.Sprintf("Invalid encoding for ServiceAccount string %s. Expected NAMESPACE/NAME.", err.EncodedServiceAccount)
 }
 
+// TillerDeployWaitTimeoutError is returned when deploy times out waiting for Tiller to come up.
+type TillerDeployWaitTimeoutError struct {
+	Namespace string
+}
+
+func (err TillerDeployWaitTimeoutError) Error() string {
+	return fmt.Sprintf("Timed out waiting for Tiller deployment in namespace %s", err.Namespace)
+}
+
+// TillerPingError is returned when we fail to reach the Tiller pod using the helm client.
+type TillerPingError struct {
+	Namespace       string
+	UnderlyingError error
+}
+
+func (err TillerPingError) Error() string {
+	return fmt.Sprintf("Failed to ping Tiller in Namespace %s: %s", err.Namespace, err.UnderlyingError)
+}
+
 // HelmValidationError is returned when a command validation fails.
 type HelmValidationError struct {
 	Message string

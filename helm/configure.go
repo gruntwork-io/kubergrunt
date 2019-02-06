@@ -71,6 +71,14 @@ func ConfigureClient(
 		logger.Infof("Updated context %s to use namespace %s as default.", kubectlOptions.ContextName, resourceNamespace)
 	}
 
+	logger.Info("Verifying client setup")
+	err = VerifyTiller(kubectlOptions, tillerNamespace, helmHome)
+	if err != nil {
+		logger.Errorf("Error verifying client setup: %s", err)
+		return err
+	}
+	logger.Info("Validated client setup")
+
 	logger.Infof("Successfully set up local helm client to access Tiller server deployed in namespace %s. Be sure to source the environment file (%s/env) before using the helm client.", tillerNamespace, helmHome)
 	return nil
 }
