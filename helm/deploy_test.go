@@ -13,6 +13,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/helm/pkg/helm/portforwarder"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/tls"
@@ -66,6 +67,9 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 // 7. Undeploy helm
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	t.Parallel()
+
+	imageSpec := "gcr.io/kubernetes-helm/tiller:v2.11.0"
+
 	kubectlOptions := getTestKubectlOptions(t)
 	terratestKubectlOptions := k8s.NewKubectlOptions("", "")
 	tlsOptions := sampleTlsOptions(tls.ECDSAAlgorithm)
@@ -102,10 +106,14 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		clientTLSOptions,
 		getHelmHome(t),
 		testServiceAccountInfo,
+		imageSpec,
 	))
 
 	// Check tiller pod is in chosen namespace
 	tillerPodName := validateTillerPodDeployedInNamespace(t, terratestKubectlOptions)
+
+	// Check tiller pod is using the right image
+	validateTillerPodImage(t, terratestKubectlOptions, namespaceName, imageSpec)
 
 	// Check tiller pod is launched with the right service account
 	validateTillerPodServiceAccount(t, terratestKubectlOptions, tillerPodName, serviceAccountName)
@@ -142,6 +150,15 @@ func validateTillerPodDeployedInNamespace(t *testing.T, terratestKubectlOptions 
 	assert.NoError(t, err)
 	assert.NotEqual(t, tillerPodName, "")
 	return strings.TrimLeft(tillerPodName, "pod/")
+}
+
+// validateTillerPodImage checks if the deployed tiller image is actually the one we configured.
+func validateTillerPodImage(t *testing.T, terratestKubectlOptions *k8s.KubectlOptions, tillerNamespace string, tillerImageSpec string) {
+	kubeClient, err := k8s.GetKubernetesClientFromOptionsE(t, terratestKubectlOptions)
+	require.NoError(t, err)
+	image, err := portforwarder.GetTillerPodImage(kubeClient.CoreV1(), tillerNamespace)
+	require.NoError(t, err)
+	assert.Equal(t, image, tillerImageSpec)
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed with the provided service account

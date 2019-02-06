@@ -29,6 +29,7 @@ func InstallTiller(
 	tillerKeyPairPath tls.CertificateKeyPairPath,
 	tillerNamespace string,
 	serviceAccountName string,
+	imageSpec string,
 ) (string, error) {
 	client, err := kubectl.GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
 	if err != nil {
@@ -36,6 +37,7 @@ func InstallTiller(
 	}
 
 	options := installer.Options{}
+	options.ImageSpec = imageSpec
 
 	// RBAC options
 	options.Namespace = tillerNamespace

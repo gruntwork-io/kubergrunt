@@ -14,6 +14,11 @@ import (
 	"github.com/gruntwork-io/kubergrunt/tls"
 )
 
+const (
+	DefaultTillerImage   = "gcr.io/kubernetes-helm/tiller"
+	DefaultTillerVersion = "v2.11.0"
+)
+
 var (
 	// Shared configurations
 	tillerNamespaceFlag = cli.StringFlag{
@@ -41,6 +46,18 @@ var (
 	helmKubeconfigFlag = cli.StringFlag{
 		Name:  KubeconfigFlagName,
 		Usage: "The path to the kubectl config file to use to authenticate with Kubernetes. Defaults to ~/.kube/config",
+	}
+
+	// Configurations for deploying Tiller
+	tillerImageFlag = cli.StringFlag{
+		Name:  "tiller-image",
+		Value: DefaultTillerImage,
+		Usage: fmt.Sprintf("The container image to use when deploying tiller. Defaults to %s", DefaultTillerImage),
+	}
+	tillerVersionFlag = cli.StringFlag{
+		Name:  "tiller-version",
+		Value: DefaultTillerVersion,
+		Usage: fmt.Sprintf("The version of the container image to use when deploying tiller. Defaults to %s", DefaultTillerVersion),
 	}
 
 	// Configurations for setting up the TLS certificates
@@ -334,6 +351,9 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	tillerImage := cliContext.String(tillerImageFlag.Name)
+	tillerVersion := cliContext.String(tillerVersionFlag.Name)
+	imageSpec := fmt.Sprintf("%s:%s", tillerImage, tillerVersion)
 
 	return helm.Deploy(
 		kubectlOptions,
@@ -344,6 +364,7 @@ func deployHelmServer(cliContext *cli.Context) error {
 		clientTLSOptions,
 		helmHome,
 		rbacEntity,
+		imageSpec,
 	)
 }
 

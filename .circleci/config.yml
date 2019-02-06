@@ -8,8 +8,8 @@ defaults: &defaults
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
     GOLANG_VERSION: 1.11.2
-    K8S_VERSION: v1.10.0  # Same as EKS
-    HELM_VERSION: v2.12.2
+    K8S_VERSION: v1.10.0   # Same as EKS
+    HELM_VERSION: v2.11.0  # Same as helm provider
     KUBECONFIG: /home/circleci/.kube/config
     MINIKUBE_VERSION: v0.28.2  # See https://github.com/kubernetes/minikube/issues/2704
     MINIKUBE_WANTUPDATENOTIFICATION: "false"
