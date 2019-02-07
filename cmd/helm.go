@@ -293,9 +293,6 @@ func deployHelmServer(cliContext *cli.Context) error {
 	if err := shell.CommandInstalledE("helm"); err != nil {
 		return err
 	}
-	if err := shell.CommandInstalledE("kubergrunt"); err != nil {
-		return err
-	}
 
 	// Get required info
 	serviceAccount, err := entrypoint.StringFlagRequiredE(cliContext, serviceAccountFlag.Name)
