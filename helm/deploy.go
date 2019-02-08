@@ -31,6 +31,7 @@ func Deploy(
 	clientTLSOptions tls.TLSOptions,
 	helmHome string,
 	localClientRBACEntity RBACEntity,
+	imageSpec string,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -91,6 +92,7 @@ func Deploy(
 		tillerKeyPairPath,
 		tillerNamespace,
 		serviceAccount,
+		imageSpec,
 	)
 	if err != nil {
 		logger.Errorf("Error deploying Tiller: %s", err)
