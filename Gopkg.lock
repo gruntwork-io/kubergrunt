@@ -1391,6 +1391,7 @@
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/clientcmd/api",
     "k8s.io/helm/cmd/helm/installer",
+    "k8s.io/helm/pkg/getter",
     "k8s.io/helm/pkg/helm",
     "k8s.io/helm/pkg/helm/helmpath",
     "k8s.io/helm/pkg/helm/portforwarder",
