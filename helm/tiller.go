@@ -52,8 +52,10 @@ func InstallTiller(
 	options.TLSCaCertFile = caKeyPairPath.CertificatePath
 
 	// Use Secrets instead of ConfigMap to track metadata
+	// Bind only to localhost to prevent arbitrary Pod network access
+	// See https://engineering.bitnami.com/articles/helm-security.html#in-cluster-attacks
 	options.Values = []string{
-		"spec.template.spec.containers[0].command={/tiller,--storage=secret}",
+		"spec.template.spec.containers[0].command={/tiller,--storage=secret,--listen=localhost:44134}",
 	}
 
 	// Actually perform the deployment

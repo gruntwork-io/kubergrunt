@@ -174,6 +174,7 @@ basic helm server, this subcommand contains features such as:
 
 - Provisioning and managing TLS certs for a particular Tiller install.
 - Defaulting to use `Secrets` for Tiller release storage (as opposed to ConfigMaps).
+- Defaulting to bind only to localhost to disable Pod access.
 - Specifying [ServiceAccounts](https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/) for a
   particular Tiller install.
 - Tying certificate access to RBAC roles to harden access to the Tiller server.
