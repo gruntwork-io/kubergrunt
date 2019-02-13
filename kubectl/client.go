@@ -3,6 +3,10 @@ package kubectl
 import (
 	"k8s.io/client-go/kubernetes"
 
+	// The following line loads the gcp plugin which is required to authenticate against GKE clusters.
+	// See: https://github.com/kubernetes/client-go/issues/242
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
