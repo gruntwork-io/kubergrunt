@@ -49,7 +49,7 @@ You can read more about the security model of Tiller in [their official docs](ht
 
 #### Client Authentication
 
-This module installs Tiller with TLS verification turned on. If you are unfamiliar with TLS/SSL, we recommend reading
+Tiller supports client authentication via TLS/SSL. If you are unfamiliar with TLS/SSL, we recommend reading
 [this background](https://github.com/hashicorp/terraform-aws-vault/tree/master/modules/private-tls-cert#background)
 document describing how it works before continuing.
 
@@ -227,7 +227,7 @@ permissions. Each of the key pairs have varying degrees of severity when comprom
   cluster.
 
 
-## Kubergrunt Approach
+## Summary
 
 To summarize the best practices for a secure Tiller deployment, one should:
 
@@ -242,6 +242,9 @@ To summarize the best practices for a secure Tiller deployment, one should:
   `Namespace`.](#restrict-client-and-server-access-to-the-tiller-namespace)
 - [Enable TLS verification in the client so that it will only access servers that it
   trusts.](#enable-tls-verification-in-the-client)
+
+
+## How Kubergrunt Helps
 
 `kubergrunt` includes various commands to help enable those best practices. You can read more about each individual
 commands in [the command docs](/README.md#helm).
