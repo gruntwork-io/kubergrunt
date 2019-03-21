@@ -52,7 +52,7 @@ The following commands are available as part of `kubergrunt`:
     * [grant](#grant)
     <!-- not implemented * [revoke](#revoke) -->
 1. [tls](#tls)
-    * [gencert](#gencert)
+    * [gen](#gen)
 
 ### eks
 
@@ -334,7 +334,7 @@ See the command help for all the available options: `kubergrunt helm revoke --he
 
 The `tls` subcommand of `kubergrunt` is used to manage TLS certificate key pairs as Kubernetes Secrets.
 
-#### gencert
+#### gen
 
 This subcommand will generate new TLS certificate key pairs based on the provided configuration arguments. Once the
 certificate are generated, they will be stored on your targetted Kubernetes cluster as
@@ -350,10 +350,10 @@ For example, to generate a new CA key pair, issue a TLS certificate key pair, st
 
 ```bash
 # Generate the CA key pair
-kubergrunt tls gencert \
+kubergrunt tls gen \
     --namespace kube-system \
     --secret-name ca-keypair \
-    ---ca \
+    --ca \
     --tls-common-name kiam-ca \
     --tls-org Gruntwork \
     --tls-org-unit IT \
@@ -362,7 +362,7 @@ kubergrunt tls gencert \
     --tls-country US \
     --version-tag v1
 # Generate a signed TLS key pair using the previously created CA
-kubergrunt tls gencert \
+kubergrunt tls gen \
     --namespace kube-system \
     --secret-name tls-keypair \
     --ca-secret-name ca-keypair \
@@ -383,7 +383,7 @@ The second command uses the generated CA key pair to issue a new TLS key pair. T
 
 This command should be run by a **cluster administrator** to ensure access to the Secrets are tightly controlled.
 
-See the command help for all the available options: `kubergrunt tls gencert --help`.
+See the command help for all the available options: `kubergrunt tls gen --help`.
 
 
 ## Who maintains this project?
