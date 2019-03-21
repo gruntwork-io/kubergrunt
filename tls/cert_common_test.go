@@ -134,9 +134,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresAllFiles(t *testing.T) {
 
 	// Construct kubectl options
 	ttKubectlOptions := k8s.NewKubectlOptions("", "")
-	configPath, err := k8s.KubeConfigPathFromHomeDirE()
-	require.NoError(t, err)
-	kubectlOptions := kubectl.NewKubectlOptions("", configPath)
+	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -146,7 +144,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresAllFiles(t *testing.T) {
 	// Now store certificate key pair using the tested function
 	baseName := random.UniqueId()
 	certificateKeyPairPath := createSampleCertificateKeyPairPath(t)
-	err = StoreCertificateKeyPairAsKubernetesSecret(
+	err := StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
 		"random-certs",
 		namespace,
@@ -174,9 +172,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresCACert(t *testing.T) {
 
 	// Construct kubectl options
 	ttKubectlOptions := k8s.NewKubectlOptions("", "")
-	configPath, err := k8s.KubeConfigPathFromHomeDirE()
-	require.NoError(t, err)
-	kubectlOptions := kubectl.NewKubectlOptions("", configPath)
+	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -187,7 +183,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresCACert(t *testing.T) {
 	baseName := random.UniqueId()
 	caCertPath := mustAbs(t, "./testfixtures/ca.cert")
 	certificateKeyPairPath := createSampleCertificateKeyPairPath(t)
-	err = StoreCertificateKeyPairAsKubernetesSecret(
+	err := StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
 		"random-certs",
 		namespace,
