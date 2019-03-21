@@ -337,7 +337,7 @@ The `tls` subcommand of `kubergrunt` is used to manage TLS certificate key pairs
 #### gencert
 
 This subcommand will generate new TLS certificate key pairs based on the provided configuration arguments. Once the
-certificate are generated, they will be stored on your targetted Kubernetes cluster as
+certificates are generated, they will be stored on your targeted Kubernetes cluster as
 [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). This supports features such as:
 
 - Generating a new CA key pair and storing the generated key pair in your Kubernetes cluster.
