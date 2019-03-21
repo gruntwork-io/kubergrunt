@@ -1,7 +1,6 @@
 package helm
 
 import (
-	"crypto/x509/pkix"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -19,32 +18,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
-	"github.com/gruntwork-io/kubergrunt/tls"
 )
-
-func sampleTlsOptions(algorithm string) tls.TLSOptions {
-	options := tls.TLSOptions{
-		DistinguishedName: pkix.Name{
-			CommonName:         "gruntwork.io",
-			Organization:       []string{"Gruntwork"},
-			OrganizationalUnit: []string{"IT"},
-			Locality:           []string{"Phoenix"},
-			Province:           []string{"AZ"},
-			Country:            []string{"US"},
-		},
-		ValidityTimeSpan:    1 * time.Hour,
-		PrivateKeyAlgorithm: algorithm,
-		RSABits:             2048,
-		ECDSACurve:          tls.P256Curve,
-	}
-	return options
-}
-
-func getTestKubectlOptions(t *testing.T) *kubectl.KubectlOptions {
-	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
-	require.NoError(t, err)
-	return kubectl.NewKubectlOptions("", kubeConfigPath)
-}
 
 func getHelmHome(t *testing.T) string {
 	helmHome, err := GetDefaultHelmHome()

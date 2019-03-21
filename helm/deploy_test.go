@@ -34,7 +34,7 @@ func TestGenerateCertificateKeyPairs(t *testing.T) {
 
 func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 	t.Parallel()
-	kubectlOptions := getTestKubectlOptions(t)
+	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 
 	// No Namespace or ServiceAccount
 	err := validateRequiredResourcesForDeploy(kubectlOptions, "this-namespace-doesnt-exist", "this-service-account-doesnt-exist")
@@ -70,10 +70,10 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 
 	imageSpec := "gcr.io/kubernetes-helm/tiller:v2.11.0"
 
-	kubectlOptions := getTestKubectlOptions(t)
+	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 	terratestKubectlOptions := k8s.NewKubectlOptions("", "")
-	tlsOptions := sampleTlsOptions(tls.ECDSAAlgorithm)
-	clientTLSOptions := sampleTlsOptions(tls.ECDSAAlgorithm)
+	tlsOptions := tls.SampleTlsOptions(tls.ECDSAAlgorithm)
+	clientTLSOptions := tls.SampleTlsOptions(tls.ECDSAAlgorithm)
 	clientTLSOptions.DistinguishedName.CommonName = "client"
 	namespaceName := strings.ToLower(random.UniqueId())
 	serviceAccountName := fmt.Sprintf("%s-service-account", namespaceName)
@@ -205,7 +205,7 @@ func validateGenerateCertificateKeyPair(t *testing.T, algorithm string) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	tlsOptions := sampleTlsOptions(algorithm)
+	tlsOptions := tls.SampleTlsOptions(algorithm)
 	caCertificateKeyPair, signedCertificateKeyPair, err := generateCertificateKeyPairs(
 		tlsOptions,
 		algorithm,

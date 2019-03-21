@@ -229,7 +229,7 @@ func generateAndStoreSignedCertificateKeyPair(
 	entityKey := fmt.Sprintf("tiller-client-rbac-%s", rbacEntity.EntityType())
 	clientSecretName := getTillerClientCertSecretName(rbacEntity.EntityID())
 	logger.Infof("Uploading client certificate key pair as secret in namespace %s with name %s", tillerNamespace, clientSecretName)
-	err = StoreCertificateKeyPairAsKubernetesSecret(
+	err = tls.StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
 		clientSecretName,
 		tillerNamespace,
