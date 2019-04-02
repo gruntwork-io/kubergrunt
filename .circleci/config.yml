@@ -71,7 +71,7 @@ install_gruntwork_utils: &install_gruntwork_utils
       --packer-version ${PACKER_VERSION} \
       --use-go-dep \
       --go-version ${GOLANG_VERSION} \
-      --go-src-path ./ 
+      --go-src-path ./
 
 
 version: 2
@@ -146,6 +146,7 @@ jobs:
               --dest-path ./bin \
               --ld-flags "-X main.VERSION=$CIRCLE_TAG -extldflags '-static'"
             upload-github-release-assets ./bin/*
+          no_output_timeout: 900s
 
 workflows:
   version: 2
