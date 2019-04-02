@@ -51,6 +51,8 @@ The following commands are available as part of `kubergrunt`:
     * [configure](#helm-configure)
     * [grant](#grant)
     <!-- not implemented * [revoke](#revoke) -->
+1. [tls](#tls)
+    * [gen](#gen)
 
 ### eks
 
@@ -327,6 +329,61 @@ kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 See the command help for all the available options: `kubergrunt helm revoke --help`.
 
 -->
+
+### tls
+
+The `tls` subcommand of `kubergrunt` is used to manage TLS certificate key pairs as Kubernetes Secrets.
+
+#### gen
+
+This subcommand will generate new TLS certificate key pairs based on the provided configuration arguments. Once the
+certificates are generated, they will be stored on your targeted Kubernetes cluster as
+[Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). This supports features such as:
+
+- Generating a new CA key pair and storing the generated key pair in your Kubernetes cluster.
+- Issuing a new signed TLS certificate key pair using an existing CA stored in your Kubernetes cluster.
+- Replacing the stored certificate key pair in your Kubernetes cluster with a newly generated one.
+- Controlling which Namespace the Secrets are stored in.
+
+For example, to generate a new CA key pair, issue a TLS certificate key pair, storing each of those as the Secrets
+`ca-keypair` and `tls-keypair` respectively:
+
+```bash
+# Generate the CA key pair
+kubergrunt tls gen \
+    --namespace kube-system \
+    --secret-name ca-keypair \
+    --ca \
+    --tls-common-name kiam-ca \
+    --tls-org Gruntwork \
+    --tls-org-unit IT \
+    --tls-city Phoenix \
+    --tls-state AZ \
+    --tls-country US \
+    --version-tag v1
+# Generate a signed TLS key pair using the previously created CA
+kubergrunt tls gen \
+    --namespace kube-system \
+    --secret-name tls-keypair \
+    --ca-secret-name ca-keypair \
+    --tls-common-name kiam-server \
+    --tls-org Gruntwork \
+    --tls-org-unit IT \
+    --tls-city Phoenix \
+    --tls-state AZ \
+    --tls-country US \
+    --version-tag v1
+```
+
+The first command will generate a CA key pair and store it as the Secret `ca-keypair`. The `--ca` argument signals to
+`kubergrunt` that the TLS certificate is for a CA.
+
+The second command uses the generated CA key pair to issue a new TLS key pair. The `--ca-secret-name` signals
+`kubergrunt` to use the CA key pair stored in the Kubernetes Secret `ca-keypair`.
+
+This command should be run by a **cluster administrator** to ensure access to the Secrets are tightly controlled.
+
+See the command help for all the available options: `kubergrunt tls gen --help`.
 
 
 ## Who maintains this project?
