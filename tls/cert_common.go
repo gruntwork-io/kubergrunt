@@ -5,12 +5,15 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"net"
 	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
+
+	"github.com/gruntwork-io/kubergrunt/kubectl"
 )
 
 // CertificateKeyPairPath represents the path where the certificate key pair resides.
@@ -106,4 +109,41 @@ func LoadCertificate(path string) (*x509.Certificate, error) {
 		return nil, errors.WithStackTrace(err)
 	}
 	return certificate, nil
+}
+
+// StoreCertificateKeyPairAsKubernetesSecret will store the provided certificate key pair (which is available in the
+// local file system) in the Kubernetes cluster as a secret.
+func StoreCertificateKeyPairAsKubernetesSecret(
+	kubectlOptions *kubectl.KubectlOptions,
+	secretName string,
+	secretNamespace string,
+	labels map[string]string,
+	annotations map[string]string,
+	nameBase string,
+	certificateKeyPairPath CertificateKeyPairPath,
+	caCertPath string,
+) error {
+	secret := kubectl.PrepareSecret(secretNamespace, secretName, labels, annotations)
+	err := kubectl.AddToSecretFromFile(secret, fmt.Sprintf("%s.crt", nameBase), certificateKeyPairPath.CertificatePath)
+	if err != nil {
+		return err
+	}
+	err = kubectl.AddToSecretFromFile(secret, fmt.Sprintf("%s.pem", nameBase), certificateKeyPairPath.PrivateKeyPath)
+	if err != nil {
+		return err
+	}
+	err = kubectl.AddToSecretFromFile(secret, fmt.Sprintf("%s.pub", nameBase), certificateKeyPairPath.PublicKeyPath)
+	if err != nil {
+		return err
+	}
+
+	// If we also want to store the CA certificate that can be used to validate server or client
+	if caCertPath != "" {
+		err = kubectl.AddToSecretFromFile(secret, "ca.crt", caCertPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return kubectl.CreateSecret(kubectlOptions, secret)
 }

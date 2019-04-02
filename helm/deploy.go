@@ -64,7 +64,7 @@ func Deploy(
 	// Tiller Pods when Tiller is deployed.
 	logger.Info("Uploading CA certificate key pair as a secret")
 	caSecretName := getTillerCACertSecretName(tillerNamespace)
-	err = StoreCertificateKeyPairAsKubernetesSecret(
+	err = tls.StoreCertificateKeyPairAsKubernetesSecret(
 		kubectlOptions,
 		caSecretName,
 		"kube-system",

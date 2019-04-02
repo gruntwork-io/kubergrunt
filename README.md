@@ -360,7 +360,7 @@ kubergrunt tls gen \
     --tls-city Phoenix \
     --tls-state AZ \
     --tls-country US \
-    --version-tag v1
+    --secret-annotation "gruntwork.io/version=v1"
 # Generate a signed TLS key pair using the previously created CA
 kubergrunt tls gen \
     --namespace kube-system \
@@ -372,7 +372,7 @@ kubergrunt tls gen \
     --tls-city Phoenix \
     --tls-state AZ \
     --tls-country US \
-    --version-tag v1
+    --secret-annotation "gruntwork.io/version=v1"
 ```
 
 The first command will generate a CA key pair and store it as the Secret `ca-keypair`. The `--ca` argument signals to
