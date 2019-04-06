@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
@@ -32,10 +34,6 @@ var (
 		Name:  KubeconfigFlagName,
 		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
 	}
-	clusterIDFlag = cli.StringFlag{
-		Name:  "cluster-id, i",
-		Usage: "The name of the EKS cluster for which to retrieve an auth token for.",
-	}
 
 	clusterRegionFlag = cli.StringFlag{
 		Name:  "region",
@@ -59,6 +57,16 @@ var (
 		Name:  "sleep-between-retries",
 		Value: 15 * time.Second,
 		Usage: "The amount of time to sleep between retries as duration (e.g 10m = 10 minutes) for retry loops during the command. The total amount of time this command will try is based on max-retries and sleep-between-retries. Defaults to 15 seconds.",
+	}
+
+	// Token related flags
+	clusterIDFlag = cli.StringFlag{
+		Name:  "cluster-id, i",
+		Usage: "The name of the EKS cluster for which to retrieve an auth token for.",
+	}
+	tokenAsTFDataFlag = cli.BoolFlag{
+		Name:  "as-tf-data",
+		Usage: "Output the EKS authentication token in a format compatible for use as an external data source in Terraform.",
 	}
 )
 
@@ -99,6 +107,7 @@ func SetupEksCommand() cli.Command {
 				Action:      getAuthToken,
 				Flags: []cli.Flag{
 					clusterIDFlag,
+					tokenAsTFDataFlag,
 				},
 			},
 			cli.Command{
@@ -206,6 +215,7 @@ func getAuthToken(cliContext *cli.Context) error {
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
+	tokenAsTFData := cliContext.Bool(tokenAsTFDataFlag.Name)
 
 	gen, err := token.NewGenerator(false)
 	if err != nil {
@@ -215,9 +225,21 @@ func getAuthToken(cliContext *cli.Context) error {
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
-	out := gen.FormatJSON(tok)
-	// `kubectl` will parse the JSON from stdout to read in what token to use for authenticating with the cluster.
-	fmt.Println(out)
+	if tokenAsTFData {
+		// When using as a terraform data source, we need to return the token itself.
+		tokenData := struct {
+			TokenData string `json:"token_data"`
+		}{TokenData: tok.Token}
+		bytesOut, err := json.Marshal(tokenData)
+		if err != nil {
+			return err
+		}
+		os.Stdout.Write(bytesOut)
+	} else {
+		out := gen.FormatJSON(tok)
+		// `kubectl` will parse the JSON from stdout to read in what token to use for authenticating with the cluster.
+		fmt.Println(out)
+	}
 	return nil
 }
 
