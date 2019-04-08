@@ -42,7 +42,7 @@ func GetLoadBalancerNames(kubectlOptions *KubectlOptions) ([]string, error) {
 	logger := logging.GetProjectLogger()
 	logger.Infof("Getting all LoadBalancer names from services in kubernetes")
 
-	client, err := GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	client, err := GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}

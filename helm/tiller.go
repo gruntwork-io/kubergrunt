@@ -31,7 +31,7 @@ func InstallTiller(
 	serviceAccountName string,
 	imageSpec string,
 ) (string, error) {
-	client, err := kubectl.GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	client, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return "", err
 	}
@@ -74,7 +74,7 @@ func WaitForTiller(
 ) error {
 	logger := logging.GetProjectLogger()
 
-	kubeClient, err := kubectl.GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	kubeClient, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func VerifyTiller(
 ) error {
 	logger := logging.GetProjectLogger()
 
-	kubeClient, err := kubectl.GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	kubeClient, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return err
 	}

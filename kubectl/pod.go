@@ -8,7 +8,7 @@ import (
 
 // ListPods will look for pods in the given namespace and return them.
 func ListPods(options *KubectlOptions, namespace string, filters metav1.ListOptions) ([]corev1.Pod, error) {
-	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)
+	client, err := GetKubernetesClientFromOptions(options)
 	if err != nil {
 		return nil, err
 	}

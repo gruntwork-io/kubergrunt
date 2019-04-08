@@ -23,7 +23,7 @@ func WaitForNodesReady(
 	logger := logging.GetProjectLogger()
 	logger.Infof("Waiting for %d nodes in Kubernetes to reach ready state", len(nodeIds))
 
-	client, err := GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	client, err := GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}

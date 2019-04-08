@@ -264,7 +264,7 @@ func createAndBindRBACRolesForTillerAccess(
 ) error {
 	logger := logging.GetProjectLogger()
 
-	client, err := kubectl.GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	client, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return err
 	}
