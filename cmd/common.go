@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/urfave/cli"
 
@@ -88,19 +89,18 @@ func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, erro
 
 	// Set defaults for the optional parameters, if unset
 	var kubectlCA, kubectlToken string
+	var err error
 	kubectlServer := cliContext.String(KubectlServerFlagName)
 	if kubectlServer != "" {
 		logger.Infof("--%s provided. Checking for --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName, KubectlTokenFlagName)
 		kubectlCA, err = entrypoint.StringFlagRequiredE(cliContext, KubectlCAFlagName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		kubectlToken, err = entrypoint.StringFlagRequiredE(cliContext, KubectlTokenFlagName)
 		if err != nil {
-			return err
+			return nil, err
 		}
-	} else {
-		logger.Infof("No server provided. Falling back to kubeconfig and context.")
 	}
 
 	kubectlContextName := cliContext.String(KubectlContextNameFlagName)
