@@ -107,6 +107,36 @@ The `configure` subcommand of `kubergrunt eks` assumes you will be using this me
 cluster provided by EKS. If you wish to use `aws-iam-authenticator` instead, replace the auth info clause of the `kubectl`
 config context.
 
+This subcommand also supports outputting the token in a format that is consumable by terraform as an [external data
+source](https://www.terraform.io/docs/providers/external/data_source.html) when you pass in the `--as-tf-data` CLI arg.
+You can then pass the token directly into the `kubernetes` provider configuration. For example:
+
+```hcl
+# NOTE: Terraform does not allow you to interpolate resources in a provider config. We work around this by using the
+# template_file data source as a means to compute the resource interpolations.
+provider "kubernetes" {
+  load_config_file       = false
+  host                   = "${data.template_file.kubernetes_cluster_endpoint.rendered}"
+  cluster_ca_certificate = "${base64decode(data.template_file.kubernetes_cluster_ca.rendered)}"
+  token                  = "${lookup(data.external.kubernetes_token.result, "token_data")}"
+}
+
+data "template_file" "kubernetes_cluster_endpoint" {
+  template = "${module.eks_cluster.eks_cluster_endpoint}"
+}
+
+data "template_file" "kubernetes_cluster_ca" {
+  template = "${module.eks_cluster.eks_cluster_certificate_authority}"
+}
+
+data "external" "kubernetes_token" {
+  program = ["kubergrunt", "--loglevel", "error", "eks", "token", "--as-tf-data", "--cluster-id", "${module.eks_cluster.eks_cluster_name}"]
+}
+```
+
+This will configure the `kubernetes` provider in Terraform without setting up kubeconfig, allowing you to do everything
+in Terraform without side effects to your local machine.
+
 
 #### deploy
 
