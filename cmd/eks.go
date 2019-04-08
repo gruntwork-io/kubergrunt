@@ -13,8 +13,6 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/kubergrunt/eks"
-	"github.com/gruntwork-io/kubergrunt/kubectl"
-	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 var (
@@ -153,28 +151,6 @@ func verifyCluster(cliContext *cli.Context) error {
 	waitMaxRetries := cliContext.Int(waitMaxRetriesFlag.Name)
 	waitSleepBetweenRetries := cliContext.Duration(waitSleepBetweenRetriesFlag.Name)
 	return eks.VerifyCluster(eksClusterArn, wait, waitMaxRetries, waitSleepBetweenRetries)
-}
-
-// parseKubectlOptions extracts kubectl related params from CLI flags
-func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, error) {
-	logger := logging.GetProjectLogger()
-
-	// Set defaults for the optional parameters, if unset
-	kubectlContextName := cliContext.String(KubectlContextNameFlagName)
-	if kubectlContextName == "" {
-		logger.Infof("No context name provided. Using default.")
-	}
-	kubeconfigPath := cliContext.String(KubeconfigFlagName)
-	if kubeconfigPath == "" {
-		defaultKubeconfigPath, err := kubectl.KubeConfigPathFromHomeDir()
-		if err != nil {
-			return nil, errors.WithStackTrace(err)
-		}
-		kubeconfigPath = defaultKubeconfigPath
-		logger.Infof("No kube config path provided. Using default (%s)", kubeconfigPath)
-	}
-
-	return kubectl.NewKubectlOptions(kubectlContextName, kubeconfigPath), nil
 }
 
 // Command action for `kubergrunt eks configure`

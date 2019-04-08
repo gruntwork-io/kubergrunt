@@ -56,6 +56,18 @@ var (
 		Name:  KubeconfigFlagName,
 		Usage: "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
 	}
+	helmKubectlServerFlag = cli.StringFlag{
+		Name:  KubectlServerFlagName,
+		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
+	}
+	helmKubectlCAFlag = cli.StringFlag{
+		Name:  KubectlCAFlagName,
+		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
+	}
+	helmKubectlTokenFlag = cli.StringFlag{
+		Name:  KubectlTokenFlagName,
+		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
+	}
 
 	// Configurations for setting up the TLS certificates.
 	// NOTE: the args for setting up the CA and server TLS certificates are defined in cmd/common.go
@@ -182,6 +194,9 @@ Additionally, this command will grant access to an RBAC entity and configure the
 					helmHomeFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
 				},
 			},
 			cli.Command{
@@ -198,6 +213,9 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 					tillerNamespaceFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
 				},
 			},
 			cli.Command{
@@ -222,6 +240,9 @@ You must pass in an identifier for your account. This is either the name of the 
 					setKubectlNamespaceFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
 				},
 			},
 			cli.Command{
@@ -246,6 +267,9 @@ You must pass in an identifier for your account. This is either the name of the 
 					tlsRSABitsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
 				},
 			},
 		},

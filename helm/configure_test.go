@@ -22,7 +22,7 @@ func TestSetKubectlNamespaceSetsTheDefaultNamespace(t *testing.T) {
 	tmpConfigPath := copyKubeconfigToTempFile(t)
 	logger.Logf(t, "Created temp kubeconfig %s", tmpConfigPath)
 	defer os.Remove(tmpConfigPath)
-	options := kubectl.NewKubectlOptions("", tmpConfigPath)
+	options := &kubectl.KubectlOptions{ConfigPath: tmpConfigPath}
 	tempTerratestKubectlOptions := k8s.NewKubectlOptions("", tmpConfigPath)
 
 	// Create a new namespace and create a configmap resource
