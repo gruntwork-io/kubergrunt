@@ -22,7 +22,7 @@ const (
 	// Alternative to using contexts
 	KubectlServerFlagName = "kubectl-server-endpoint"
 	KubectlCAFlagName     = "kubectl-certificate-authority"
-	KubectlTokenFlagName  = "kubectl-token-name"
+	KubectlTokenFlagName  = "kubectl-token"
 )
 
 var (
