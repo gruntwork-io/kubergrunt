@@ -199,7 +199,7 @@ func VerifyTiller(
 
 // SetupConnection will setup a tunnel to a deployed Tiller instance.
 func SetupConnection(kubeClient *kubernetes.Clientset, kubectlOptions *kubectl.KubectlOptions, tillerNamespace string) (*helmkube.Tunnel, error) {
-	config, err := kubectl.LoadApiClientConfig(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	config, err := kubectl.LoadApiClientConfigFromOptions(kubectlOptions)
 	if err != nil {
 		return nil, err
 	}
