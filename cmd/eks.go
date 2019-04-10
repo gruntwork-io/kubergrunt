@@ -32,6 +32,18 @@ var (
 		Name:  KubeconfigFlagName,
 		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
 	}
+	eksKubectlServerFlag = cli.StringFlag{
+		Name:  KubectlServerFlagName,
+		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
+	}
+	eksKubectlCAFlag = cli.StringFlag{
+		Name:  KubectlCAFlagName,
+		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
+	}
+	eksKubectlTokenFlag = cli.StringFlag{
+		Name:  KubectlTokenFlagName,
+		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
+	}
 
 	clusterRegionFlag = cli.StringFlag{
 		Name:  "region",
@@ -131,6 +143,9 @@ If max-retries is unspecified, this command will use a value that translates to 
 					clusterAsgNameFlag,
 					eksKubectlContextNameFlag,
 					eksKubeconfigFlag,
+					eksKubectlServerFlag,
+					eksKubectlCAFlag,
+					eksKubectlTokenFlag,
 					drainTimeoutFlag,
 					waitMaxRetriesFlag,
 					waitSleepBetweenRetriesFlag,
