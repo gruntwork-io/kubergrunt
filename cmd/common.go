@@ -4,15 +4,25 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gruntwork-io/kubergrunt/tls"
+	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
+	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/urfave/cli"
+
+	"github.com/gruntwork-io/kubergrunt/kubectl"
+	"github.com/gruntwork-io/kubergrunt/logging"
+	"github.com/gruntwork-io/kubergrunt/tls"
 )
 
 // List out common flag names
 
 const (
-	KubectlContextNameFlagName = "kubectl-context-name"
 	KubeconfigFlagName         = "kubeconfig"
+	KubectlContextNameFlagName = "kubectl-context-name"
+
+	// Alternative to using contexts
+	KubectlServerFlagName = "kubectl-server-endpoint"
+	KubectlCAFlagName     = "kubectl-certificate-authority"
+	KubectlTokenFlagName  = "kubectl-token"
 )
 
 var (
@@ -72,3 +82,47 @@ var (
 		),
 	}
 )
+
+// parseKubectlOptions extracts kubectl related params from CLI flags
+func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, error) {
+	logger := logging.GetProjectLogger()
+
+	// Set defaults for the optional parameters, if unset
+	var kubectlCA, kubectlToken string
+	var err error
+	kubectlServer := cliContext.String(KubectlServerFlagName)
+	if kubectlServer != "" {
+		logger.Infof("--%s provided. Checking for --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName, KubectlTokenFlagName)
+		kubectlCA, err = entrypoint.StringFlagRequiredE(cliContext, KubectlCAFlagName)
+		if err != nil {
+			return nil, err
+		}
+		kubectlToken, err = entrypoint.StringFlagRequiredE(cliContext, KubectlTokenFlagName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	kubectlContextName := cliContext.String(KubectlContextNameFlagName)
+	if kubectlServer == "" && kubectlContextName == "" {
+		logger.Infof("No context name provided. Using default.")
+	}
+	kubeconfigPath := cliContext.String(KubeconfigFlagName)
+	if kubectlServer == "" && kubeconfigPath == "" {
+		defaultKubeconfigPath, err := kubectl.KubeConfigPathFromHomeDir()
+		if err != nil {
+			return nil, errors.WithStackTrace(err)
+		}
+		kubeconfigPath = defaultKubeconfigPath
+		logger.Infof("No kube config path provided. Using default (%s)", kubeconfigPath)
+	}
+
+	kubectlOptions := &kubectl.KubectlOptions{
+		ContextName:                   kubectlContextName,
+		ConfigPath:                    kubeconfigPath,
+		Server:                        kubectlServer,
+		Base64PEMCertificateAuthority: kubectlCA,
+		BearerToken:                   kubectlToken,
+	}
+	return kubectlOptions, nil
+}

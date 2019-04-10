@@ -10,5 +10,5 @@ import (
 func GetTestKubectlOptions(t *testing.T) *KubectlOptions {
 	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
 	require.NoError(t, err)
-	return NewKubectlOptions("", kubeConfigPath)
+	return &KubectlOptions{ConfigPath: kubeConfigPath}
 }

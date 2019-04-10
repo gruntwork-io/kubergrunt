@@ -13,7 +13,7 @@ func TestListPodsReturnsPods(t *testing.T) {
 
 	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
 	require.NoError(t, err)
-	kubectlOptions := NewKubectlOptions("", kubeConfigPath)
+	kubectlOptions := &KubectlOptions{ConfigPath: kubeConfigPath}
 
 	// There are always Pods in the kube-system namespace in any kubernetes cluster
 	pods, err := ListPods(kubectlOptions, "kube-system", metav1.ListOptions{})

@@ -42,7 +42,7 @@ func AddToSecretFromData(secret *corev1.Secret, key string, rawData []byte) {
 
 // CreateSecret will create the provided secret on the Kubernetes cluster.
 func CreateSecret(options *KubectlOptions, newSecret *corev1.Secret) error {
-	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)
+	client, err := GetKubernetesClientFromOptions(options)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func CreateSecret(options *KubectlOptions, newSecret *corev1.Secret) error {
 
 // GetSecret will get a Kubernetes secret by name in the provided namespace.
 func GetSecret(options *KubectlOptions, namespace string, name string) (*corev1.Secret, error) {
-	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)
+	client, err := GetKubernetesClientFromOptions(options)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func GetSecret(options *KubectlOptions, namespace string, name string) (*corev1.
 
 // ListSecrets will list all the secrets that match the provided filters in the provided namespace.
 func ListSecrets(options *KubectlOptions, namespace string, filters metav1.ListOptions) ([]corev1.Secret, error) {
-	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)
+	client, err := GetKubernetesClientFromOptions(options)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func ListSecrets(options *KubectlOptions, namespace string, filters metav1.ListO
 
 // DeleteSecret will delete the secret in the provided namespace that has the provided name.
 func DeleteSecret(options *KubectlOptions, namespace string, secretName string) error {
-	client, err := GetKubernetesClientFromFile(options.ConfigPath, options.ContextName)
+	client, err := GetKubernetesClientFromOptions(options)
 	if err != nil {
 		return err
 	}

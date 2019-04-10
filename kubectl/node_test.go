@@ -16,7 +16,7 @@ func TestWaitForNodesReady(t *testing.T) {
 
 	node := getNodes(t)[0]
 	nodeID := node.Name
-	require.NoError(t, WaitForNodesReady(NewKubectlOptions("", kubeConfigPath), []string{nodeID}, 40, 15*time.Second))
+	require.NoError(t, WaitForNodesReady(&KubectlOptions{ConfigPath: kubeConfigPath}, []string{nodeID}, 40, 15*time.Second))
 }
 
 func TestFilterNodesById(t *testing.T) {

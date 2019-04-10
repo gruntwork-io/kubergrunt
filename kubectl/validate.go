@@ -7,7 +7,7 @@ import (
 
 // ValidateNamespaceExists will return an error if the provided namespace does not exist on the Kubernetes cluster.
 func ValidateNamespaceExists(kubectlOptions *KubectlOptions, namespace string) error {
-	client, err := GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	client, err := GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -22,7 +22,7 @@ func ValidateNamespaceExists(kubectlOptions *KubectlOptions, namespace string) e
 // ValidateServiceAccountExists will return an error if the provided service account does not exist on the provided
 // namespace in the Kubernetes cluster.
 func ValidateServiceAccountExists(kubectlOptions *KubectlOptions, namespace string, serviceAccount string) error {
-	client, err := GetKubernetesClientFromFile(kubectlOptions.ConfigPath, kubectlOptions.ContextName)
+	client, err := GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}

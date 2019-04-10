@@ -134,7 +134,7 @@ func createServiceAccountForAuth(t *testing.T, terratestKubectlOptions *k8s.Kube
 		serviceAccountName,
 	)
 	// Finally, create a new KubectlOption that can be used in the context
-	return serviceAccountName, kubectl.NewKubectlOptions(contextName, configPath)
+	return serviceAccountName, &kubectl.KubectlOptions{ContextName: contextName, ConfigPath: configPath}
 }
 
 // copyKubeconfigToTempFile will copy the default kubeconfig to a temp file that can be used to test config manipulation

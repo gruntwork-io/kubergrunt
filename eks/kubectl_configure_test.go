@@ -35,7 +35,7 @@ func TestEksKubectlConfigureHonorsKubeConfigPath(t *testing.T) {
 		Endpoint:             aws.String("gruntwork.io"),
 		CertificateAuthority: &eks.Certificate{Data: aws.String(b64CertificateAuthorityData)},
 	}
-	options := kubectl.NewKubectlOptions(t.Name(), kubeconfigPath)
+	options := &kubectl.KubectlOptions{ContextName: t.Name(), ConfigPath: kubeconfigPath}
 	err = ConfigureKubectlForEks(mockCluster, options)
 	require.NoError(t, err)
 

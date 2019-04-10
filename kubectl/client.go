@@ -10,21 +10,19 @@ import (
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
-// GetKubernetesClientFromFile returns a Kubernetes API client given the kubernetes config file path.
-func GetKubernetesClientFromFile(kubeConfigPath string, contextName string) (*kubernetes.Clientset, error) {
+// GetKubernetesClientFromOptions returns a Kubernetes API client given a KubectlOptions object. Constructs the client
+// based on the information in the struct:
+// - If Server is set, assume direct auth methods and use Server, Base64PEMCertificateAuthority, and BearerToken to
+//   construct authenticated client.
+// - Else, use ConfigPath and ContextName to load the config from disk and setup the client to use the auth method
+//   provided in the context.
+func GetKubernetesClientFromOptions(kubectlOptions *KubectlOptions) (*kubernetes.Clientset, error) {
 	logger := logging.GetProjectLogger()
-	logger.Infof("Loading Kubernetes Client with config %s and context %s", kubeConfigPath, contextName)
+	logger.Infof("Loading Kubernetes Client")
 
-	// Load API config (instead of more low level ClientConfig)
-	config, err := LoadApiClientConfig(kubeConfigPath, contextName)
+	config, err := LoadApiClientConfigFromOptions(kubectlOptions)
 	if err != nil {
 		return nil, err
 	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientset, nil
+	return kubernetes.NewForConfig(config)
 }

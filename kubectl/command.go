@@ -8,6 +8,17 @@ import (
 func RunKubectl(options *KubectlOptions, args ...string) error {
 	shellOptions := shell.NewShellOptions()
 	cmdArgs := []string{}
+	if options.Server != "" {
+		caFile, err := options.TempCAFile()
+		if err != nil {
+			return err
+		}
+		// Using direct auth, which contains secrets in the CLI args so mark as sensitive
+		shellOptions.SensitiveArgs = true
+		cmdArgs = append(cmdArgs, "--server", options.Server)
+		cmdArgs = append(cmdArgs, "--certificate-authority", caFile)
+		cmdArgs = append(cmdArgs, "--token", options.BearerToken)
+	}
 	if options.ContextName != "" {
 		cmdArgs = append(cmdArgs, "--context", options.ContextName)
 	}

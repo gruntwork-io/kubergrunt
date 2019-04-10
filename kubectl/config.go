@@ -8,6 +8,8 @@ import (
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	homedir "github.com/mitchellh/go-homedir"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -136,6 +138,38 @@ func LoadConfigFromPath(path string) clientcmd.ClientConfig {
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: path},
 		&clientcmd.ConfigOverrides{})
 	return config
+}
+
+// LoadApiClientConfig will load a ClientConfig object based on the provided KubectlOptions. Specifically, this will
+// create the config in memory if using direct auth, and load from disk if not.
+func LoadApiClientConfigFromOptions(options *KubectlOptions) (*restclient.Config, error) {
+	logger := logging.GetProjectLogger()
+
+	if options.Server == "" {
+		// Direct auth info is not filled in, so assume loading from file.
+		logger.Infof("No direct auth methods provided. Using config on disk and context.")
+		return LoadApiClientConfig(options.ConfigPath, options.ContextName)
+	}
+
+	logger.Infof("Using direct auth methods to setup client.")
+	caData, err := base64.StdEncoding.DecodeString(options.Base64PEMCertificateAuthority)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &restclient.Config{
+		Host:        options.Server,
+		BearerToken: options.BearerToken,
+		ContentConfig: restclient.ContentConfig{
+			GroupVersion:         &corev1.SchemeGroupVersion,
+			NegotiatedSerializer: scheme.Codecs,
+		},
+		TLSClientConfig: restclient.TLSClientConfig{
+			Insecure: false,
+			CAData:   caData,
+		},
+	}
+	return config, nil
 }
 
 // LoadApiClientConfig will load a ClientConfig object from a file path that points to a location on disk containing a
