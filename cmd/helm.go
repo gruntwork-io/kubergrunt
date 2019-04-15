@@ -71,13 +71,17 @@ var (
 
 	// Configurations for setting up the TLS certificates.
 	// NOTE: the args for setting up the CA and server TLS certificates are defined in cmd/common.go
+	clientTLSSubjectJsonFlag = cli.StringFlag{
+		Name:  "client-tls-subject-json",
+		Usage: "Provide the client TLS subject info as json. You can specify the common name (common_name), org (org), org unit (org_unit), city (city), state (state), and country (country) fields.",
+	}
 	clientTLSCommonNameFlag = cli.StringFlag{
 		Name:  "client-tls-common-name",
-		Usage: "(Required) The name that will go into the CN (CommonName) field of the identifier for the client.",
+		Usage: "(Required) The name that will go into the CN (CommonName) field of the identifier for the client. Can be omitted if the information is provided in --client-tls-subject-json.",
 	}
 	clientTLSOrgFlag = cli.StringFlag{
 		Name:  "client-tls-org",
-		Usage: "(Required) The name of the company that is generating this cert for the client.",
+		Usage: "(Required) The name of the company that is generating this cert for the client. Can be omitted if the information is provided in --client-tls-subject-json.",
 	}
 	clientTLSOrgUnitFlag = cli.StringFlag{
 		Name:  "client-tls-org-unit",
@@ -94,6 +98,15 @@ var (
 	clientTLSCountryFlag = cli.StringFlag{
 		Name:  "client-tls-country",
 		Usage: "The country where --client-tls-org is located.",
+	}
+	clientTLSSubjectInfoFlags = TLSFlags{
+		SubjectInfoJsonFlagName: clientTLSSubjectJsonFlag.Name,
+		CommonNameFlagName:      clientTLSCommonNameFlag.Name,
+		OrgFlagName:             clientTLSOrgFlag.Name,
+		OrgUnitFlagName:         clientTLSOrgUnitFlag.Name,
+		CityFlagName:            clientTLSCityFlag.Name,
+		StateFlagName:           clientTLSStateFlag.Name,
+		CountryFlagName:         clientTLSCountryFlag.Name,
 	}
 
 	// Configurations for granting and revoking access to clients
@@ -179,6 +192,7 @@ Additionally, this command will grant access to an RBAC entity and configure the
 					// Optional flags
 					tillerImageFlag,
 					tillerVersionFlag,
+					tlsSubjectJsonFlag,
 					tlsOrgUnitFlag,
 					tlsCityFlag,
 					tlsStateFlag,
@@ -187,6 +201,7 @@ Additionally, this command will grant access to an RBAC entity and configure the
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					clientTLSSubjectJsonFlag,
 					clientTLSOrgUnitFlag,
 					clientTLSCityFlag,
 					clientTLSStateFlag,
@@ -255,6 +270,7 @@ You must pass in an identifier for your account. This is either the name of the 
 					grantedRbacGroupsFlag,
 					grantedRbacUsersFlag,
 					grantedServiceAccountsFlag,
+					tlsSubjectJsonFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
 					tlsOrgUnitFlag,
@@ -443,9 +459,9 @@ func parseTLSArgs(cliContext *cli.Context, isClient bool) (tls.TLSOptions, error
 	var distinguishedName pkix.Name
 	var err error
 	if isClient {
-		distinguishedName, err = clientTLSDistinguishedNameFlagsAsPkixName(cliContext)
+		distinguishedName, err = parseTLSFlagsToPkixName(cliContext, clientTLSSubjectInfoFlags)
 	} else {
-		distinguishedName, err = tlsDistinguishedNameFlagsAsPkixName(cliContext)
+		distinguishedName, err = parseTLSFlagsToPkixName(cliContext, tlsSubjectInfoFlags)
 	}
 	if err != nil {
 		return tls.TLSOptions{}, err
@@ -470,82 +486,6 @@ func parseTLSArgs(cliContext *cli.Context, isClient bool) (tls.TLSOptions, error
 		return tlsOptions, err
 	}
 	return tlsOptions, nil
-}
-
-// tlsDistinguishedNameFlagsAsPkixName takes the CLI args related to setting up the Distinguished Name identifier of
-// the TLS certificate and converts them to the pkix.Name struct.
-func tlsDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, error) {
-	// The CommonName and Org are required for a valid TLS cert
-	commonName, err := entrypoint.StringFlagRequiredE(cliContext, tlsCommonNameFlag.Name)
-	if err != nil {
-		return pkix.Name{}, err
-	}
-	org, err := entrypoint.StringFlagRequiredE(cliContext, tlsOrgFlag.Name)
-	if err != nil {
-		return pkix.Name{}, err
-	}
-
-	// The other fields are optional
-	orgUnit := cliContext.String(tlsOrgUnitFlag.Name)
-	city := cliContext.String(tlsCityFlag.Name)
-	state := cliContext.String(tlsStateFlag.Name)
-	country := cliContext.String(tlsCountryFlag.Name)
-
-	distinguishedName := pkix.Name{
-		CommonName:   commonName,
-		Organization: []string{org},
-	}
-	if orgUnit != "" {
-		distinguishedName.OrganizationalUnit = []string{orgUnit}
-	}
-	if city != "" {
-		distinguishedName.Locality = []string{city}
-	}
-	if state != "" {
-		distinguishedName.Province = []string{state}
-	}
-	if country != "" {
-		distinguishedName.Country = []string{country}
-	}
-	return distinguishedName, nil
-}
-
-// clientTLSDistinguishedNameFlagsAsPkixName takes the CLI args related to setting up the Distinguished Name identifier of
-// the client side TLS certificate and converts them to the pkix.Name struct.
-func clientTLSDistinguishedNameFlagsAsPkixName(cliContext *cli.Context) (pkix.Name, error) {
-	// The CommonName and Org are required for a valid TLS cert
-	commonName, err := entrypoint.StringFlagRequiredE(cliContext, clientTLSCommonNameFlag.Name)
-	if err != nil {
-		return pkix.Name{}, err
-	}
-	org, err := entrypoint.StringFlagRequiredE(cliContext, clientTLSOrgFlag.Name)
-	if err != nil {
-		return pkix.Name{}, err
-	}
-
-	// The other fields are optional
-	orgUnit := cliContext.String(clientTLSOrgUnitFlag.Name)
-	city := cliContext.String(clientTLSCityFlag.Name)
-	state := cliContext.String(clientTLSStateFlag.Name)
-	country := cliContext.String(clientTLSCountryFlag.Name)
-
-	distinguishedName := pkix.Name{
-		CommonName:   commonName,
-		Organization: []string{org},
-	}
-	if orgUnit != "" {
-		distinguishedName.OrganizationalUnit = []string{orgUnit}
-	}
-	if city != "" {
-		distinguishedName.Locality = []string{city}
-	}
-	if state != "" {
-		distinguishedName.Province = []string{state}
-	}
-	if country != "" {
-		distinguishedName.Country = []string{country}
-	}
-	return distinguishedName, nil
 }
 
 // parseHelmHomeWithDefault will take the helm home option and return it, or the default ~/.helm.
