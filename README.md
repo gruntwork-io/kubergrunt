@@ -2,8 +2,8 @@
 
 # kubergrunt
 
-`kubergrunt` is an encompassing tool that attempts to fill in the gaps between Terraform, Helm, and Kubectl for managing
-a Kubernetes Cluster.
+`kubergrunt` is a collection of scripts embedded into a go binary that attempts to fill in the gaps between Terraform,
+Helm, and Kubectl for managing a Kubernetes Cluster.
 
 Some of the features of `kubergrunt` include:
 
