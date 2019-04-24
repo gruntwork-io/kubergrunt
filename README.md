@@ -20,10 +20,10 @@ corresponding release in the [Releases Page](/../../releases). You can download 
 platform from the releases page.
 
 Alternatively, you can install `kubergrunt` using the [Gruntwork
-Installer](https://github.com/gruntwork-io/gruntwork-installer):
+Installer](https://github.com/gruntwork-io/gruntwork-installer). For example, to install version `v0.3.6`:
 
 ```bash
-gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.0.1"
+gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.3.6"
 ```
 
 
