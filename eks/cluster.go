@@ -56,8 +56,8 @@ func VerifyCluster(
 	logger.Infof("Checking if EKS cluster %s exists", eksClusterArn)
 
 	if waitForCluster && waitMaxRetries == 0 {
-		// Default is 30 minutes / duration
-		waitMaxRetries = int(math.Trunc(1800 / waitSleepBetweenRetries.Seconds()))
+		// Default is 5 minutes / duration
+		waitMaxRetries = int(math.Trunc(300 / waitSleepBetweenRetries.Seconds()))
 	}
 
 	clusterInfo, err := GetClusterByArn(eksClusterArn)
@@ -191,7 +191,6 @@ func waitForKubernetesApiServer(eksClusterArn string, maxRetries int, sleepBetwe
 		time.Sleep(sleepBetweenRetries)
 	}
 	return errors.WithStackTrace(EKSClusterReadyTimeoutError{eksClusterArn})
-
 }
 
 // NewEksClient creates an EKS client.
