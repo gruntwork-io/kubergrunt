@@ -51,6 +51,8 @@ The following commands are available as part of `kubergrunt`:
     * [configure](#helm-configure)
     * [grant](#grant)
     <!-- not implemented * [revoke](#revoke) -->
+1. [k8s](#k8s)
+    * [wait-for-ingress](#wait-for-ingress)
 1. [tls](#tls)
     * [gen](#gen)
 
@@ -359,6 +361,34 @@ kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 See the command help for all the available options: `kubergrunt helm revoke --help`.
 
 -->
+
+### k8s
+
+The `k8s` subcommand of `kubergrunt` includes commands that directly interact with the Kubernetes resources.
+
+#### wait-for-ingress
+
+This subcommand waits for the Ingress endpoint to be provisioned. This will monitor the Ingress resource, continuously
+checking until the endpoint is allocated to the Ingress resource or times out. By default, this will try for 5 minutes
+(max retries 60 and time betweeen sleep of 5 seconds).
+
+You can configure the timeout settings using the --max-retries and --sleep-between-retries CLI args. This will check for
+--max-retries times, sleeping for --sleep-between-retries inbetween tries.
+
+For example, if you ran the command:
+
+```bash
+kubergrunt k8s wait-for-ingress \
+    --ingress-name $INGRESS_NAME \
+    --namespace $NAMESPACE \
+    --max-retries 10 \
+    --sleep-between-retries 15s
+```
+
+this command will query the Kubernetes API to check the `Ingress` resource up to 10 times, waiting for 15 seconds
+inbetween each try for a total of 150 seconds (2.5 minutes) before timing out.
+
+Run `kubergrunt k8s wait-for-ingress --help` to see all the available options.
 
 ### tls
 
