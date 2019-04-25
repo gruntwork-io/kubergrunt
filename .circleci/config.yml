@@ -3,66 +3,31 @@ defaults: &defaults
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.21
     TERRATEST_LOG_PARSER_VERSION: v0.13.13
-    MODULE_CI_VERSION: v0.13.3
+    MODULE_CI_VERSION: v0.13.12
     TERRAFORM_VERSION: NONE
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
     GOLANG_VERSION: 1.11.2
-    K8S_VERSION: v1.10.0   # Same as EKS
-    HELM_VERSION: v2.11.0  # Same as helm provider
     KUBECONFIG: /home/circleci/.kube/config
-    MINIKUBE_VERSION: v0.28.2  # See https://github.com/kubernetes/minikube/issues/2704
-    MINIKUBE_WANTUPDATENOTIFICATION: "false"
-    MINIKUBE_WANTREPORTERRORPROMPT: "false"
-    MINIKUBE_HOME: /home/circleci
-    CHANGE_MINIKUBE_NONE_USER: "true"
+    HELM_VERSION: v2.11.0  # Same as helm provider
 
-# Install and setup minikube
-# https://github.com/kubernetes/minikube#linux-continuous-integration-without-vm-support
-setup_minikube: &setup_minikube
-  name: install helm, kubectl and minikube
-  working_directory: /tmp
+
+install_helm_client: &install_helm_client
+  name: install helm
   command: |
-    # install kubectl
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/linux/amd64/kubectl
-    chmod +x kubectl
-    sudo mv kubectl /usr/local/bin/
-    mkdir -p ${HOME}/.kube
-    touch ${HOME}/.kube/config
-
     # install helm
     curl -Lo helm.tar.gz https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz
     tar -xvf helm.tar.gz
     chmod +x linux-amd64/helm
     sudo mv linux-amd64/helm /usr/local/bin/
 
-    # Install minikube
-    curl -Lo minikube https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64
-    chmod +x minikube
-    sudo mv minikube /usr/local/bin/
-
-    # start minikube and wait for it
-    # Ignore warnings on minikube start command, as it will log a warning due to using deprecated localkube
-    # bootstrapper. However, the localkube bootstrapper is necessary to run on CircleCI which doesn't have
-    # systemd.
-    sudo -E minikube start --vm-driver=none --kubernetes-version=${K8S_VERSION} --bootstrapper=localkube
-    # this for loop waits until kubectl can access the api server that Minikube has created
-    $(
-      for i in {1..150}; do # timeout for 5 minutes
-        kubectl get po &> /dev/null
-        if [ $? -ne 1 ]; then
-          break
-        fi
-        sleep 2
-      done
-      true
-    )
 
 install_gruntwork_utils: &install_gruntwork_utils
   name: install gruntwork utils
   command: |
     curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
     gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "${MODULE_CI_VERSION}"
+    gruntwork-install --module-name "kubernetes-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "${MODULE_CI_VERSION}"
     gruntwork-install --binary-name "terratest_log_parser" --repo "https://github.com/gruntwork-io/terratest" --tag "${TERRATEST_LOG_PARSER_VERSION}"
     configure-environment-for-gruntwork-module \
       --circle-ci-2-machine-executor \
@@ -108,7 +73,10 @@ jobs:
           <<: *install_gruntwork_utils
 
       - run:
-          <<: *setup_minikube
+          command: setup-minikube
+
+      - run:
+          <<: *install_helm_client
 
       - run:
           name: run kubergrunt tests
