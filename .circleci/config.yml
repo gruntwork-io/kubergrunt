@@ -75,7 +75,9 @@ jobs:
           <<: *install_gruntwork_utils
 
       - run:
-          command: setup-minikube
+          command: |
+            cd /home/circleci
+            setup-minikube
 
       - run:
           <<: *install_helm_client
