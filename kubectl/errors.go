@@ -98,3 +98,17 @@ func (err LoadBalancerNameFormatError) Error() string {
 func NewLoadBalancerNameFormatError(hostname string) LoadBalancerNameFormatError {
 	return LoadBalancerNameFormatError{hostname}
 }
+
+// ProvisionIngressEndpointTimeoutError is returned when we time out waiting for the endpoint to be provisioned.
+type ProvisionIngressEndpointTimeoutError struct {
+	ingressName string
+	namespace   string
+}
+
+func (err ProvisionIngressEndpointTimeoutError) Error() string {
+	return fmt.Sprintf(
+		"Timed out waiting for Ingress %s (Namespace: %s) to provision endpoint.",
+		err.ingressName,
+		err.namespace,
+	)
+}
