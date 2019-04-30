@@ -103,7 +103,6 @@ func Deploy(
 	logger.Info("Waiting for Tiller to come up")
 	err = WaitForTiller(
 		kubectlOptions,
-		helmHome,
 		tillerImage,
 		tillerNamespace,
 	)

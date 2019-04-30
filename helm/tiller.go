@@ -68,7 +68,6 @@ func InstallTiller(
 // This is ported from the helm client: https://github.com/helm/helm/blob/master/cmd/helm/init.go#L322
 func WaitForTiller(
 	kubectlOptions *kubectl.KubectlOptions,
-	helmHome string,
 	newImage string,
 	tillerNamespace string,
 ) error {
