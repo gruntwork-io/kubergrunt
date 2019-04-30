@@ -19,8 +19,6 @@ import (
 // DefaultTillerConnectionTimeout is the number of seconds to wait before timing out the connection to Tiller
 const DefaultTillerConnectionTimeout = 300
 
-const TillerDeploymentName = "tiller-deploy"
-
 // InstallTiller will install Tiller onto the Kubernetes cluster.
 // Returns the Tiller image being installed.
 func InstallTiller(
@@ -70,6 +68,9 @@ func WaitForTiller(
 	kubectlOptions *kubectl.KubectlOptions,
 	newImage string,
 	tillerNamespace string,
+	tillerDeploymentName string,
+	timeout time.Duration,
+	sleepBetweenRetries time.Duration,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -78,10 +79,10 @@ func WaitForTiller(
 		return err
 	}
 
-	sleepTime := 500 * time.Millisecond
-	deadlinePollingChan := time.NewTimer(time.Duration(DefaultTillerConnectionTimeout) * time.Second).C
-	checkTillerPodTicker := time.NewTicker(sleepTime)
+	deadlinePollingChan := time.NewTimer(timeout).C
+	checkTillerPodTicker := time.NewTicker(sleepBetweenRetries)
 	doneChan := make(chan bool)
+	errChan := make(chan error)
 
 	defer checkTillerPodTicker.Stop()
 
@@ -89,14 +90,15 @@ func WaitForTiller(
 		logger.Infof("Initiating polling of Tiller pod")
 		for range checkTillerPodTicker.C {
 			// Wait for the deployment to scale up
-			deployment, err := kubeClient.Extensions().Deployments(tillerNamespace).Get(TillerDeploymentName, metav1.GetOptions{})
+			deployment, err := kubeClient.Extensions().Deployments(tillerNamespace).Get(tillerDeploymentName, metav1.GetOptions{})
 			if err != nil {
-				logger.Warnf("Tiller deployment doesn't exist yet: %s", err)
-				logger.Warnf("Trying again in %s", sleepTime)
-				continue
+				logger.Errorf("Tiller deployment doesn't exist: %s", err)
+				logger.Errorf("This indicates Tiller is not deployed yet in the provided namespace.")
+				errChan <- HelmValidationError{fmt.Sprintf("Tiller is not deployed in namespace %s", tillerNamespace)}
+				break
 			}
 			if deployment.Status.AvailableReplicas == 0 {
-				logger.Infof("Tiller is not available yet. Sleeping for %s.", sleepTime)
+				logger.Infof("Tiller is not available yet. Sleeping for %s.", sleepBetweenRetries)
 				continue
 			}
 
@@ -105,11 +107,11 @@ func WaitForTiller(
 			pods, err := kubectl.ListPods(kubectlOptions, tillerNamespace, filters)
 			if err != nil {
 				logger.Warnf("Error trying to lookup pods: %s", err)
-				logger.Warnf("Trying again in %s", sleepTime)
+				logger.Warnf("Trying again in %s", sleepBetweenRetries)
 				continue
 			}
 			if len(pods) == 0 {
-				logger.Infof("No Tiller pods found yet. Sleeping for %s.", sleepTime)
+				logger.Infof("No Tiller pods found yet. Sleeping for %s.", sleepBetweenRetries)
 				continue
 			}
 			readyPods := 0
@@ -119,7 +121,7 @@ func WaitForTiller(
 				}
 			}
 			if readyPods == 0 {
-				logger.Infof("No Tiller pods ready yet. Sleeping for %s.", sleepTime)
+				logger.Infof("No Tiller pods ready yet. Sleeping for %s.", sleepBetweenRetries)
 				continue
 			}
 
@@ -127,7 +129,7 @@ func WaitForTiller(
 			image, err := portforwarder.GetTillerPodImage(kubeClient.CoreV1(), tillerNamespace)
 			if err != nil {
 				logger.Warnf("Could not create port forward to Tiller pod to query image: %s", err)
-				logger.Warnf("Trying again in %s", sleepTime)
+				logger.Warnf("Trying again in %s", sleepBetweenRetries)
 				continue
 			}
 
@@ -147,6 +149,8 @@ func WaitForTiller(
 		select {
 		case <-deadlinePollingChan:
 			return errors.WithStackTrace(TillerDeployWaitTimeoutError{Namespace: tillerNamespace})
+		case err := <-errChan:
+			return errors.WithStackTrace(err)
 		case <-doneChan:
 			return nil
 		}

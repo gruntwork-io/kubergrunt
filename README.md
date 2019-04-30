@@ -47,6 +47,7 @@ The following commands are available as part of `kubergrunt`:
     * [deploy](#deploy)
 1. [helm](#helm)
     * [deploy](#helm-deploy)
+    * [wait-for-tiller](#wait-for-tiller)
     * [undeploy](#undeploy)
     * [configure](#helm-configure)
     * [grant](#grant)
@@ -248,6 +249,32 @@ This command will also grant access to an RBAC entity and configure the local he
 
 This command should be run by a **cluster administrator** to deploy a new Tiller instance that can be used by their
 users to deploy resources using `helm`.
+
+#### wait-for-tiller
+
+This subcommand will wait until the Tiller Pod is up and able to accept traffic. This command will exit with an error
+if:
+
+- Tiller is not deployed in the Namespace.
+- The client does not have permission to access the deployed Tiller instance.
+- The command times out waiting for the Tiller endpoint to be available (default is 5 minutes).
+
+You can configure the timeout settings using the --timeout and --sleep-between-retries CLI args. This will check until
+the specified --timeout, sleeping for --sleep-between-retries inbetween tries.
+
+For example, if you ran the command:
+
+```bash
+kubergrunt helm wait-for-tiller \
+    --tiller-namespace tiller-world \
+    --timeout 5m \
+    --sleep-between-retries 0.5s
+```
+
+This command will query the Kubernetes API to wait until the `Pods` for the `Deployment` are provisioned with the
+expected image up to 5 minutes, waiting for 500 milliseconds inbetween each try.
+
+Run `kubergrunt helm wait-for-tiller --help` to see all the available options.
 
 #### undeploy
 

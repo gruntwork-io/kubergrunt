@@ -4,12 +4,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
 	"github.com/gruntwork-io/kubergrunt/tls"
+)
+
+const (
+	DeployTillerWaitTimeout             = 5 * time.Minute
+	DeployTillerWaitSleepBetweenRetries = 1 * time.Second
+	TillerDeploymentName                = "tiller-deploy"
 )
 
 // Deploy will deploy a new Tiller to the Kubernetes cluster configured with KubectlOptions following best
@@ -105,6 +112,9 @@ func Deploy(
 		kubectlOptions,
 		tillerImage,
 		tillerNamespace,
+		TillerDeploymentName,
+		DeployTillerWaitTimeout,
+		DeployTillerWaitSleepBetweenRetries,
 	)
 	logger.Info("Tiller is up and available")
 

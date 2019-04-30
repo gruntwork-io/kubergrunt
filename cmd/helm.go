@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	DefaultTillerImage   = "gcr.io/kubernetes-helm/tiller"
-	DefaultTillerVersion = "v2.11.0"
+	DefaultTillerImage          = "gcr.io/kubernetes-helm/tiller"
+	DefaultTillerVersion        = "v2.11.0"
+	DefaultTillerDeploymentName = "tiller-deploy"
 )
 
 var (
@@ -43,6 +44,33 @@ var (
 		Name:  "tiller-version",
 		Value: DefaultTillerVersion,
 		Usage: "The version of the container image to use when deploying tiller.",
+	}
+
+	// Configurations for the wait-for-tiller command
+	tillerDeploymentNameFlag = cli.StringFlag{
+		Name:  "tiller-deployment-name",
+		Value: DefaultTillerDeploymentName,
+		Usage: "The name of the Deployment resource that manages the Tiller Pods.",
+	}
+	expectedTillerImageFlag = cli.StringFlag{
+		Name:  "expected-tiller-image",
+		Value: DefaultTillerImage,
+		Usage: "The container image used when deploying tiller.",
+	}
+	expectedTillerVersionFlag = cli.StringFlag{
+		Name:  "expected-tiller-version",
+		Value: DefaultTillerVersion,
+		Usage: "The version of the container image used when deploying tiller.",
+	}
+	tillerWaitTimeoutFlag = cli.DurationFlag{
+		Name:  "timeout",
+		Value: 5 * time.Minute,
+		Usage: "The amount of time to wait before timing out the check.",
+	}
+	tillerWaitSleepBetweenRetriesFlag = cli.DurationFlag{
+		Name:  "sleep-between-retries",
+		Value: 1 * time.Second,
+		Usage: "The amount of time to sleep inbetween each check attempt. Accepted as a duration (5s, 10m, 1h).",
 	}
 
 	// Configurations for how to authenticate with the Kubernetes cluster.
@@ -288,6 +316,27 @@ You must pass in an identifier for your account. This is either the name of the 
 					helmKubectlTokenFlag,
 				},
 			},
+			cli.Command{
+				Name:  "wait-for-tiller",
+				Usage: "Wait for Tiller to be provisioned.",
+				Description: `Waits for Tiller to be provisioned. This will monitor the Deployment resource for the Tiller Pods, continuously checking until the rollout completes. By default, this will try for 5 minutes.
+
+You can configure the timeout settings using the --timeout and --sleep-between-retries CLI args. This will check until the specified --timeout, sleeping for --sleep-between-retries inbetween tries.`,
+				Action: waitForTiller,
+				Flags: []cli.Flag{
+					tillerNamespaceFlag,
+					tillerDeploymentNameFlag,
+					expectedTillerImageFlag,
+					expectedTillerVersionFlag,
+					tillerWaitTimeoutFlag,
+					tillerWaitSleepBetweenRetriesFlag,
+					helmKubectlContextNameFlag,
+					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
+				},
+			},
 		},
 	}
 }
@@ -353,7 +402,36 @@ func deployHelmServer(cliContext *cli.Context) error {
 	)
 }
 
-// undeployHelmServer is the action command for the helm undeploy command.
+// waitForTiller is the action function for helm wait-for-tiller command.
+func waitForTiller(cliContext *cli.Context) error {
+	// Get required info
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
+	// Get optional info
+	tillerDeploymentName := cliContext.String(tillerDeploymentNameFlag.Name)
+	expectedTillerImage := cliContext.String(expectedTillerImageFlag.Name)
+	expectedTillerVersion := cliContext.String(expectedTillerVersionFlag.Name)
+	timeout := cliContext.Duration(tillerWaitTimeoutFlag.Name)
+	sleepBetweenRetries := cliContext.Duration(tillerWaitSleepBetweenRetriesFlag.Name)
+
+	return helm.WaitForTiller(
+		kubectlOptions,
+		fmt.Sprintf("%s:%s", expectedTillerImage, expectedTillerVersion),
+		tillerNamespace,
+		tillerDeploymentName,
+		timeout,
+		sleepBetweenRetries,
+	)
+}
+
+// undeployHelmServer is the action function for the helm undeploy command.
 func undeployHelmServer(cliContext *cli.Context) error {
 	// Check if the required commands are installed
 	if err := shell.CommandInstalledE("helm"); err != nil {
