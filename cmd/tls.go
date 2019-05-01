@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
@@ -61,6 +62,18 @@ var (
 		Name:  KubeconfigFlagName,
 		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
 	}
+	tlsKubectlServerFlag = cli.StringFlag{
+		Name:  KubectlServerFlagName,
+		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
+	}
+	tlsKubectlCAFlag = cli.StringFlag{
+		Name:  KubectlCAFlagName,
+		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
+	}
+	tlsKubectlTokenFlag = cli.StringFlag{
+		Name:  KubectlTokenFlagName,
+		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
+	}
 )
 
 func SetupTLSCommand() cli.Command {
@@ -90,6 +103,7 @@ Pass in a --ca-secret-name to sign the newly generated TLS key pair using the CA
 					tlsGenCAFlag,
 					tlsCASecretNameFlag,
 					tlsCANamespaceFlag,
+					tlsSubjectJsonFlag,
 					tlsCommonNameFlag,
 					tlsOrgFlag,
 					tlsOrgUnitFlag,
@@ -104,6 +118,9 @@ Pass in a --ca-secret-name to sign the newly generated TLS key pair using the CA
 					// Kubernetes auth flags
 					tlsKubectlContextNameFlag,
 					tlsKubeconfigFlag,
+					tlsKubectlServerFlag,
+					tlsKubectlCAFlag,
+					tlsKubectlTokenFlag,
 				},
 			},
 		},
