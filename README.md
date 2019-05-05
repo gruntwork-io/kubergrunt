@@ -504,6 +504,6 @@ MINOR, and PATCH versions on each release to indicate any incompatibilities.
 
 ## License
 
-Please see [LICENSE](/LICENSE) for how the code in this repo is licensed.
+Please see [LICENSE](/LICENSE) and [NOTICE](/NOTICE) for how the code in this repo is licensed.
 
 Copyright &copy; 2019 Gruntwork, Inc.
