@@ -2,14 +2,20 @@ package main
 
 import (
 	"crypto/x509/pkix"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
 	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
+	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/gruntwork-cli/shell"
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/kubergrunt/helm"
+	"github.com/gruntwork-io/kubergrunt/logging"
 	"github.com/gruntwork-io/kubergrunt/tls"
 )
 
@@ -17,6 +23,7 @@ const (
 	DefaultTillerImage          = "gcr.io/kubernetes-helm/tiller"
 	DefaultTillerVersion        = "v2.11.0"
 	DefaultTillerDeploymentName = "tiller-deploy"
+	CreateTmpFolderForHelmHome  = "__TMP__"
 )
 
 var (
@@ -183,6 +190,10 @@ var (
 		Name:  "rbac-service-account",
 		Usage: "Name of the Service Account that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
 	}
+	helmConfigureAsTFDataFlag = cli.BoolFlag{
+		Name:  "as-tf-data",
+		Usage: "Output the configured helm home directory in json format compatible for use as an external data source in Terraform.",
+	}
 )
 
 // SetupHelmCommand creates the cli.Command entry for the helm subcommand of kubergrunt
@@ -264,14 +275,22 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 			cli.Command{
 				Name:  "configure",
 				Usage: "Setup local helm client to be able to access Tiller.",
-				Description: `Setup local helm client to be able to access the deployed Tiller located at the provided namespace. This assumes that an administrator has granted you access to the Tiller install already. This will:
+				Description: fmt.Sprintf(`Setup local helm client to be able to access the deployed Tiller located at the provided namespace. This assumes that an administrator has granted you access to the Tiller install already. This will:
 
 - Download the client TLS certificate key pair that you have access to.
 - Install the TLS certificate key pair in the helm home directory. The helm home directory can be modified with the --helm-home option.
 - Install an environment file compatible with your platform that can be sourced to setup variables to configure default parameters for the helm client to access the Tiller install.
 - Optionally set the kubectl context default namespace to be the one that Tiller manages. Note that this will update the kubeconfig file.
 
-You must pass in an identifier for your account. This is either the name of the RBAC user (--rbac-user), RBAC group (--rbac-group), or ServiceAccount (--service-account) that you are authenticating as.`,
+You must pass in an identifier for your account. This is either the name of the RBAC user (--rbac-user), RBAC group (--rbac-group), or ServiceAccount (--service-account) that you are authenticating as.
+
+If you set --helm-home to be %s, a temp folder will be generated for use as the helm home.
+
+If you pass in the option --as-tf-data, this will output the configured helm home directory in the json:
+{
+  "helm_home": "CONFIGURED_HELM_HOME"
+}
+This allows you to use the configure command as a data source that is passed into terraform to setup the helm provider.`, CreateTmpFolderForHelmHome),
 				Action: configureHelmClient,
 				Flags: []cli.Flag{
 					helmHomeFlag,
@@ -286,6 +305,7 @@ You must pass in an identifier for your account. This is either the name of the 
 					helmKubectlServerFlag,
 					helmKubectlCAFlag,
 					helmKubectlTokenFlag,
+					helmConfigureAsTFDataFlag,
 				},
 			},
 			cli.Command{
@@ -467,6 +487,8 @@ func undeployHelmServer(cliContext *cli.Context) error {
 
 // configureHelmClient is the action function for the helm configure command.
 func configureHelmClient(cliContext *cli.Context) error {
+	logger := logging.GetProjectLogger()
+
 	// Check if the required commands are installed
 	if err := shell.CommandInstalledE("helm"); err != nil {
 		return err
@@ -494,12 +516,26 @@ func configureHelmClient(cliContext *cli.Context) error {
 
 	// Get optional info
 	setKubectlNamespace := cliContext.Bool(setKubectlNamespaceFlag.Name)
+	asTFData := cliContext.Bool(helmConfigureAsTFDataFlag.Name)
 	helmHome, err := parseHelmHomeWithDefault(cliContext)
 	if err != nil {
 		return err
 	}
 
-	return helm.ConfigureClient(
+	// Handle special case to generate temporary directory as Helm Home
+	if helmHome == CreateTmpFolderForHelmHome {
+		logger.Infof("Received instruction to generate temporary directory as helm home (--helm-home=%s).", helmHome)
+
+		helmHomeParent, err := ioutil.TempDir("", "")
+		if err != nil {
+			logger.Errorf("Error creating temporary directory: %s", err)
+			return errors.WithStackTrace(err)
+		}
+		helmHome = path.Join(helmHomeParent, ".helm")
+		logger.Infof("Generated temporary directory %s", helmHome)
+	}
+
+	err = helm.ConfigureClient(
 		kubectlOptions,
 		helmHome,
 		tillerNamespace,
@@ -507,6 +543,25 @@ func configureHelmClient(cliContext *cli.Context) error {
 		setKubectlNamespace,
 		rbacEntity,
 	)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("Configured %s as helm home for Tiller in Namespace %s", helmHome, tillerNamespace)
+
+	// Output the helm home in json format
+	if asTFData {
+		logger.Infof("Requested output as Terraform Data Source.")
+		helmHomeData := struct {
+			HelmHome string `json:"helm_home"`
+		}{HelmHome: helmHome}
+		bytesOut, err := json.Marshal(helmHomeData)
+		if err != nil {
+			return errors.WithStackTrace(err)
+		}
+		os.Stdout.Write(bytesOut)
+	}
+	return nil
 }
 
 // grantHelmAccess is the action function for the helm grant command.

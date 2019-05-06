@@ -337,6 +337,41 @@ See the command help for all the available options: `kubergrunt helm configure -
 This command should be run by a **helm user** to setup their local `helm` client to access a deployed Tiller instance.
 Note that the user needs to have already been granted access via the `kubergrunt helm grant` command.
 
+If you set `--helm-home` to be `__TMP__`, a temp folder will be generated for use as the helm home.
+
+If you pass in the option `--as-tf-data`, this will output the configured helm home directory in the json:
+
+```
+{
+  "helm_home": "CONFIGURED_HELM_HOME"
+}
+```
+
+This allows you to use the configure command as a data source that is passed into terraform to setup the helm provider.
+For example:
+
+```hcl
+provider "helm" {
+  home           = "${lookup(data.external.configured_helm_home.result, "helm_home")}"
+  install_tiller = false
+  enable_tls     = true
+}
+
+data "external" "configured_helm_home" {
+  program = [
+    "kubergrunt", "helm", "configure",
+    "--as-tf-data",
+    "--helm-home", "__TMP__",
+    "--tiller-namespace", "dev-tiller",
+    "--resource-namespace", "dev",
+    "--rbac-user", "me",
+   ]
+}
+```
+
+This will use `kubergrunt` to create a temporary directory to use as the helm home, configure it to access the Tiller
+instance deployed in the namespace `dev-tiller`, and pass the generated helm home directory to the `helm` provider.
+
 #### grant
 
 This subcommand will grant access to an installed helm server to a given RBAC entity (`User`, `Group`, or
