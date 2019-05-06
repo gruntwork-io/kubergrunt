@@ -101,10 +101,10 @@ var (
 
 type TLSSubjectInfo struct {
 	CommonName string `json:"common_name"`
-	Org        string `json:"org"`
-	OrgUnit    string `json:"org_unit"`
-	City       string `json:"city"`
-	State      string `json:"state"`
+	Org        string `json:"org" json:"organization"`
+	OrgUnit    string `json:"org_unit" json:"organizational_unit"`
+	City       string `json:"city" json:"locality"`
+	State      string `json:"state" json:"province"`
 	Country    string `json:"country"`
 }
 
