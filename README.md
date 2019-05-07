@@ -2,7 +2,7 @@
 
 # kubergrunt
 
-`kubergrunt` is a collection of scripts embedded into a go binary that attempts to fill in the gaps between Terraform,
+`kubergrunt` is a standalone go binary with a collection of commands that attempts to fill in the gaps between Terraform,
 Helm, and Kubectl for managing a Kubernetes Cluster.
 
 Some of the features of `kubergrunt` include:
