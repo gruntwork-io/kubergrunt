@@ -1,4 +1,5 @@
 [![Maintained by Gruntwork.io](https://img.shields.io/badge/maintained%20by-gruntwork.io-%235849a6.svg)](https://gruntwork.io/?ref=repo_kubergrunt)
+[![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gruntwork-io/kubergrunt.svg?label=latest)](https://github.com/gruntwork-io/kubergrunt/releases/latest)
 
 # kubergrunt
 
