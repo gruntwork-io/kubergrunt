@@ -9,8 +9,9 @@ Some of the features of `kubergrunt` include:
 
 * configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
   in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
-* managing Helm and associated TLS certificates.
-* setting up Helm client with TLS certificates.
+* managing Helm and associated TLS certificates on any Kubernetes cluster.
+* setting up Helm client with TLS certificates on any Kubernetes cluster.
+* Generating TLS certificate key pairs and storing them as Kubernets `Secrets` on any Kubernetes cluster.
 
 
 ## Installation
@@ -516,10 +517,10 @@ send an email to [support@gruntwork.io](mailto:support@gruntwork.io?Subject=kube
 Gruntwork can help with:
 
 * Setup, customization, and support for this project.
-* Modules and submodules for other types of infrastructure, such as VPCs, Docker clusters, databases, and continuous
-  integration.
+* Modules and submodules for other types of infrastructure in major cloud providers, such as VPCs, Docker clusters,
+  databases, and continuous integration.
 * Modules and Submodules that meet compliance requirements, such as HIPAA.
-* Consulting & Training on AWS, Terraform, and DevOps.
+* Consulting & Training on AWS, GCP, Terraform, and DevOps.
 
 
 ## How do I contribute?
