@@ -59,7 +59,7 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 // due to the way each step is setup to build on the previous step. For example, it is impossible to test grant without
 // having a helm server deployed, and configure without running grant.
 //
-// Test that we can include:
+// Test that we can:
 // 1. Generate certificate key pairs for use with Tiller
 // 2. Upload certificate key pairs to Kubernetes secrets
 // 3. Deploy Helm with TLS enabled in the specified namespace
@@ -142,7 +142,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	rbacGroups := []string{}
 	rbacUsers := []string{}
 	serviceAccounts := []string{fmt.Sprintf("%s/%s", namespaceName, testServiceAccountName)}
-	assert.NoError(t, RevokeAccess(kubectlOptions, namespaceName, rbacGroups, rbacUsers, serviceAccounts))
+	require.NoError(t, RevokeAccess(kubectlOptions, namespaceName, rbacGroups, rbacUsers, serviceAccounts))
 
 	// No role for service account
 	assert.Error(t, validateNoRole(t, kubeClient, namespaceName, testServiceAccountName))
