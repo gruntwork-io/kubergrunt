@@ -1,7 +1,6 @@
 package helm
 
 import (
-	"github.com/gruntwork-io/gruntwork-cli/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
@@ -24,7 +23,7 @@ func RevokeAccess(
 ) error {
 	logger := logging.GetProjectLogger()
 	logger.Infof(
-		"Revoking access Tiller server deployed in namespace %s to:",
+		"Revoking access to Tiller server deployed in namespace %s to:",
 		tillerNamespace,
 	)
 	logEntities(rbacGroups, rbacUsers, serviceAccounts)
@@ -88,9 +87,9 @@ func revokeAccessFromRBACEntities(
 
 	numEntities := len(rbacEntities)
 	for idx, rbacEntity := range rbacEntities {
-		logger.Infof("Revoking access to entity %s (%d of %d entities)", rbacEntity, idx+1, numEntities)
+		logger.Infof("Revoking access from entity %s (%d of %d entities)", rbacEntity, idx+1, numEntities)
 
-		logger.Infof("Deleting entity role")
+		logger.Infof("Deleting entity role and binding")
 		if err := deleteEntityRoleAndBinding(kubectlOptions, tillerNamespace, rbacEntity); err != nil {
 			logger.Errorf("Unable to delete role for entity %s from namespace %s", rbacEntity.Subject().Name, tillerNamespace)
 			return err
@@ -122,22 +121,22 @@ func deleteEntityRoleAndBinding(
 	roleName := getTillerAccessRoleName(rbacEntity.EntityID(), tillerNamespace)
 	err = client.RbacV1().Roles(tillerNamespace).Delete(roleName, emptyOptions)
 	if err != nil {
-		logger.Errorf("Error deleting RBAC role: %s", err)
-		return errors.WithStackTrace(err)
+		logger.Warningf("Unable to delete RBAC role: %s", err)
+	} else {
+		logger.Infof("Successfully deleted RBAC role %s", roleName)
 	}
-	logger.Infof("Successfully deleted RBAC role %s", roleName)
 
 	roleBindingName := getTillerAccessRoleBindingName(rbacEntity.EntityID(), roleName)
 	err = client.RbacV1().RoleBindings(tillerNamespace).Delete(roleBindingName, emptyOptions)
 	if err != nil {
-		logger.Errorf("Error deleting RBAC role binding: %s", err)
-		return errors.WithStackTrace(err)
+		logger.Warningf("Error deleting RBAC role binding: %s", err)
+	} else {
+		logger.Infof("Successfully deleted RBAC role binding %s", roleName)
 	}
-	logger.Infof("Successfully deleted RBAC role binding %s", roleName)
 	return nil
 }
 
-// deleteEntityTLS deletes the TLS keypair associated with a provided entity
+// deleteEntityTLS deletes the Kubernetes Secret holding the client TLS keypair associated with a provided entity
 func deleteEntityTLS(
 	kubectlOptions *kubectl.KubectlOptions,
 	tillerNamespace string,
@@ -148,9 +147,9 @@ func deleteEntityTLS(
 	secretName := getTillerClientCertSecretName(rbacEntity.EntityID())
 	err := kubectl.DeleteSecret(kubectlOptions, tillerNamespace, secretName)
 	if err != nil {
-		logger.Errorf("Error deleting client cert: %s", err)
-		return errors.WithStackTrace(err)
+		logger.Warningf("Error deleting client cert: %s", err)
+	} else {
+		logger.Infof("Successfully deleted client cert from secret %s", secretName)
 	}
-	logger.Infof("Successfully deleted client cert from secret %s", secretName)
 	return nil
 }
