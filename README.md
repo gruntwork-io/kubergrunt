@@ -420,7 +420,7 @@ kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 
 See the command help for all the available options: `kubergrunt helm revoke --help`.
 
-Note: The Go TLS library [does not support certificate revocation](https://www.imperialviolet.org/2014/04/19/revchecking.html).
+**Note**: The Go TLS library [does not support certificate revocation](https://www.imperialviolet.org/2014/04/19/revchecking.html).
 As a consequence, Helm/Tiller cannot check for revocation. The upshot is that a client that retains a previously signed TLS keypair can
 still authenticate to tiller, even after running `kubergrunt helm revoke`. However, since `kubergrunt` removes the authorizations associated
 with that entity, the entity is effectively disabled. If you wish to render the signed keypair invalid, you must generate a new
