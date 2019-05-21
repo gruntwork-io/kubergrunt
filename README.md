@@ -53,7 +53,7 @@ The following commands are available as part of `kubergrunt`:
     * [undeploy](#undeploy)
     * [configure](#helm-configure)
     * [grant](#grant)
-    <!-- not implemented * [revoke](#revoke) -->
+    * [revoke](#revoke)
 1. [k8s](#k8s)
     * [wait-for-ingress](#wait-for-ingress)
 1. [tls](#tls)
@@ -385,7 +385,7 @@ This subcommand will grant access to an installed helm server to a given RBAC en
   to. This access is readonly.
 - Remove the local copies of the downloaded and generated certificates.
 
-This command assumes that the authenticated entitiy running the command has enough permissions to access the generated
+This command assumes that the authenticated entity running the command has enough permissions to access the generated
 CA `Secret`.
 
 For example, to grant access to a Tiller server deployed in the namespace `tiller-world` to the RBAC group `developers`:
@@ -404,19 +404,15 @@ This command should be run by a **cluster administrator** to grant a user, group
 instance. The user or group should be an RBAC entity (RBAC user or RBAC group). The pod should gain access via the
 mounted `ServiceAccount`.
 
-<!-- Not implemented
 
 #### revoke
 
-This subcommand will revoke access to an installed helm server for a given RBAC role. This will:
+This subcommand will revoke access to an installed helm server for a given RBAC entity. This will:
 
-- Download the corresponding CA keypair for the Tiller deployment from Kubernetes.
-- Download the TLS certificate keypair for the RBAC role.
-- Revoke the certificate in the CA.
-- Update the CA certificate keypair in both the `Secret` and the installed Tiller server.
-- Restart Tiller.
+- Remove the role and rolebinding associated with the RBAC entity (user, group, or service account)
+- Remove the TLS keypair Secret associated with the RBAC entity
 
-For example, to revoke access to a Tiller server deployed in the namespace `tiller-world` from the RBAC role `dev`:
+For example, to revoke access to a Tiller server deployed in the namespace `tiller-world` from the RBAC user `dev`:
 
 ```bash
 kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
@@ -424,7 +420,11 @@ kubergrunt helm revoke --tiller-namespace tiller-world --rbac-user dev
 
 See the command help for all the available options: `kubergrunt helm revoke --help`.
 
--->
+Note: The Go TLS library [does not support certificate revocation](https://www.imperialviolet.org/2014/04/19/revchecking.html).
+As a consequence, Helm/Tiller cannot check for revocation. The upshot is that a client that retains a previously signed TLS keypair can
+still authenticate to tiller, even after running `kubergrunt helm revoke`. However, since `kubergrunt` removes the authorizations associated
+with that entity, the entity is effectively disabled. If you wish to render the signed keypair invalid, you must generate a new
+Certificate Authority for tiller and reissue all keypairs.
 
 ### k8s
 
