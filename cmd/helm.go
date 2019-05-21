@@ -147,15 +147,29 @@ var (
 	// Configurations for granting and revoking access to clients
 	grantedRbacGroupsFlag = cli.StringSliceFlag{
 		Name:  "rbac-group",
-		Usage: "The name of the RBAC group that should be granted access to (or revoked from) tiller. Pass in multiple times for multiple groups.",
+		Usage: "The name of the RBAC group that should be granted access to tiller. Pass in multiple times for multiple groups.",
 	}
 	grantedRbacUsersFlag = cli.StringSliceFlag{
 		Name:  "rbac-user",
-		Usage: "The name of the RBAC user that should be granted access to (or revoked from) Tiller. Pass in multiple times for multiple users.",
+		Usage: "The name of the RBAC user that should be granted access to Tiller. Pass in multiple times for multiple users.",
 	}
 	grantedServiceAccountsFlag = cli.StringSliceFlag{
 		Name:  "rbac-service-account",
-		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to (or revoked from) tiller. Pass in multiple times for multiple accounts.",
+		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
+	}
+
+	// Configurations for granting and revoking access to clients
+	revokedRbacGroupsFlag = cli.StringSliceFlag{
+		Name:  "rbac-group",
+		Usage: "The name of the RBAC group that should be revoked from tiller. Pass in multiple times for multiple groups.",
+	}
+	revokedRbacUsersFlag = cli.StringSliceFlag{
+		Name:  "rbac-user",
+		Usage: "The name of the RBAC user that should be revoked from Tiller. Pass in multiple times for multiple users.",
+	}
+	revokedServiceAccountsFlag = cli.StringSliceFlag{
+		Name:  "rbac-service-account",
+		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be revoked from tiller. Pass in multiple times for multiple accounts.",
 	}
 
 	// Configurations for undeploying helm
@@ -347,9 +361,9 @@ At least one of --rbac-user, --rbac-group, or --rbac-service-account are require
 				Action: revokeHelmAccess,
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
-					grantedRbacGroupsFlag,
-					grantedRbacUsersFlag,
-					grantedServiceAccountsFlag,
+					revokedRbacGroupsFlag,
+					revokedRbacUsersFlag,
+					revokedServiceAccountsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 					helmKubectlServerFlag,
