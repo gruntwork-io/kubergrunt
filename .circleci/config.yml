@@ -11,7 +11,7 @@ defaults: &defaults
     PACKER_VERSION: NONE
     GOLANG_VERSION: 1.11.2
     KUBECONFIG: /home/circleci/.kube/config
-    HELM_VERSION: v2.11.0  # Same as helm provider
+    HELM_VERSION: v2.14.0  # Same as helm provider
 
 
 install_helm_client: &install_helm_client

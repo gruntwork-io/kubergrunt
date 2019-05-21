@@ -19,3 +19,11 @@ func getTillerCACertSecretName(tillerNamespace string) string {
 func md5HashString(input string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(input)))
 }
+
+func getTillerAccessRoleName(entityID, namespace string) string {
+	return fmt.Sprintf("%s-%s-tiller-access", entityID, namespace)
+}
+
+func getTillerAccessRoleBindingName(entityID, roleName string) string {
+	return fmt.Sprintf("%s-%s-binding", entityID, roleName)
+}

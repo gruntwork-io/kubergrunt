@@ -21,7 +21,7 @@ import (
 
 const (
 	DefaultTillerImage          = "gcr.io/kubernetes-helm/tiller"
-	DefaultTillerVersion        = "v2.11.0"
+	DefaultTillerVersion        = "v2.14.0"
 	DefaultTillerDeploymentName = "tiller-deploy"
 	CreateTmpFolderForHelmHome  = "__TMP__"
 )
@@ -147,15 +147,15 @@ var (
 	// Configurations for granting and revoking access to clients
 	grantedRbacGroupsFlag = cli.StringSliceFlag{
 		Name:  "rbac-group",
-		Usage: "The name of the RBAC group that should be granted access to tiller. Pass in multiple times for multiple groups.",
+		Usage: "The name of the RBAC group that should be granted access to (or revoked from) tiller. Pass in multiple times for multiple groups.",
 	}
 	grantedRbacUsersFlag = cli.StringSliceFlag{
 		Name:  "rbac-user",
-		Usage: "The name of the RBAC user that should be granted access to Tiller. Pass in multiple times for multiple users.",
+		Usage: "The name of the RBAC user that should be granted access to (or revoked from) Tiller. Pass in multiple times for multiple users.",
 	}
 	grantedServiceAccountsFlag = cli.StringSliceFlag{
 		Name:  "rbac-service-account",
-		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
+		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to (or revoked from) tiller. Pass in multiple times for multiple accounts.",
 	}
 
 	// Configurations for undeploying helm
@@ -309,10 +309,12 @@ This allows you to use the configure command as a data source that is passed int
 				},
 			},
 			cli.Command{
-				Name:        "grant",
-				Usage:       "Grant access to a deployed Helm server.",
-				Description: "Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.",
-				Action:      grantHelmAccess,
+				Name:  "grant",
+				Usage: "Grant access to a deployed Helm server.",
+				Description: `Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.
+
+At least one of --rbac-user, --rbac-group, or --rbac-service-account are required.`,
+				Action: grantHelmAccess,
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
 					grantedRbacGroupsFlag,
@@ -329,6 +331,25 @@ This allows you to use the configure command as a data source that is passed int
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					helmKubectlContextNameFlag,
+					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
+				},
+			},
+			cli.Command{
+				Name:  "revoke",
+				Usage: "Revoke access to a deployed Helm server.",
+				Description: `Revoke access to a deployed Helm server from a client by removing the role and role bindings for a provided RBAC entity. Also removes the signed TLS certificate and key from the Secrets associated with this entity.
+
+At least one of --rbac-user, --rbac-group, or --rbac-service-account are required.`,
+				Action: revokeHelmAccess,
+				Flags: []cli.Flag{
+					tillerNamespaceFlag,
+					grantedRbacGroupsFlag,
+					grantedRbacUsersFlag,
+					grantedServiceAccountsFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 					helmKubectlServerFlag,
@@ -585,6 +606,25 @@ func grantHelmAccess(cliContext *cli.Context) error {
 		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
 	}
 	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
+}
+
+// revokeHelmAccess is the action function for the helm revoke command.
+func revokeHelmAccess(cliContext *cli.Context) error {
+	tillerNamespace, err := entrypoint.StringFlagRequiredE(cliContext, tillerNamespaceFlag.Name)
+	if err != nil {
+		return err
+	}
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+	rbacGroups := cliContext.StringSlice(grantedRbacGroupsFlag.Name)
+	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
+	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
+	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
+		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
+	}
+	return helm.RevokeAccess(kubectlOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
 }
 
 // parseTLSArgs will take CLI args pertaining to TLS and extract out a TLSOptions struct.

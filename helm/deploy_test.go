@@ -13,6 +13,8 @@ import (
 	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/helm/pkg/helm/portforwarder"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
@@ -53,25 +55,28 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// This is an end to end integration for the commands to setup helm access. This integrationtest is designed this way
+// This is an end to end integration for the commands to setup helm access. This integration test is designed this way
 // due to the way each step is setup to build on the previous step. For example, it is impossible to test grant without
 // having a helm server deployed, and configure without running grant.
 //
-// Test that we can:
+// Test that we can include:
 // 1. Generate certificate key pairs for use with Tiller
 // 2. Upload certificate key pairs to Kubernetes secrets
 // 3. Deploy Helm with TLS enabled in the specified namespace
 // 4. Grant access to helm
 // 5. Configure helm client
 // 6. Deploy a helm chart
-// 7. Undeploy helm
+// 7. Revoke a service account
+// 8. Undeploy helm
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	t.Parallel()
 
-	imageSpec := "gcr.io/kubernetes-helm/tiller:v2.11.0"
+	imageSpec := "gcr.io/kubernetes-helm/tiller:v2.14.0"
 
 	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 	terratestKubectlOptions := k8s.NewKubectlOptions("", "")
+	kubeClient, err := k8s.GetKubernetesClientFromOptionsE(t, terratestKubectlOptions)
+	assert.NoError(t, err)
 	tlsOptions := tls.SampleTlsOptions(tls.ECDSAAlgorithm)
 	clientTLSOptions := tls.SampleTlsOptions(tls.ECDSAAlgorithm)
 	clientTLSOptions.DistinguishedName.CommonName = "client"
@@ -96,7 +101,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		// server so that it crashes should the release removal fail.
 		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
-	// Deploy, Grant, and Configure
+	// Deploy, Grant, Configure, and Revoke
 	assert.NoError(t, Deploy(
 		kubectlOptions,
 		namespaceName,
@@ -132,6 +137,21 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 
 	// Check that the rendered helm env file works
 	validateHelmEnvFile(t, testServiceAccountKubectlOptions)
+
+	// Revoke the tiller service account
+	rbacGroups := []string{}
+	rbacUsers := []string{}
+	serviceAccounts := []string{fmt.Sprintf("%s/%s", namespaceName, testServiceAccountName)}
+	assert.NoError(t, RevokeAccess(kubectlOptions, namespaceName, rbacGroups, rbacUsers, serviceAccounts))
+
+	// No role for service account
+	assert.Error(t, validateNoRole(t, kubeClient, namespaceName, testServiceAccountName))
+
+	// No rolebinding for service account
+	assert.Error(t, validateNoRoleBinding(t, kubeClient, namespaceName, testServiceAccountName))
+
+	// No TLS keypair secret for service account
+	assert.Error(t, validateNoTLSSecret(t, kubectlOptions, namespaceName, serviceAccountName))
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed into the provided namespace and
@@ -294,4 +314,26 @@ func validateHelmEnvFile(t *testing.T, options *kubectl.KubectlOptions) {
 		},
 	}
 	shell.RunCommand(t, cmd)
+}
+
+// validateNoServiceAccountRole validates that the mock service account does not have an associated role
+func validateNoRole(t *testing.T, client *kubernetes.Clientset, namespace, serviceAccountName string) error {
+	roleName := getTillerAccessRoleName(serviceAccountName, namespace)
+	_, err := client.RbacV1().Roles(namespace).Get(roleName, metav1.GetOptions{})
+	return err
+}
+
+// validateNoServiceAccountRoleBinding validates that the mock service account does not have an associated rolebinding
+func validateNoRoleBinding(t *testing.T, client *kubernetes.Clientset, namespace, serviceAccountName string) error {
+	roleName := getTillerAccessRoleName(serviceAccountName, namespace)
+	roleBindingName := getTillerAccessRoleBindingName(serviceAccountName, roleName)
+	_, err := client.RbacV1().RoleBindings(namespace).Get(roleBindingName, metav1.GetOptions{})
+	return err
+}
+
+// validateNoTLSSecret validates that the mock service account does not have an associated secret TLS keypair
+func validateNoTLSSecret(t *testing.T, options *kubectl.KubectlOptions, namespace, serviceAccountName string) error {
+	secretName := getTillerClientCertSecretName(serviceAccountName)
+	_, err := kubectl.GetSecret(options, namespace, secretName)
+	return err
 }
