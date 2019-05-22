@@ -280,14 +280,6 @@ func createRandomFile(t *testing.T) (string, string) {
 	return tmpfile.Name(), contents
 }
 
-func getKubectlOptions(t *testing.T) (*k8s.KubectlOptions, *KubectlOptions) {
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
-	configPath, err := k8s.KubeConfigPathFromHomeDirE()
-	require.NoError(t, err)
-	kubectlOptions := &KubectlOptions{ConfigPath: configPath}
-	return ttKubectlOptions, kubectlOptions
-}
-
 const EXAMPLE_SECRET_YAML_TEMPLATE = `---
 apiVersion: v1
 kind: Namespace

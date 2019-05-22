@@ -34,7 +34,7 @@
 
 [[constraint]]
   name = "github.com/gruntwork-io/terratest"
-  version = "0.13.22"
+  version = "0.13.30"
 
 [[constraint]]
   name = "github.com/gruntwork-io/gruntwork-cli"
@@ -57,7 +57,8 @@
 
 [[constraint]]
   name = "k8s.io/helm"
-  version = "v2.12.0"
+  # version = "v2.12.0"
+  version = "v2.13.1"
 
 # The following overrides are necessary because kubernetes does not support dep.
 # These are pulled in from the various requirements, namely client-go godeps.json and helm glide.lock
@@ -93,11 +94,20 @@
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  revision = "05e89e265cc594459a3d33a63e779d94e6614c63"
+  version = "kubernetes-1.13.6"
+
+ [[override]]
+   name = "k8s.io/apiserver"
+   version = "kubernetes-1.13.6"
+
+ [[override]]
+   name = "k8s.io/api"
+   version = "kubernetes-1.13.6"
 
 [[override]]
   name = "k8s.io/kubernetes"
-  revision = "54a352dda957bce0f88e49b65a6ee8bba8c0ba74"
+  version = "v1.13.6"
+  # revision = "721bfa751924da8d1680787490c54b9179b1fed0"
 
 [[override]]
   name = "k8s.io/cli-runtime"

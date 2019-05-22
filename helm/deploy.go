@@ -75,11 +75,7 @@ func Deploy(
 		kubectlOptions,
 		caSecretName,
 		"kube-system",
-		map[string]string{
-			"gruntwork.io/tiller-namespace":        tillerNamespace,
-			"gruntwork.io/tiller-credentials":      "true",
-			"gruntwork.io/tiller-credentials-type": "ca",
-		},
+		getTillerCACertSecretLabels(tillerNamespace),
 		map[string]string{},
 		"ca",
 		caKeyPairPath,
