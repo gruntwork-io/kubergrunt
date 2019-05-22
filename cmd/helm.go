@@ -24,6 +24,9 @@ const (
 	DefaultTillerVersion        = "v2.14.0"
 	DefaultTillerDeploymentName = "tiller-deploy"
 	CreateTmpFolderForHelmHome  = "__TMP__"
+	RbacGroupFlag               = "rbac-group"
+	RbacUserFlag                = "rbac-user"
+	RbacServiceAccountFlag      = "rbac-service-account"
 )
 
 var (
@@ -146,29 +149,29 @@ var (
 
 	// Configurations for granting and revoking access to clients
 	grantedRbacGroupsFlag = cli.StringSliceFlag{
-		Name:  "rbac-group",
+		Name:  RbacGroupFlag,
 		Usage: "The name of the RBAC group that should be granted access to tiller. Pass in multiple times for multiple groups.",
 	}
 	grantedRbacUsersFlag = cli.StringSliceFlag{
-		Name:  "rbac-user",
+		Name:  RbacUserFlag,
 		Usage: "The name of the RBAC user that should be granted access to Tiller. Pass in multiple times for multiple users.",
 	}
 	grantedServiceAccountsFlag = cli.StringSliceFlag{
-		Name:  "rbac-service-account",
+		Name:  RbacServiceAccountFlag,
 		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be granted access to tiller. Pass in multiple times for multiple accounts.",
 	}
 
 	// Configurations for granting and revoking access to clients
 	revokedRbacGroupsFlag = cli.StringSliceFlag{
-		Name:  "rbac-group",
+		Name:  RbacGroupFlag,
 		Usage: "The name of the RBAC group that should be revoked from tiller. Pass in multiple times for multiple groups.",
 	}
 	revokedRbacUsersFlag = cli.StringSliceFlag{
-		Name:  "rbac-user",
+		Name:  RbacUserFlag,
 		Usage: "The name of the RBAC user that should be revoked from Tiller. Pass in multiple times for multiple users.",
 	}
 	revokedServiceAccountsFlag = cli.StringSliceFlag{
-		Name:  "rbac-service-account",
+		Name:  RbacServiceAccountFlag,
 		Usage: "The name and namespace of the ServiceAccount (encoded as NAMESPACE/NAME) that should be revoked from tiller. Pass in multiple times for multiple accounts.",
 	}
 
@@ -193,16 +196,16 @@ var (
 		Usage: "Set the kubectl context default namespace to match the namespace that Tiller deploys resources into.",
 	}
 	configuringRBACUserFlag = cli.StringFlag{
-		Name:  "rbac-user",
-		Usage: "Name of RBAC user that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Name:  RbacUserFlag,
+		Usage: fmt.Sprintf("Name of RBAC user that configuration of local helm client is for. Only one of --%s, --%s, or --%s can be specified.", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag),
 	}
 	configuringRBACGroupFlag = cli.StringFlag{
-		Name:  "rbac-group",
-		Usage: "Name of RBAC group that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Name:  RbacGroupFlag,
+		Usage: fmt.Sprintf("Name of RBAC group that configuration of local helm client is for. Only one of --%s, --%s, or --%s can be specified.", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag),
 	}
 	configuringServiceAccountFlag = cli.StringFlag{
-		Name:  "rbac-service-account",
-		Usage: "Name of the Service Account that configuration of local helm client is for. Only one of --rbac-user, --rbac-group, or --rbac-service-account can be specified.",
+		Name:  RbacServiceAccountFlag,
+		Usage: fmt.Sprintf("Name of Service Account that configuration of local helm client is for. Only one of --%s, --%s, or --%s can be specified.", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag),
 	}
 	helmConfigureAsTFDataFlag = cli.BoolFlag{
 		Name:  "as-tf-data",
@@ -220,14 +223,14 @@ func SetupHelmCommand() cli.Command {
 			cli.Command{
 				Name:  "deploy",
 				Usage: "Install and setup a best practice Helm Server.",
-				Description: `Install and setup a best practice Helm Server. In addition to providing a basic Helm Server, this will:
+				Description: fmt.Sprintf(`Install and setup a best practice Helm Server. In addition to providing a basic Helm Server, this will:
 
   - Provision TLS certs for the new Helm Server.
   - Setup an RBAC role restricted to the specified namespace and bind it to the specified ServiceAccount.
   - Default to use Secrets for storing Helm Server releases (as opposed to ConfigMaps).
   - Store the private key of the TLS certs in a Secret resource in the kube-system namespace.
 
-Additionally, this command will grant access to an RBAC entity and configure the local helm client to use that using one of "--rbac-user", "--rbac-group", "--rbac-service-account" options.`,
+Additionally, this command will grant access to an RBAC entity and configure the local helm client to use that using one of "--%s", "--%s", "--%s" options.`, RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag),
 				Action: deployHelmServer,
 				Flags: []cli.Flag{
 					// Required flags
@@ -296,7 +299,7 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 - Install an environment file compatible with your platform that can be sourced to setup variables to configure default parameters for the helm client to access the Tiller install.
 - Optionally set the kubectl context default namespace to be the one that Tiller manages. Note that this will update the kubeconfig file.
 
-You must pass in an identifier for your account. This is either the name of the RBAC user (--rbac-user), RBAC group (--rbac-group), or ServiceAccount (--service-account) that you are authenticating as.
+You must pass in an identifier for your account. This is either the name of the RBAC user (--%s), RBAC group (--%s), or ServiceAccount (--%s) that you are authenticating as.
 
 If you set --helm-home to be %s, a temp folder will be generated for use as the helm home.
 
@@ -304,7 +307,7 @@ If you pass in the option --as-tf-data, this will output the configured helm hom
 {
   "helm_home": "CONFIGURED_HELM_HOME"
 }
-This allows you to use the configure command as a data source that is passed into terraform to setup the helm provider.`, CreateTmpFolderForHelmHome),
+This allows you to use the configure command as a data source that is passed into terraform to setup the helm provider.`, RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag, CreateTmpFolderForHelmHome),
 				Action: configureHelmClient,
 				Flags: []cli.Flag{
 					helmHomeFlag,
@@ -325,9 +328,9 @@ This allows you to use the configure command as a data source that is passed int
 			cli.Command{
 				Name:  "grant",
 				Usage: "Grant access to a deployed Helm server.",
-				Description: `Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.
+				Description: fmt.Sprintf(`Grant access to a deployed Helm server to a client by issuing new TLS certificate keypairs that is accessible by the provided RBAC group.
 
-At least one of --rbac-user, --rbac-group, or --rbac-service-account are required.`,
+At least one of --%s, --%s, or --%s are required.`, RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag),
 				Action: grantHelmAccess,
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
@@ -355,9 +358,9 @@ At least one of --rbac-user, --rbac-group, or --rbac-service-account are require
 			cli.Command{
 				Name:  "revoke",
 				Usage: "Revoke access to a deployed Helm server.",
-				Description: `Revoke access to a deployed Helm server from a client by removing the role and role bindings for a provided RBAC entity. Also removes the signed TLS certificate and key from the Secrets associated with this entity.
+				Description: fmt.Sprintf(`Revoke access to a deployed Helm server from a client by removing the role and role bindings for a provided RBAC entity. Also removes the signed TLS certificate and key from the Secrets associated with this entity.
 
-At least one of --rbac-user, --rbac-group, or --rbac-service-account are required.`,
+At least one of --%s, --%s, or --%s are required.`, RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag),
 				Action: revokeHelmAccess,
 				Flags: []cli.Flag{
 					tillerNamespaceFlag,
@@ -617,7 +620,7 @@ func grantHelmAccess(cliContext *cli.Context) error {
 	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
 	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
 	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
-		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
+		return entrypoint.NewRequiredArgsError(fmt.Sprintf("At least one --%s, --%s, or --%s is required", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag))
 	}
 	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
 }
@@ -636,7 +639,7 @@ func revokeHelmAccess(cliContext *cli.Context) error {
 	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
 	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
 	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
-		return entrypoint.NewRequiredArgsError("At least one --rbac-group, --rbac-user, or --rbac-service-account is required")
+		return entrypoint.NewRequiredArgsError(fmt.Sprintf("At least one --%s, --%s, or --%s is required", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag))
 	}
 	return helm.RevokeAccess(kubectlOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
 }
@@ -708,7 +711,7 @@ func parseConfigurationRBACEntity(cliContext *cli.Context) (helm.RBACEntity, err
 		}
 	}
 	if setEntities != 1 {
-		return rbacEntity, MutuallyExclusiveFlagError{"Exactly one of --rbac-user, --rbac-group, or --rbac-service-account must be set"}
+		return rbacEntity, MutuallyExclusiveFlagError{fmt.Sprintf("Exactly one of --%s, --%s, or --%s must be set", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag)}
 	}
 	return rbacEntity, nil
 }
