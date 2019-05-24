@@ -287,6 +287,7 @@ func createTillerRBACRole(
 	roleName string,
 	rbacEntity RBACEntity,
 ) error {
+	labels := getTillerRoleLabels(rbacEntity.EntityID(), tillerNamespace)
 	roleRules := []rbacv1.PolicyRule{
 		rbacv1.PolicyRule{
 			Verbs:     []string{"get", "list"},
@@ -308,7 +309,7 @@ func createTillerRBACRole(
 	role := kubectl.PrepareRole(
 		tillerNamespace,
 		roleName,
-		getTillerRoleLabels(rbacEntity.EntityID(), tillerNamespace),
+		labels,
 		map[string]string{},
 		roleRules)
 	err := kubectl.CreateRole(kubectlOptions, role)
@@ -325,6 +326,7 @@ func createTillerRBACRoleBinding(
 	rbacEntity RBACEntity,
 ) error {
 	roleBindingName := getTillerAccessRoleBindingName(rbacEntity.EntityID(), roleName)
+	labels := getTillerRoleBindingLabels(rbacEntity.EntityID(), tillerNamespace)
 	subjects := []rbacv1.Subject{rbacEntity.Subject()}
 	roleRef := rbacv1.RoleRef{
 		APIGroup: "rbac.authorization.k8s.io",
@@ -334,7 +336,7 @@ func createTillerRBACRoleBinding(
 	newRoleBinding := kubectl.PrepareRoleBinding(
 		tillerNamespace,
 		roleBindingName,
-		getTillerRoleBindingLabels(rbacEntity.EntityID(), tillerNamespace),
+		labels,
 		map[string]string{},
 		subjects,
 		roleRef)

@@ -63,7 +63,7 @@ func TestAddToSecretFromDataBase64EncodesInput(t *testing.T) {
 func TestCreateSecretWithDataFromFile(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -92,7 +92,7 @@ func TestCreateSecretWithDataFromFile(t *testing.T) {
 func TestCreateSecretWithDataFromRawBytes(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -121,7 +121,7 @@ func TestCreateSecretWithDataFromRawBytes(t *testing.T) {
 func TestCreateSecretWithDataFromMultipleSources(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -154,7 +154,7 @@ func TestCreateSecretWithDataFromMultipleSources(t *testing.T) {
 func TestListSecretsOnEmptyReturnsEmptyListWithNoError(t *testing.T) {
 	t.Parallel()
 
-	_, kubectlOptions := getKubectlOptions(t)
+	_, kubectlOptions := GetKubectlOptions(t)
 	namespace := strings.ToLower(random.UniqueId())
 	secrets, err := ListSecrets(kubectlOptions, namespace, metav1.ListOptions{})
 	assert.NoError(t, err)
@@ -164,7 +164,7 @@ func TestListSecretsOnEmptyReturnsEmptyListWithNoError(t *testing.T) {
 func TestListSecretsShowsSecretInNamespace(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	namespace := strings.ToLower(random.UniqueId())
 	configData := createSecret(t, ttKubectlOptions, namespace)
@@ -190,7 +190,7 @@ func TestListSecretsShowsSecretInNamespace(t *testing.T) {
 func TestGetSecretGetsSecretByName(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	namespace := strings.ToLower(random.UniqueId())
 	configData := createSecret(t, ttKubectlOptions, namespace)
@@ -206,7 +206,7 @@ func TestGetSecretGetsSecretByName(t *testing.T) {
 func TestLabelsSupportForSecrets(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -244,7 +244,7 @@ func TestLabelsSupportForSecrets(t *testing.T) {
 func TestDeleteSecret(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	namespace := strings.ToLower(random.UniqueId())
 	configData := createSecret(t, ttKubectlOptions, namespace)

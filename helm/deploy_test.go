@@ -66,7 +66,7 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 // 4. Grant access to helm
 // 5. Configure helm client
 // 6. Deploy a helm chart
-// 7. Revoke a service account
+// 7. Revoke permissions
 // 8. Undeploy helm
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	t.Parallel()
@@ -101,7 +101,7 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 		// server so that it crashes should the release removal fail.
 		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
 	}()
-	// Deploy, Grant, Configure, and Revoke
+	// Deploy, Grant, and Configure
 	assert.NoError(t, Deploy(
 		kubectlOptions,
 		namespaceName,
@@ -144,14 +144,20 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	serviceAccounts := []string{fmt.Sprintf("%s/%s", namespaceName, testServiceAccountName)}
 	require.NoError(t, RevokeAccess(kubectlOptions, namespaceName, rbacGroups, rbacUsers, serviceAccounts))
 
-	// No role for service account
-	assert.Error(t, validateNoRole(t, kubeClient, namespaceName, testServiceAccountName))
+	// ServiceAccount role has been removed
+	err = validateNoRole(t, kubeClient, namespaceName, testServiceAccountName)
+	roleName := getTillerAccessRoleName(testServiceAccountName, namespaceName)
+	assert.Equal(t, err.Error(), fmt.Sprintf("roles.rbac.authorization.k8s.io \"%s\" not found", roleName))
 
-	// No rolebinding for service account
-	assert.Error(t, validateNoRoleBinding(t, kubeClient, namespaceName, testServiceAccountName))
+	// ServiceAccount role binding has been removed
+	err = validateNoRoleBinding(t, kubeClient, namespaceName, testServiceAccountName)
+	roleBindingName := getTillerAccessRoleBindingName(testServiceAccountName, roleName)
+	assert.Equal(t, err.Error(), fmt.Sprintf("rolebindings.rbac.authorization.k8s.io \"%s\" not found", roleBindingName))
 
-	// No TLS keypair secret for service account
-	assert.Error(t, validateNoTLSSecret(t, kubectlOptions, namespaceName, serviceAccountName))
+	// ServiceAccount TLS secret has been removed
+	err = validateNoTLSSecret(t, kubeClient, namespaceName, serviceAccountName)
+	secretName := getTillerClientCertSecretName(serviceAccountName)
+	assert.Equal(t, err.Error(), fmt.Sprintf("secrets \"%s\" not found", secretName))
 }
 
 // validateTillerPodDeployedInNamespace validates that the tiller pod was deployed into the provided namespace and
@@ -316,7 +322,7 @@ func validateHelmEnvFile(t *testing.T, options *kubectl.KubectlOptions) {
 	shell.RunCommand(t, cmd)
 }
 
-// validateNoServiceAccountRole validates that the mock service account does not have an associated role
+// validateServiceAccountRoleRemoved
 func validateNoRole(t *testing.T, client *kubernetes.Clientset, namespace, serviceAccountName string) error {
 	roleName := getTillerAccessRoleName(serviceAccountName, namespace)
 	_, err := client.RbacV1().Roles(namespace).Get(roleName, metav1.GetOptions{})
@@ -332,8 +338,8 @@ func validateNoRoleBinding(t *testing.T, client *kubernetes.Clientset, namespace
 }
 
 // validateNoTLSSecret validates that the mock service account does not have an associated secret TLS keypair
-func validateNoTLSSecret(t *testing.T, options *kubectl.KubectlOptions, namespace, serviceAccountName string) error {
+func validateNoTLSSecret(t *testing.T, client *kubernetes.Clientset, namespace, serviceAccountName string) error {
 	secretName := getTillerClientCertSecretName(serviceAccountName)
-	_, err := kubectl.GetSecret(options, namespace, secretName)
+	_, err := client.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
 	return err
 }

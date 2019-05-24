@@ -6,8 +6,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PrepareTillerRole will construct a new Role struct with the provided metadata. The role can later
-// be used to add rules.
+// PrepareTillerRole will construct a new Role struct with the provided
+// metadata. The role can later be used to add rules.
 func PrepareRole(
 	namespace string,
 	name string,
@@ -15,6 +15,7 @@ func PrepareRole(
 	annotations map[string]string,
 	rules []rbacv1.PolicyRule,
 ) *rbacv1.Role {
+	// Cannot use a struct literal due to promoted fields from the ObjectMeta
 	newRole := rbacv1.Role{}
 	newRole.Name = name
 	newRole.Namespace = namespace

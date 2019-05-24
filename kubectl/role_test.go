@@ -14,30 +14,16 @@ import (
 )
 
 const (
-	TestRole = "test-role"
+	TestRole           = "test-role"
+	TestRoleBinding    = "test-role-binding"
+	TestServiceAccount = "test-service-account"
 )
-
-/*
-import (
-	"fmt"
-	"io/ioutil"
-	"net/url"
-	"strings"
-	"testing"
-
-	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/gruntwork-io/terratest/modules/random"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-*/
 
 // Test that we can create a role with read permissions on pods
-func TestCreateRoleWithTillerRules(t *testing.T) {
+func TestCreateReadPodsRole(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
 	namespace := strings.ToLower(random.UniqueId())
@@ -51,7 +37,7 @@ func TestCreateRoleWithTillerRules(t *testing.T) {
 			Resources: []string{"pods"},
 		},
 	}
-	roleName := "tiller-role-test"
+	roleName := getTestRoleName(namespace)
 	role := PrepareRole(
 		namespace,
 		roleName,
@@ -66,13 +52,56 @@ func TestCreateRoleWithTillerRules(t *testing.T) {
 	ttKubectlOptions.Namespace = namespace
 	role = k8s.GetRole(t, ttKubectlOptions, roleName)
 	assert.Equal(t, role.Name, roleName)
+	assert.Equal(t, len(role.Rules), 1)
+	assert.Equal(t, role.Rules[0], testRules[0])
+}
+
+// Test that we can create a role and role binding
+func TestCreateRoleBinding(t *testing.T) {
+	t.Parallel()
+
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
+
+	// Create a namespace so we don't collide with other tests
+	namespace := strings.ToLower(random.UniqueId())
+	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
+	defer k8s.DeleteNamespace(t, ttKubectlOptions, namespace)
+	ttKubectlOptions.Namespace = namespace
+
+	configData := createRole(t, ttKubectlOptions, namespace)
+	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
+
+	serviceAccountName := getTestServiceAccountName(namespace)
+	k8s.CreateServiceAccount(t, ttKubectlOptions, serviceAccountName)
+
+	roleBindingName := getTestRoleBindingName(namespace)
+	subject := rbacv1.Subject{
+		Kind:      "ServiceAccount",
+		Name:      serviceAccountName,
+		Namespace: namespace,
+	}
+	subjects := []rbacv1.Subject{subject}
+	roleRef := rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     getTestRoleName(namespace),
+	}
+	newRoleBinding := PrepareRoleBinding(
+		namespace,
+		roleBindingName,
+		map[string]string{},
+		map[string]string{},
+		subjects,
+		roleRef)
+	err := CreateRoleBinding(kubectlOptions, newRoleBinding)
+	require.NoError(t, err)
 }
 
 // Test that we can get an existing role
 func TestGetRole(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	namespace := strings.ToLower(random.UniqueId())
 	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
@@ -92,7 +121,7 @@ func TestGetRole(t *testing.T) {
 func TestDeleteRole(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	namespace := strings.ToLower(random.UniqueId())
 	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
@@ -116,11 +145,11 @@ func TestDeleteRole(t *testing.T) {
 	assert.Equal(t, role, emptyRole)
 }
 
-// Test that we can create a role with labels, then list it
+// Test that we can create a role with labels, find it in a call to ListRoles()
 func TestCreateAndListWithLabel(t *testing.T) {
 	t.Parallel()
 
-	ttKubectlOptions, kubectlOptions := getKubectlOptions(t)
+	ttKubectlOptions, kubectlOptions := GetKubectlOptions(t)
 
 	namespace := strings.ToLower(random.UniqueId())
 	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
@@ -156,6 +185,14 @@ func getTestRoleName(namespace string) string {
 	return fmt.Sprintf("%s-%s", namespace, TestRole)
 }
 
+func getTestRoleBindingName(namespace string) string {
+	return fmt.Sprintf("%s-%s", namespace, TestRoleBinding)
+}
+
+func getTestServiceAccountName(namespace string) string {
+	return fmt.Sprintf("%s-%s", namespace, TestServiceAccount)
+}
+
 func getTestLabels() map[string]string {
 	return map[string]string{
 		"gruntwork.io/test-key":     "value",
@@ -173,7 +210,7 @@ func createRole(t *testing.T, options *k8s.KubectlOptions, namespace string) str
 	return configData
 }
 
-// func getKubectlOptions(t *testing.T) (*k8s.KubectlOptions, *KubectlOptions) {
+// func GetKubectlOptions(t *testing.T) (*k8s.KubectlOptions, *KubectlOptions) {
 // 	ttKubectlOptions := k8s.NewKubectlOptions("", "")
 // 	configPath, err := k8s.KubeConfigPathFromHomeDirE()
 // 	require.NoError(t, err)

@@ -13,7 +13,7 @@ func GetTestKubectlOptions(t *testing.T) *KubectlOptions {
 	return &KubectlOptions{ConfigPath: kubeConfigPath}
 }
 
-func getKubectlOptions(t *testing.T) (*k8s.KubectlOptions, *KubectlOptions) {
+func GetKubectlOptions(t *testing.T) (*k8s.KubectlOptions, *KubectlOptions) {
 	ttKubectlOptions := k8s.NewKubectlOptions("", "")
 	configPath, err := k8s.KubeConfigPathFromHomeDirE()
 	require.NoError(t, err)
