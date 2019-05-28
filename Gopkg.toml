@@ -34,7 +34,7 @@
 
 [[constraint]]
   name = "github.com/gruntwork-io/terratest"
-  version = "0.13.30"
+  version = "0.16.0"
 
 [[constraint]]
   name = "github.com/gruntwork-io/gruntwork-cli"
@@ -62,55 +62,3 @@
 # The following overrides are necessary because kubernetes does not support dep.
 # These are pulled in from the various requirements, namely client-go godeps.json and helm glide.lock
 # See https://github.com/kubernetes/client-go/blob/master/INSTALL.md#dep-not-supported-yet for more details
-
-[[override]]
-  name = "github.com/russross/blackfriday"
-  version = "v1.5.2"
-
-[[override]]
-  name = "github.com/elazarl/goproxy"
-  revision = "c4fc26588b6ef8af07a191fcb6476387bdd46711"
-
-[[override]]
-  name = "github.com/mxk/go-flowrate"
-  revision = "cca7078d478f8520f85629ad7c68962d31ed7682"
-
-[[override]]
-  name = "github.com/pborman/uuid"
-  revision = "ca53cad383cad2479bbba7f7a1a05797ec1386e4"
-
-[[override]]
-  name = "k8s.io/klog"
-  revision = "8139d8cb77af419532b33dfa7dd09fbc5f1d344f"
-
-[[override]]
-  name = "sigs.k8s.io/structured-merge-diff"
-  revision = "e5e029740eb81ee0217ecf9d950c25a0eeb9688a"
-
-[[override]]
-  name = "github.com/spf13/pflag"
-  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
-
-[[override]]
-  name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.13.6"
-
- [[override]]
-   name = "k8s.io/apiserver"
-   version = "kubernetes-1.13.6"
-
- [[override]]
-   name = "k8s.io/api"
-   version = "kubernetes-1.13.6"
-
-[[override]]
-  name = "k8s.io/kubernetes"
-  version = "v1.13.6"
-
-[[override]]
-  name = "k8s.io/cli-runtime"
-  revision = "79bf4e0b64544d8c490247abae089bea572ddae6"
-
-[[override]]
-  name = "github.com/docker/docker"
-  revision = "a9fbbdc8dd8794b20af358382ab780559bca589d"
