@@ -233,11 +233,7 @@ func generateAndStoreSignedCertificateKeyPair(
 		kubectlOptions,
 		clientSecretName,
 		tillerNamespace,
-		map[string]string{
-			"gruntwork.io/tiller-namespace":        tillerNamespace,
-			"gruntwork.io/tiller-credentials":      "true",
-			"gruntwork.io/tiller-credentials-type": "client",
-		},
+		getTillerClientCertSecretLabels(rbacEntity.EntityID(), tillerNamespace),
 		map[string]string{
 			fmt.Sprintf("gruntwork.io/%s", entityKey): rbacEntity.EntityID(),
 		},
@@ -263,60 +259,91 @@ func createAndBindRBACRolesForTillerAccess(
 	rbacEntity RBACEntity,
 ) error {
 	logger := logging.GetProjectLogger()
-
-	client, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
-	if err != nil {
-		return err
-	}
+	roleName := getTillerAccessRoleName(rbacEntity.EntityID(), tillerNamespace)
 
 	logger.Infof("Creating RBAC role to grant access to Tiller in namespace %s to %s", tillerNamespace, rbacEntity)
-	rbacRole := rbacv1.Role{
-		Rules: []rbacv1.PolicyRule{
-			rbacv1.PolicyRule{
-				Verbs:     []string{"get", "list"},
-				APIGroups: []string{""},
-				Resources: []string{"pods"},
-			},
-			rbacv1.PolicyRule{
-				Verbs:         []string{"get"},
-				APIGroups:     []string{""},
-				Resources:     []string{"secrets"},
-				ResourceNames: []string{clientSecretName},
-			},
-			rbacv1.PolicyRule{
-				Verbs:     []string{"create"},
-				APIGroups: []string{""},
-				Resources: []string{"pods/portforward"},
-			},
-		},
-	}
-	rbacRole.Name = fmt.Sprintf("%s-%s-tiller-access", rbacEntity.EntityID(), tillerNamespace)
-	rbacRole.Namespace = tillerNamespace
-	_, err = client.RbacV1().Roles(tillerNamespace).Create(&rbacRole)
+	err := createTillerRBACRole(kubectlOptions, tillerNamespace, clientSecretName, roleName, rbacEntity)
 	if err != nil {
 		logger.Errorf("Error creating RBAC role to grant access to Tiller: %s", err)
-		return errors.WithStackTrace(err)
+		return err
 	}
-	logger.Infof("Successfully created RBAC role %s", rbacRole.Name)
+	logger.Infof("Successfully created RBAC role %s", roleName)
 
-	logger.Infof("Creating binding for role %s to %s", rbacRole.Name, rbacEntity)
-	binding := rbacv1.RoleBinding{
-		Subjects: []rbacv1.Subject{rbacEntity.Subject()},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     rbacRole.Name,
+	logger.Infof("Creating binding for role %s to %s", roleName, rbacEntity)
+	err = createTillerRBACRoleBinding(kubectlOptions, tillerNamespace, roleName, rbacEntity)
+	if err != nil {
+		logger.Errorf("Error binding RBAC role %s to %s: %s", roleName, rbacEntity, err)
+		return err
+	}
+	logger.Infof("Successfully bound role %s to %s", roleName, rbacEntity)
+
+	return nil
+}
+
+func createTillerRBACRole(
+	kubectlOptions *kubectl.KubectlOptions,
+	tillerNamespace string,
+	clientSecretName string,
+	roleName string,
+	rbacEntity RBACEntity,
+) error {
+	labels := getTillerRoleLabels(rbacEntity.EntityID(), tillerNamespace)
+	roleRules := []rbacv1.PolicyRule{
+		rbacv1.PolicyRule{
+			Verbs:     []string{"get", "list"},
+			APIGroups: []string{""},
+			Resources: []string{"pods"},
+		},
+		rbacv1.PolicyRule{
+			Verbs:         []string{"get"},
+			APIGroups:     []string{""},
+			Resources:     []string{"secrets"},
+			ResourceNames: []string{clientSecretName},
+		},
+		rbacv1.PolicyRule{
+			Verbs:     []string{"create"},
+			APIGroups: []string{""},
+			Resources: []string{"pods/portforward"},
 		},
 	}
-	binding.Name = fmt.Sprintf("%s-%s-binding", rbacEntity.EntityID(), rbacRole.Name)
-	binding.Namespace = tillerNamespace
-	_, err = client.RbacV1().RoleBindings(tillerNamespace).Create(&binding)
+	role := kubectl.PrepareRole(
+		tillerNamespace,
+		roleName,
+		labels,
+		map[string]string{},
+		roleRules)
+	err := kubectl.CreateRole(kubectlOptions, role)
 	if err != nil {
-		logger.Errorf("Error binding RBAC role %s to %s: %s", rbacRole.Name, rbacEntity, err)
 		return errors.WithStackTrace(err)
 	}
-	logger.Infof("Successfully bound role %s to %s", rbacRole.Name, rbacEntity)
+	return nil
+}
 
+func createTillerRBACRoleBinding(
+	kubectlOptions *kubectl.KubectlOptions,
+	tillerNamespace string,
+	roleName string,
+	rbacEntity RBACEntity,
+) error {
+	roleBindingName := getTillerAccessRoleBindingName(rbacEntity.EntityID(), roleName)
+	labels := getTillerRoleBindingLabels(rbacEntity.EntityID(), tillerNamespace)
+	subjects := []rbacv1.Subject{rbacEntity.Subject()}
+	roleRef := rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     roleName,
+	}
+	newRoleBinding := kubectl.PrepareRoleBinding(
+		tillerNamespace,
+		roleBindingName,
+		labels,
+		map[string]string{},
+		subjects,
+		roleRef)
+	err := kubectl.CreateRoleBinding(kubectlOptions, newRoleBinding)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
 	return nil
 }
 

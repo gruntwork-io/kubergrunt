@@ -104,3 +104,13 @@ func (err MultiHelmError) AddError(newErr error) {
 func (err MultiHelmError) IsEmpty() bool {
 	return len(err.Errors) == 0
 }
+
+// ResourceDoesNotExistError is returned when the resource that is being deleted is not found.
+type ResourceDoesNotExistError struct {
+	Resource string
+	Name     string
+}
+
+func (d *ResourceDoesNotExistError) Error() string {
+	return fmt.Sprintf("%s %s does not exist", d.Resource, d.Name)
+}

@@ -291,7 +291,7 @@ The command does not expose a way to turn this off.
 
 ### Enable TLS verification in the Server
 
-`kubergrunt helm deploy` will deploy Tiller with TLS authentication turned on (see section [Client
+`kubergrunt helm deploy` will deploy Tiller with mutual TLS authentication turned on (see section [Client
 Authentication](#client-authentication) for more details on TLS authentication in Tiller). The command does not expose a
 way to turn this off.
 
@@ -322,10 +322,17 @@ authenticate against the deployed Tiller instance. This is done by:
 - Downloading the CA certificate key pair.
 - Generating new signed certificate key pair for each RBAC entity passed in.
 - Storing each new certificate key pair as a `Secret` in the Tiller namespace.
+- Create a role and rolebinding in the Tiller namespace for each RBAC entity.
 
 The `Secret` containing the new certificate key pair is shared with the RBAC entity so that they can download it to
 configure their client. `kubergrunt` provides the `helm configure` subcommand for your users to use to setup their local
 `helm` client with the new certificate key pairs.
+
+You can use `kubergrunt helm revoke` to deauthorize access to Tiller from a given set of RBAC entities. This command removes
+the role, rolebinding, and certificate key pair secrets for the provided entities. Be aware that revoking does not invalidate
+the signed TLS certificate because Helm/Tiller will not check a Certificate Revocation List or otherwise respect certificate
+revocation. However, by removing the roles, the entity is deauthorized from access to Tiller. If you wish to invalidate
+the TLS key pair, Tiller's CA must be replaced and all key pairs reissued.
 
 Note that `helm grant` should only be run by an administrator of your cluster. This is because only administrators should
 have access to the CA certificate key pair, as that enables you to grant anyone access to the deployed Tiller instance.
