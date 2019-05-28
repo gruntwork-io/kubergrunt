@@ -2,39 +2,11 @@ package helm
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
-
-type RevocationErrors struct {
-	errors []error
-}
-
-func (err RevocationErrors) Error() string {
-	messages := []string{
-		fmt.Sprintf("%d errors found while revoking RBAC entities:", len(err.errors)),
-	}
-
-	for _, individualErr := range err.errors {
-		messages = append(messages, individualErr.Error())
-	}
-	return strings.Join(messages, "\n")
-}
-
-func (err RevocationErrors) AddError(newErr error) {
-	err.errors = append(err.errors, newErr)
-}
-
-func (err RevocationErrors) IsEmpty() bool {
-	return len(err.errors) == 0
-}
-
-func NewRevocationErrors() RevocationErrors {
-	return RevocationErrors{[]error{}}
-}
 
 // RevokeAccess revokes access to a Tiller pod from a provided RBAC user, group, or serviceaccount in a
 // provided Tiller namespace by deleting the secret, role, and rolebindings associated with said entities.
@@ -64,49 +36,36 @@ func RevokeAccess(
 	}
 	logger.Infof("Found a valid Tiller instance in the namespace %s.", tillerNamespace)
 
-	errList := NewRevocationErrors()
+	rbacEntities := []RBACEntity{}
+
 	if len(rbacGroups) > 0 {
-		logger.Infof("Revoking access from RBAC groups")
-		if err := revokeAccessFromRBACEntities(kubectlOptions, tillerNamespace, convertToGroupInfos(rbacGroups)); err != nil {
-			errList.AddError(err)
-		} else {
-			logger.Infof("Successfully revoked access from RBAC groups")
+		for _, entity := range convertToGroupInfos(rbacGroups) {
+			rbacEntities = append(rbacEntities, entity)
 		}
-	} else {
-		logger.Infof("No RBAC groups to revoke - skipping")
 	}
 
 	if len(rbacUsers) > 0 {
-		logger.Infof("Revoking access from RBAC users")
-		if err := revokeAccessFromRBACEntities(kubectlOptions, tillerNamespace, convertToGroupInfos(rbacUsers)); err != nil {
-			errList.AddError(err)
-		} else {
-			logger.Infof("Successfully revoked access from RBAC users")
+		for _, entity := range convertToGroupInfos(rbacUsers) {
+			rbacEntities = append(rbacEntities, entity)
 		}
-	} else {
-		logger.Infof("No RBAC users to revoke - skipping")
 	}
 
 	if len(serviceAccounts) > 0 {
-		logger.Infof("Revoking access from RBAC Service Accounts")
 		serviceAccountInfos, err := convertToServiceAccountInfos(serviceAccounts)
 		if err != nil {
 			return err
 		}
-		if err := revokeAccessFromRBACEntities(kubectlOptions, tillerNamespace, serviceAccountInfos); err != nil {
-			logger.Errorf("Error revoking access from Service Accounts: %s", err)
-			errList.AddError(err)
-		} else {
-			logger.Infof("Successfully revoked access from Service Accounts")
+		for _, entity := range serviceAccountInfos {
+			rbacEntities = append(rbacEntities, entity)
 		}
-	} else {
-		logger.Infof("No Service Accounts to revoke - skipping")
 	}
 
-	if !errList.IsEmpty() {
-		logger.Error("Encountered revocation errors")
-		return errors.WithStackTrace(errList)
+	logger.Infof("Revoking access to Tiller from %d RBAC entities", len(rbacEntities))
+	if err := revokeAccessFromRBACEntities(kubectlOptions, tillerNamespace, rbacEntities); err != nil {
+		logger.Errorf("Encountered error while trying to revoke access to Tiller in Namespace %s from %d entities", tillerNamespace, len(rbacEntities))
+		return err
 	}
+	logger.Infof("Successfully revoked access to Tiller")
 	return nil
 }
 
@@ -122,7 +81,7 @@ func revokeAccessFromRBACEntities(
 ) error {
 	logger := logging.GetProjectLogger()
 
-	errList := NewRevocationErrors()
+	errList := MultiHelmError{Action: "revoke access"}
 	numEntities := len(rbacEntities)
 	for idx, entity := range rbacEntities {
 		logger.Infof("Revoking access from entity %s (%d of %d entities)", entity, idx+1, numEntities)
@@ -152,8 +111,10 @@ func revokeAccessFromRBACEntity(
 	if err == nil {
 		logger.Infof("Deleted role for entity %s", entity.Subject().Name)
 	} else if err, ok := err.(*ResourceDoesNotExistError); ok {
-		logger.Warningf("Unable to delete role for entity %s from namespace %s", entity.Subject().Name, tillerNamespace)
+		logger.Warningf("Role for entity %s does not exist in namespace %s", entity.Subject().Name, tillerNamespace)
+		logger.Warning("Ignoring error")
 	} else {
+		logger.Errorf("Unable to delete role for entity %s from namespace %s", entity.Subject().Name, tillerNamespace)
 		return err
 	}
 
@@ -162,31 +123,26 @@ func revokeAccessFromRBACEntity(
 	if err == nil {
 		logger.Infof("Deleted role binding for entity %s", entity.Subject().Name)
 	} else if err, ok := err.(*ResourceDoesNotExistError); ok {
-		logger.Warningf("Unable to delete role binding for entity %s from namespace %s", entity.Subject().Name, tillerNamespace)
+		logger.Warningf("RoleBinding for entity %s does not exist in namespace %s", entity.Subject().Name, tillerNamespace)
+		logger.Warning("Ignoring error")
 	} else {
+		logger.Errorf("Unable to delete role binding for entity %s from namespace %s", entity.Subject().Name, tillerNamespace)
 		return err
 	}
 
-	logger.Infof("Deleting entity keypair from secrets")
+	logger.Infof("Deleting Secrets containing entity keypair")
 	err = deleteEntityTLS(kubectlOptions, tillerNamespace, entity)
 	if err == nil {
-		logger.Infof("Deleted role binding for entity %s", entity.Subject().Name)
+		logger.Infof("Deleted TLS keypair secret for entity %s", entity.Subject().Name)
 	} else if err, ok := err.(*ResourceDoesNotExistError); ok {
-		logger.Warningf("Unable to delete TLS keypair for entity %s from namespace %s", entity.Subject().Name, tillerNamespace)
+		logger.Warningf("TLS keypair Secret for entity %s does not exist in namespace %s", entity.Subject().Name, tillerNamespace)
+		logger.Warning("Ignoring error")
 	} else {
+		logger.Errorf("Unable to delete TLS keypair Secret for entity %s from namespace %s", entity.Subject().Name, tillerNamespace)
 		return err
 	}
 
 	return nil
-}
-
-type ResourceDoesNotExistError struct {
-	Resource string
-	Name     string
-}
-
-func (d *ResourceDoesNotExistError) Error() string {
-	return fmt.Sprintf("%s %s does not exist", d.Resource, d.Name)
 }
 
 // deleteEntityRole deletes the RBAC role associated with a provided entity
@@ -202,11 +158,11 @@ func deleteEntityRole(
 	filters := kubectl.LabelsToListOptions(labels)
 	roles, err := kubectl.ListRoles(kubectlOptions, tillerNamespace, filters)
 	if err != nil {
-		logger.Errorf("Error checking for role: %s", err)
+		logger.Errorf("Error checking for existence of role: %s", err)
 		return err
 	}
 	if len(roles) == 0 {
-		return &ResourceDoesNotExistError{"Role", roleName}
+		return &ResourceDoesNotExistError{Resource: "Role", Name: roleName}
 	}
 
 	logger.Infof("Deleting role %s", roleName)
@@ -235,11 +191,11 @@ func deleteEntityRoleBinding(
 	filters := kubectl.LabelsToListOptions(labels)
 	bindings, err := kubectl.ListRoleBindings(kubectlOptions, tillerNamespace, filters)
 	if err != nil {
-		logger.Errorf("Error checking for role binding: %s", err)
+		logger.Errorf("Error checking for existence of role binding: %s", err)
 		return err
 	}
 	if len(bindings) == 0 {
-		return &ResourceDoesNotExistError{"RoleBinding", roleName}
+		return &ResourceDoesNotExistError{Resource: "RoleBinding", Name: roleName}
 	}
 
 	logger.Infof("Deleting role binding %s", roleBindingName)
@@ -266,18 +222,19 @@ func deleteEntityTLS(
 	labels := getTillerClientCertSecretLabels(rbacEntity.EntityID(), tillerNamespace)
 	filters := kubectl.LabelsToListOptions(labels)
 	secrets, err := kubectl.ListSecrets(kubectlOptions, tillerNamespace, filters)
-	if len(secrets) == 0 {
-		return &ResourceDoesNotExistError{"Secret", secretName}
-	}
 	if err != nil {
-		logger.Errorf("Error checking for secret: %s", err)
+		logger.Errorf("Error checking for existence of secret: %s", err)
 		return err
 	}
+	if len(secrets) == 0 {
+		return &ResourceDoesNotExistError{Resource: "Secret", Name: secretName}
+	}
+
 	err = kubectl.DeleteSecret(kubectlOptions, tillerNamespace, secretName)
 	if err != nil {
-		logger.Warningf("Error deleting client cert secret: %s", err)
-	} else {
-		logger.Infof("Successfully deleted client cert from secret %s", secretName)
+		logger.Errorf("Error deleting client cert secret: %s", err)
+		return err
 	}
+	logger.Infof("Successfully deleted client cert from secret %s", secretName)
 	return nil
 }
