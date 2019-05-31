@@ -10,9 +10,7 @@ const (
 	NamespaceLabel       = "gruntwork.io/tiller-namespace"
 	CredentialsLabel     = "gruntwork.io/tiller-credentials"
 	CredentialsTypeLabel = "gruntwork.io/tiller-credentials-type"
-	CredentialsNameLabel = "gruntwork.io/tiller-credentials-name"
-	RoleNameLabel        = "gruntwork.io/tiller-access-role-name"
-	RoleBindingNameLabel = "gruntwork.io/tiller-access-rolebinding-name"
+	EntityIDLabel        = "gruntwork.io/tiller-entity-id"
 )
 
 // NOTE: RBAC has relaxed constraints for names compared to resource names. Specifically, RBAC names allow many more
@@ -31,7 +29,7 @@ func getTillerClientCertSecretLabels(entityID string, namespace string) map[stri
 		NamespaceLabel:       namespace,
 		CredentialsLabel:     "true",
 		CredentialsTypeLabel: "client",
-		CredentialsNameLabel: getTillerClientCertSecretName(entityID),
+		EntityIDLabel:        sanitizeLabelValues(entityID),
 	}
 }
 
@@ -73,7 +71,7 @@ func getTillerRoleLabels(entityID string, namespace string) map[string]string {
 	// node labels, and thus you can't create or reference a namespace that is not a valid label.
 	return map[string]string{
 		NamespaceLabel: namespace,
-		RoleNameLabel:  sanitizeLabelValues(getTillerAccessRoleName(entityID, namespace)),
+		EntityIDLabel:  sanitizeLabelValues(entityID),
 	}
 }
 
@@ -81,7 +79,7 @@ func getTillerRoleBindingLabels(entityID string, namespace string) map[string]st
 	// Here we only sanitize the role binding name because namespace names are already constrained with the same
 	// restrictions as node labels, and thus you can't create or reference a namespace that is not a valid label.
 	return map[string]string{
-		NamespaceLabel:       namespace,
-		RoleBindingNameLabel: sanitizeLabelValues(getTillerAccessRoleBindingName(entityID, namespace)),
+		NamespaceLabel: namespace,
+		EntityIDLabel:  sanitizeLabelValues(entityID),
 	}
 }
