@@ -66,5 +66,5 @@ func TestGetTillerRoleBindingLabelsSanitizesValues(t *testing.T) {
 	t.Parallel()
 
 	labels := getTillerRoleBindingLabels("foo@bar", "default")
-	assert.Equal(t, labels[EntityIDLabel], "foo-bar-default-binding")
+	assert.Equal(t, labels[EntityIDLabel], "foo-bar")
 }
