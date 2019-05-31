@@ -86,12 +86,19 @@ each try for a total of 150 seconds (2.5 minutes) before timing out.
 
 Run `kubergrunt eks verify --help` to see all the available options.
 
+**Similar Commands**
+
+- AWS CLI (`aws eks wait`): This command will wait until the EKS cluster reaches the ACTIVE state. Note that oftentimes
+  the Kubernetes API endpoint has a delay in accepting traffic even after reaching the ACTIVE state. We have observed it
+  take up to 1.5 minutes after the cluster becomes ACTIVE before we can have a valid TCP connection with the Kubernetes
+  API endpoint.
+
 #### configure
 
-This subcommand will setup the installed `kubectl` with config contexts that will allow it to authenticate to a specified
-EKS cluster. This binary is designed to be used as part of one of the modules in the package, although this binary
-supports running as a standalone binary. For example, this binary might be used to setup a new operator machine to be
-able to talk to an existing EKS cluster.
+This subcommand will setup the installed `kubectl` with config contexts that will allow it to authenticate to a
+specified EKS cluster by leveraging the `kubergrunt eks token` command. This binary is designed to be used as part of
+one of the modules in the package, although this binary supports running as a standalone binary. For example, this
+binary might be used to setup a new operator machine to be able to talk to an existing EKS cluster.
 
 For example to setup a `kubectl` install on an operator machine to authenticate with EKS:
 
@@ -100,6 +107,11 @@ kubergrunt eks configure --eks-cluster-arn $EKS_CLUSTER_ARN
 ```
 
 Run `kubergrunt eks configure --help` to see all the available options.
+
+**Similar Commands**
+
+- AWS CLI (`aws eks update-kubeconfig`): This command will configure `kubeconfig` in a similar manner. Instead of using
+  `kubergrunt eks token`, this version will use the `get-token` subcommand built into the AWS CLI.
 
 #### token
 
@@ -142,6 +154,15 @@ data "external" "kubernetes_token" {
 This will configure the `kubernetes` provider in Terraform without setting up kubeconfig, allowing you to do everything
 in Terraform without side effects to your local machine.
 
+**Similar Commands**
+
+- AWS CLI (`aws eks get-token`): This command will do the same thing, but does not provide any specific optimizations
+  for terraform.
+- Terraform [`aws_eks_cluster_auth`](https://www.terraform.io/docs/providers/aws/d/eks_cluster_auth.html) data source:
+  This data source can be used to retrieve a temporary auth token for EKS in Terraform. This can only be used in
+  Terraform.
+- [`aws-iam-authenticator`](https://github.com/kubernetes-sigs/aws-iam-authenticator): This is a standalone binary that
+  can be used to fetch a temporary auth token.
 
 #### deploy
 
@@ -251,6 +272,13 @@ This command will also grant access to an RBAC entity and configure the local he
 
 This command should be run by a **cluster administrator** to deploy a new Tiller instance that can be used by their
 users to deploy resources using `helm`.
+
+**Similar Commands**
+
+- Helm CLI (`helm init`): This is the raw low level command that can be used to deploy Tiller. The defaults used are
+  typically to get up and running as fast as possible for experimentation, and are not geared for production usage. For
+  example, `helm init` will default to deploying in the `kube-system` namespace with the default `ServiceAccount` in
+  that namespace, without TLS verification turned on.
 
 #### wait-for-tiller
 
