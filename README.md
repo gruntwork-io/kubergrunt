@@ -86,7 +86,7 @@ each try for a total of 150 seconds (2.5 minutes) before timing out.
 
 Run `kubergrunt eks verify --help` to see all the available options.
 
-**Similar Commands**
+Similar Commands:
 
 - AWS CLI (`aws eks wait`): This command will wait until the EKS cluster reaches the ACTIVE state. Note that oftentimes
   the Kubernetes API endpoint has a delay in accepting traffic even after reaching the ACTIVE state. We have observed it
@@ -108,7 +108,7 @@ kubergrunt eks configure --eks-cluster-arn $EKS_CLUSTER_ARN
 
 Run `kubergrunt eks configure --help` to see all the available options.
 
-**Similar Commands**
+Similar Commands:
 
 - AWS CLI (`aws eks update-kubeconfig`): This command will configure `kubeconfig` in a similar manner. Instead of using
   `kubergrunt eks token`, this version will use the `get-token` subcommand built into the AWS CLI.
@@ -154,7 +154,7 @@ data "external" "kubernetes_token" {
 This will configure the `kubernetes` provider in Terraform without setting up kubeconfig, allowing you to do everything
 in Terraform without side effects to your local machine.
 
-**Similar Commands**
+Similar Commands:
 
 - AWS CLI (`aws eks get-token`): This command will do the same thing, but does not provide any specific optimizations
   for terraform.
@@ -273,7 +273,7 @@ This command will also grant access to an RBAC entity and configure the local he
 This command should be run by a **cluster administrator** to deploy a new Tiller instance that can be used by their
 users to deploy resources using `helm`.
 
-**Similar Commands**
+Similar Commands:
 
 - Helm CLI (`helm init`): This is the raw low level command that can be used to deploy Tiller. The defaults used are
   typically to get up and running as fast as possible for experimentation, and are not geared for production usage. For
