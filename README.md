@@ -48,6 +48,7 @@ The following commands are available as part of `kubergrunt`:
     * [token](#token)
     * [deploy](#deploy)
 1. [helm](#helm)
+    * [local-tiller](#local-tiller)
     * [deploy](#helm-deploy)
     * [wait-for-tiller](#wait-for-tiller)
     * [undeploy](#undeploy)
@@ -223,6 +224,43 @@ If you are not familiar with Helm, be sure to check out [our guide](/HELM_GUIDE.
 
 **Note**: The `helm` subcommand requires the `helm` client to be installed on the operators' machine. Refer to the
 [official docs](https://docs.helm.sh/) for instructions on installing the client.
+
+
+#### local-tiller
+
+This subcommand will manage Tiller (the Helm Server) locally. Using a local Tiller instance allows helm to inherit the
+caller's Kubernetes RBAC role when deploying the chart resources.
+
+To start Tiller, pass in the `--start` option:
+
+```
+kubergrunt helm local-tiller --start
+```
+
+This command will start the Tiller server locally in the background. Upon completion, the command will output the port
+where Tiller is running, which you can use to configure your helm client. Note that this command will not attempt to
+start another instance of the server if it is already running.
+
+You can also have the command output the Tiller access information as JSON, by providing the `--output json` option:
+
+```
+kubergrunt helm local-tiller --start --output json
+```
+
+This allows you to use this command as a data source in Terraform. Checkout the [tillerless-helm
+terraform example](examples/tillerless-helm) for an example of how to use the command in Terraform with the `helm`
+provider.
+
+To stop the server, you can use the `--stop` option:
+
+```
+kubergrunt helm local-tiller --stop
+```
+
+Similar commands:
+
+- [helm-tiller](https://github.com/rimusz/helm-tiller) is a plugin for the helm client that will seamlessly start Tiller
+  locally before any command is run.
 
 
 #### (helm) deploy

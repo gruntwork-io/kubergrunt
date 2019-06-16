@@ -27,6 +27,10 @@ const (
 	RbacGroupFlag               = "rbac-group"
 	RbacUserFlag                = "rbac-user"
 	RbacServiceAccountFlag      = "rbac-service-account"
+
+	localTillerStartFlagName  = "start"
+	localTillerStopFlagName   = "stop"
+	localTillerOutputFlagName = "output"
 )
 
 var (
@@ -55,6 +59,11 @@ var (
 		Value: DefaultTillerVersion,
 		Usage: "The version of the container image to use when deploying tiller.",
 	}
+	localTillerVersionFlag = cli.StringFlag{
+		Name:  "version",
+		Value: DefaultTillerVersion,
+		Usage: "The version of tiller to run locally.",
+	}
 
 	// Configurations for the wait-for-tiller command
 	tillerDeploymentNameFlag = cli.StringFlag{
@@ -81,6 +90,20 @@ var (
 		Name:  "sleep-between-retries",
 		Value: 1 * time.Second,
 		Usage: "The amount of time to sleep inbetween each check attempt. Accepted as a duration (5s, 10m, 1h).",
+	}
+
+	// Configurations for the local-tiller command
+	localTillerStartFlag = cli.BoolFlag{
+		Name:  localTillerStartFlagName,
+		Usage: "Start Tiller (the Helm Server) locally in the background.",
+	}
+	localTillerStopFlag = cli.BoolFlag{
+		Name:  localTillerStopFlagName,
+		Usage: "Stop locally running Tiller (the Helm Server), if it has been started using kubergrunt.",
+	}
+	localTillerOutputFlag = cli.StringFlag{
+		Name:  localTillerOutputFlagName,
+		Usage: "Format to use for displaying information about the locally running Tiller server. Supports either 'text' or 'json'.",
 	}
 
 	// Configurations for how to authenticate with the Kubernetes cluster.
@@ -220,6 +243,25 @@ func SetupHelmCommand() cli.Command {
 		Usage:       "Helper commands to configure Helm.",
 		Description: "Helper commands to configure Helm, including manging TLS certificates and setting up operator machines to authenticate with Tiller.",
 		Subcommands: cli.Commands{
+			cli.Command{
+				Name:        "local-tiller",
+				Usage:       "Manage Tiller (the Helm Server) locally.",
+				Description: `Manage an instance of Tiller (the Helm Server) locally in the background, so that it can inherit the credentials of the local machine.`,
+				Action:      localHelmServer,
+				Flags: []cli.Flag{
+					localTillerVersionFlag,
+					localTillerStartFlag,
+					localTillerStopFlag,
+					localTillerOutputFlag,
+
+					// Kubernetes authentication flags
+					helmKubectlContextNameFlag,
+					helmKubeconfigFlag,
+					helmKubectlServerFlag,
+					helmKubectlCAFlag,
+					helmKubectlTokenFlag,
+				},
+			},
 			cli.Command{
 				Name:  "deploy",
 				Usage: "Install and setup a best practice Helm Server.",
@@ -397,6 +439,11 @@ You can configure the timeout settings using the --timeout and --sleep-between-r
 			},
 		},
 	}
+}
+
+// localHelmServer is the action function for helm local-tiller command.
+func localHelmServer(cliContext *cli.Context) error {
+	return fmt.Errorf("Not Implemented")
 }
 
 // deployHelmServer is the action function for helm deploy command.
