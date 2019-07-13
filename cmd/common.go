@@ -101,11 +101,25 @@ var (
 
 type TLSSubjectInfo struct {
 	CommonName string `json:"common_name"`
-	Org        string `json:"org" json:"organization"`
-	OrgUnit    string `json:"org_unit" json:"organizational_unit"`
-	City       string `json:"city" json:"locality"`
-	State      string `json:"state" json:"province"`
 	Country    string `json:"country"`
+
+	// These fields have multiple names that they can be encoded as, so we use a different field to handle those.
+	Org     string
+	OrgUnit string
+	City    string
+	State   string
+
+	// These fields are used to handle multiple json encodings for the actual field. For example, Org can be encoded in
+	// json as "org" or "organization". Which one is preferred in the case where both encodings are provided is
+	// arbitrary (undefined behavior).
+	OrgEncodedAsOrg                    *string `json:"org,omitempty"`
+	OrgEncodedAsOrganization           *string `json:"organization,omitempty"`
+	OrgUnitEncodedAsOrgUnit            *string `json:"org_unit,omitempty"`
+	OrgUnitEncodedAsOrganizationalUnit *string `json:"organizational_unit,omitempty"`
+	CityEncodedAsCity                  *string `json:"city,omitempty"`
+	CityEncodedAsLocality              *string `json:"locality,omitempty"`
+	StateEncodedAsState                *string `json:"state,omitempty" json:"province"`
+	StateEncodedAsProvince             *string `json:"province,omitempty"`
 }
 
 type TLSFlags struct {
@@ -128,7 +142,25 @@ func parseOrCreateTLSSubjectInfo(jsonString string) (TLSSubjectInfo, error) {
 			return subjectInfo, errors.WithStackTrace(err)
 		}
 	}
+
+	// Reconcile multiple encoding name fields
+	subjectInfo.Org = getStringFromEncodingOrEmpty(subjectInfo.OrgEncodedAsOrg, subjectInfo.OrgEncodedAsOrganization)
+	subjectInfo.OrgUnit = getStringFromEncodingOrEmpty(subjectInfo.OrgUnitEncodedAsOrgUnit, subjectInfo.OrgUnitEncodedAsOrganizationalUnit)
+	subjectInfo.City = getStringFromEncodingOrEmpty(subjectInfo.CityEncodedAsCity, subjectInfo.CityEncodedAsLocality)
+	subjectInfo.State = getStringFromEncodingOrEmpty(subjectInfo.StateEncodedAsState, subjectInfo.StateEncodedAsProvince)
+
 	return subjectInfo, nil
+}
+
+// setStringFromEncoding will return the first non-empty string from the list of strings passed in, or empty string if
+// they are all unset.
+func getStringFromEncodingOrEmpty(encodings ...*string) string {
+	for _, encoding := range encodings {
+		if encoding != nil && *encoding != "" {
+			return *encoding
+		}
+	}
+	return ""
 }
 
 // parseTLSFlagsToPkixName takes the CLI args related to setting up the Distinguished Name identifier of the TLS
