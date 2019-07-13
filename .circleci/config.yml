@@ -5,13 +5,13 @@ defaults: &defaults
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.21
     TERRATEST_LOG_PARSER_VERSION: v0.13.13
-    MODULE_CI_VERSION: v0.13.12
+    MODULE_CI_VERSION: v0.14.1
     TERRAFORM_VERSION: NONE
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
     GOLANG_VERSION: 1.11.2
     KUBECONFIG: /home/circleci/.kube/config
-    HELM_VERSION: v2.14.0  
+    HELM_VERSION: v2.14.0
 
 
 install_helm_client: &install_helm_client
