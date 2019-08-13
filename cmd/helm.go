@@ -91,8 +91,9 @@ var (
 		Usage: "The kubectl config context to use for authenticating with the Kubernetes cluster.",
 	}
 	helmKubeconfigFlag = cli.StringFlag{
-		Name:  KubeconfigFlagName,
-		Usage: "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
+		Name:   KubeconfigFlagName,
+		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
+		EnvVar: "KUBECONFIG",
 	}
 	helmKubectlServerFlag = cli.StringFlag{
 		Name:  KubectlServerFlagName,
