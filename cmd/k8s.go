@@ -39,7 +39,7 @@ var (
 	}
 	k8sKubeconfigFlag = cli.StringFlag{
 		Name:   KubeconfigFlagName,
-		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
+		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. You can also set this using the environment variable KUBECONFIG. (default: \"~/.kube/config\")",
 		EnvVar: "KUBECONFIG",
 	}
 	k8sKubectlServerFlag = cli.StringFlag{
