@@ -29,8 +29,9 @@ var (
 		Usage: "The name to use for the config context that is set up to authenticate with the EKS cluster. Defaults to the cluster ARN.",
 	}
 	eksKubeconfigFlag = cli.StringFlag{
-		Name:  KubeconfigFlagName,
-		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
+		Name:   KubeconfigFlagName,
+		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
+		EnvVar: "KUBECONFIG",
 	}
 	eksKubectlServerFlag = cli.StringFlag{
 		Name:  KubectlServerFlagName,

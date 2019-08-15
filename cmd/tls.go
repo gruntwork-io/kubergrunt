@@ -59,8 +59,9 @@ var (
 		Usage: "The name to use for the config context that is set up to authenticate with the Kubernetes cluster.",
 	}
 	tlsKubeconfigFlag = cli.StringFlag{
-		Name:  KubeconfigFlagName,
-		Usage: "The path to the kubectl config file to setup. Defaults to ~/.kube/config",
+		Name:   KubeconfigFlagName,
+		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. You can also set this using the environment variable KUBECONFIG. (default: \"~/.kube/config\")",
+		EnvVar: "KUBECONFIG",
 	}
 	tlsKubectlServerFlag = cli.StringFlag{
 		Name:  KubectlServerFlagName,
