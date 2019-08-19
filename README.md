@@ -34,7 +34,7 @@ gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwor
 The main package is in `cmd`. To build the binary, you can run:
 
 ```
-go build -o kubergrunt ./cmd
+go build -o bin/kubergrunt ./cmd
 ```
 
 

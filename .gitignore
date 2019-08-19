@@ -37,3 +37,6 @@ __pycache__
 
 # Generic temporary files
 /tmp
+
+# Go binary directory
+bin
