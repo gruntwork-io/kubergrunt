@@ -19,10 +19,11 @@ import (
 // 1. Double the desired capacity of the Auto Scaling Group that powers the EKS Cluster. This will launch new EKS
 //    workers with the new launch configuration.
 // 2. Wait for the new nodes to be ready for Pod scheduling in Kubernetes.
-// 3. Drain the pods scheduled on the old EKS workers (using the equivalent of "kubectl drain"), so that they will be
+// 3. Cordon the old nodes so that no new Pods will be scheduled there.
+// 4. Drain the pods scheduled on the old EKS workers (using the equivalent of "kubectl drain"), so that they will be
 //    rescheduled on the new EKS workers.
-// 4. Wait for all the pods to migrate off of the old EKS workers.
-// 5. Set the desired capacity down to the original value and remove the old EKS workers from the ASG.
+// 5. Wait for all the pods to migrate off of the old EKS workers.
+// 6. Set the desired capacity down to the original value and remove the old EKS workers from the ASG.
 // TODO feature request: Break up into stages/checkpoints, and store state along the way so that command can pick up
 // from a stage if something bad happens.
 func RollOutDeployment(
@@ -97,6 +98,15 @@ func RollOutDeployment(
 		return err
 	}
 	logger.Infof("Successfully launched new nodes with new launch config on ASG %s", eksAsgName)
+
+	logger.Infof("Cordoning old instances in cluster ASG %s to prevent Pod scheduling", eksAsgName)
+	err = cordonNodesInAsg(ec2Svc, kubectlOptions, currentInstanceIds)
+	if err != nil {
+		logger.Errorf("Error while cordoning nodes.")
+		logger.Errorf("Continue to cordon nodes that failed manually, and then terminate the underlying instances to complete the rollout.")
+		return err
+	}
+	logger.Infof("Successfully cordoned old instances in cluster ASG %s", eksAsgName)
 
 	logger.Infof("Draining Pods on old instances in cluster ASG %s", eksAsgName)
 	err = drainNodesInAsg(ec2Svc, kubectlOptions, currentInstanceIds, drainTimeout)

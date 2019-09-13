@@ -142,6 +142,47 @@ func waitForAllDrains(wg *sync.WaitGroup, errChannel chan<- NodeDrainError) {
 	close(errChannel)
 }
 
+// CordonNodes calls `kubectl cordon` on each node provided. Cordoning a node makes it unschedulable, preventing new
+// Pods from being scheduled on the node. Note that cordoning a node does not evict the running Pods. To evict existing
+// Pods, use DrainNodes.
+func CordonNodes(kubectlOptions *KubectlOptions, nodeIds []string) error {
+	// Concurrently trigger cordon events for all requested nodes.
+	var wg sync.WaitGroup                       // So that we can wait for all the cordon calls
+	errChannel := make(chan NodeCordonError, 1) // Collect all errors from each command
+	for _, nodeID := range nodeIds {
+		wg.Add(1)
+		go cordonNode(&wg, errChannel, kubectlOptions, nodeID)
+	}
+	go waitForAllCordons(&wg, errChannel)
+
+	cordonErrors := NewNodeCordonErrors()
+	for err := range errChannel {
+		if err.Error != nil {
+			cordonErrors.AddError(err)
+		}
+	}
+	if !cordonErrors.IsEmpty() {
+		return errors.WithStackTrace(cordonErrors)
+	}
+	return nil
+}
+
+func cordonNode(
+	wg *sync.WaitGroup,
+	errChannel chan<- NodeCordonError,
+	kubectlOptions *KubectlOptions,
+	nodeID string,
+) {
+	defer wg.Done()
+	err := RunKubectl(kubectlOptions, "cordon", nodeID)
+	errChannel <- NodeCordonError{NodeID: nodeID, Error: err}
+}
+
+func waitForAllCordons(wg *sync.WaitGroup, errChannel chan<- NodeCordonError) {
+	wg.Wait()
+	close(errChannel)
+}
+
 // GetNodes queries Kubernetes for information about the worker nodes registered to the cluster, given a
 // clientset.
 func GetNodes(clientset *kubernetes.Clientset, options metav1.ListOptions) ([]corev1.Node, error) {
