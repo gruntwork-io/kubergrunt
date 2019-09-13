@@ -79,6 +79,12 @@ var (
 		Name:  "as-tf-data",
 		Usage: "Output the EKS authentication token in a format compatible for use as an external data source in Terraform.",
 	}
+
+	// Flags for getting OIDC issuer CA thumbprint
+	oidcIssuerUrlFlag = cli.StringFlag{
+		Name:  "issuer-url",
+		Usage: "(Required) URL of the OIDC Issuer for which we want to retrieve CA certificate thumbprints for.",
+	}
 )
 
 // SetupEksCommand creates the cli.Command entry for the eks subcommand of kubergrunt
@@ -119,6 +125,15 @@ func SetupEksCommand() cli.Command {
 				Flags: []cli.Flag{
 					clusterIDFlag,
 					tokenAsTFDataFlag,
+				},
+			},
+			cli.Command{
+				Name:        "oidc-thumbprint",
+				Usage:       "Given the OIDC Issuer URL, retrieve the root CA thumbprint for the provider.",
+				Description: "Using the OIDC Issuer URL, this command will lookup the root CA thumbprint for the provider by retrieving the TLS certificate chain used in the process of verifying the server certificate.",
+				Action:      getOIDCThumbprint,
+				Flags: []cli.Flag{
+					oidcIssuerUrlFlag,
 				},
 			},
 			cli.Command{
@@ -232,6 +247,24 @@ func getAuthToken(cliContext *cli.Context) error {
 		// `kubectl` will parse the JSON from stdout to read in what token to use for authenticating with the cluster.
 		fmt.Println(out)
 	}
+	return nil
+}
+
+// Command action for `kubergrunt eks oidc-thumbprint`
+func getOIDCThumbprint(cliContext *cli.Context) error {
+	issuerURL, err := entrypoint.StringFlagRequiredE(cliContext, oidcIssuerUrlFlag.Name)
+	if err != nil {
+		return err
+	}
+	thumbprint, err := eks.GetOIDCThumbprint(issuerURL)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(thumbprint)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	fmt.Println(string(data))
 	return nil
 }
 
