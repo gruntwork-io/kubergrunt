@@ -124,3 +124,12 @@ type CredentialsError struct {
 func (err CredentialsError) Error() string {
 	return fmt.Sprintf("Error finding AWS credentials. Did you set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or configure an AWS profile? Underlying error: %v", err.UnderlyingErr)
 }
+
+// NoPeerCertificatesError is returned when we couldn't find any TLS peer certificates for the provided URL.
+type NoPeerCertificatesError struct {
+	URL string
+}
+
+func (err NoPeerCertificatesError) Error() string {
+	return fmt.Sprintf("Could not find any peer certificates for URL %s", err.URL)
+}

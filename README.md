@@ -46,6 +46,7 @@ The following commands are available as part of `kubergrunt`:
     * [verify](#verify)
     * [configure](#configure)
     * [token](#token)
+    * [oidc-thumbprint](#oidc-thumbprint)
     * [deploy](#deploy)
 1. [helm](#helm)
     * [deploy](#helm-deploy)
@@ -163,6 +164,31 @@ Similar Commands:
   Terraform.
 - [`aws-iam-authenticator`](https://github.com/kubernetes-sigs/aws-iam-authenticator): This is a standalone binary that
   can be used to fetch a temporary auth token.
+
+#### oidc-thumbprint
+
+This subcommand will take the EKS OIDC Issuer URL and retrieve the root CA thumbprint. This is used to set the trust
+relation for any certificates signed by that CA for the issuer domain. This is necessary to setup the OIDC provider,
+which is used for the IAM Roles for Service Accounts feature of EKS.
+
+You can read more about the general procedure for retrieving the root CA thumbprint of an OIDC Provider in [the official
+documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html).
+
+To retrieve the thumbprint, call the command with the issuer URL:
+
+```bash
+kubergrunt eks oidc-thumbprint --issuer-url $ISSUER_URL
+```
+
+This will output the thumbprint to stdout in JSON format, with the key `ca_thumbprint`.
+
+Run `kubergrunt eks oidc-thumbprint --help` to see all the available options.
+
+Similar Commands:
+
+- You can use `openssl` to retrieve the thumbprint as described by [the official
+  documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html).
+- `eksctl` provides routines for directly configuring the OIDC provider so you don't need to retrieve the thumbprint.
 
 #### deploy
 
