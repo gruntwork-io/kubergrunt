@@ -180,7 +180,7 @@ To retrieve the thumbprint, call the command with the issuer URL:
 kubergrunt eks oidc-thumbprint --issuer-url $ISSUER_URL
 ```
 
-This will output the thumbprint to stdout in JSON format, with the key `ca_thumbprint`.
+This will output the thumbprint to stdout in JSON format, with the key `thumbprint`.
 
 Run `kubergrunt eks oidc-thumbprint --help` to see all the available options.
 
