@@ -143,9 +143,10 @@ func SetupEksCommand() cli.Command {
 
   1. Double the desired capacity of the Auto Scaling Group that powers the EKS Cluster. This will launch new EKS workers with the new launch configuration.
   2. Wait for the new nodes to be ready for Pod scheduling in Kubernetes.
-  3. Drain the pods scheduled on the old EKS workers (using the equivalent of "kubectl drain"), so that they will be rescheduled on the new EKS workers.
-  4. Wait for all the pods to migrate off of the old EKS workers.
-  5. Set the desired capacity down to the original value and remove the old EKS workers from the ASG.
+  3. Cordon the old nodes in the cluster so that they won't be able to schedule new Pods.
+  4. Drain the pods scheduled on the old EKS workers (using the equivalent of "kubectl drain"), so that they will be rescheduled on the new EKS workers.
+  5. Wait for all the pods to migrate off of the old EKS workers.
+  6. Set the desired capacity down to the original value and remove the old EKS workers from the ASG.
 
 Note that to minimize service disruption from this command, your services should setup a PodDisruptionBudget, a readiness probe that fails on container shutdown events, and implement graceful handling of SIGTERM in the container.
 

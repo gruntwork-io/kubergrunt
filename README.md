@@ -222,6 +222,7 @@ When you call the command, it will:
    with the new launch configuration.
 1. Wait for the new nodes to be ready for Pod scheduling in Kubernetes. This includes waiting for the new nodes to be
    registered to any external load balancers managed by Kubernetes.
+1. Cordon the old instances in the ASG so that they won't schedule new Pods.
 1. Drain the pods scheduled on the old EKS workers (using the equivalent of `kubectl drain`), so that they will be
    rescheduled on the new EKS workers.
 1. Wait for all the pods to migrate off of the old EKS workers.

@@ -203,6 +203,21 @@ func drainNodesInAsg(
 	return kubectl.DrainNodes(kubectlOptions, eksKubeNodeNames, drainTimeout)
 }
 
+// Make the call to cordon all the provided nodes in Kubernetes so that they won't be used to schedule new Pods.
+func cordonNodesInAsg(
+	ec2Svc *ec2.EC2,
+	kubectlOptions *kubectl.KubectlOptions,
+	asgInstanceIds []string,
+) error {
+	instances, err := instanceDetailsFromIds(ec2Svc, asgInstanceIds)
+	if err != nil {
+		return err
+	}
+	eksKubeNodeNames := kubeNodeNamesFromInstances(instances)
+
+	return kubectl.CordonNodes(kubectlOptions, eksKubeNodeNames)
+}
+
 // detachInstances will request AWS to detach the instances, removing them from the ASG. In the process, it will also
 // request to auto decrement the desired capacity.
 func detachInstances(asgSvc *autoscaling.AutoScaling, asgName string, idList []string) error {
