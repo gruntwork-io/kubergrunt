@@ -9,7 +9,7 @@ Helm, and Kubectl for managing a Kubernetes Cluster.
 Some of the features of `kubergrunt` include:
 
 * Configuring `kubectl` to authenticate with a given EKS cluster. Learn more about authenticating `kubectl` to EKS
-  in the [eks-cluster module README](../eks-cluster/README.md#how-to-authenticate-kubectl).
+  in the [our production deployment guide](https://gruntwork.io/guides/kubernetes/how-to-deploy-production-grade-kubernetes-cluster-aws/#authenticate).
 * Managing Helm and associated TLS certificates on any Kubernetes cluster.
 * Setting up Helm client with TLS certificates on any Kubernetes cluster.
 * Generating TLS certificate key pairs and storing them as Kubernets `Secrets` on any Kubernetes cluster.
