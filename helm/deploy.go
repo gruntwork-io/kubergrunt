@@ -185,6 +185,7 @@ func generateCertificateKeyPairs(tlsOptions tls.TLSOptions, tillerNamespace stri
 		true,
 		nil,
 		nil,
+		nil,
 	)
 	if err != nil {
 		logger.Errorf("Error generating CA TLS certificate key pair: %s", err)
@@ -232,6 +233,7 @@ func generateSignedCertificateKeyPair(
 		tmpStorePath,
 		"", // Tiller does not support passwords on the private key
 		false,
+		nil,
 		signingCertificate,
 		signingKey,
 	)

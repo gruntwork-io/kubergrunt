@@ -33,6 +33,9 @@ func TestGenerateAndStoreAsK8SSecret(t *testing.T) {
 	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 	sampleTlsOptions := SampleTlsOptions(ECDSAAlgorithm)
 
+	// Setup Subject Alternitive DNS names to add to the certificate
+	var dnsNames []string = nil
+
 	// First pass: the CA options
 	caSecretName := strings.ToLower(random.UniqueId())
 	caSecretOptions := KubernetesSecretOptions{
@@ -51,6 +54,7 @@ func TestGenerateAndStoreAsK8SSecret(t *testing.T) {
 		true,
 		caFilenameBase,
 		sampleTlsOptions,
+		dnsNames,
 	)
 	require.NoError(t, err)
 
@@ -72,6 +76,7 @@ func TestGenerateAndStoreAsK8SSecret(t *testing.T) {
 		false,
 		filenameBase,
 		sampleTlsOptions,
+		dnsNames,
 	)
 	require.NoError(t, err)
 
@@ -101,6 +106,9 @@ func TestGenerateAndStoreAsK8SSecretErrorsIfCADoesNotExist(t *testing.T) {
 		Annotations: map[string]string{},
 	}
 
+	// Setup Subject Alternitive DNS names to add to the certificate
+	var dnsNames []string = nil
+
 	// Attempt to generate the TLS certificate, but verify it failed in looking up the CA certificate key pair
 	filenameBase := random.UniqueId()
 	err := GenerateAndStoreAsK8SSecret(
@@ -110,6 +118,7 @@ func TestGenerateAndStoreAsK8SSecretErrorsIfCADoesNotExist(t *testing.T) {
 		false,
 		filenameBase,
 		sampleTlsOptions,
+		dnsNames,
 	)
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("secrets \"%s\" not found", secretName)))
@@ -141,6 +150,9 @@ func TestGenerateAndStoreAsK8SSecretSupportsTagging(t *testing.T) {
 		},
 	}
 
+	// Setup Subject Alternitive DNS names to add to the certificate
+	var dnsNames []string = nil
+
 	// Generate the TLS certificate and then verify it created a Kubernetes Secret with the provided label and
 	// annotation.
 	err := GenerateAndStoreAsK8SSecret(
@@ -150,6 +162,7 @@ func TestGenerateAndStoreAsK8SSecretSupportsTagging(t *testing.T) {
 		true,
 		"tls",
 		sampleTlsOptions,
+		dnsNames,
 	)
 	require.NoError(t, err)
 	secret := k8s.GetSecret(t, ttKubectlOptions, secretName)
@@ -192,6 +205,9 @@ func TestGenerateAndStoreAsK8SSecretAnnotatesAdditionalMetadata(t *testing.T) {
 				Annotations: map[string]string{},
 			}
 
+			// Setup Subject Alternitive DNS names to add to the certificate
+			var dnsNames []string = nil
+
 			// Generate the TLS certificate and then verify it created a Kubernetes Secret in the right namespace with the right
 			// name.
 			filenameBase := random.UniqueId()
@@ -202,6 +218,7 @@ func TestGenerateAndStoreAsK8SSecretAnnotatesAdditionalMetadata(t *testing.T) {
 				true,
 				filenameBase,
 				sampleTlsOptions,
+				dnsNames,
 			)
 			require.NoError(t, err)
 			secret := k8s.GetSecret(t, ttKubectlOptions, secretName)

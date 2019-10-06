@@ -40,6 +40,7 @@ func CreateCertificateFromKeys(
 	distinguishedName pkix.Name,
 	signedBy *x509.Certificate,
 	isCA bool,
+	dnsNames []string,
 	pubKey interface{}, // This has to be able to accept the key in any format, like the underlying go func
 	privKey interface{}, // This has to be able to accept the key in any format, like the underlying go func
 ) ([]byte, error) {
@@ -48,7 +49,7 @@ func CreateCertificateFromKeys(
 		return nil, errors.WithStackTrace(err)
 	}
 
-	template := createCertificateTemplate(serialNumber, distinguishedName, validityTimeSpan, isCA)
+	template := createCertificateTemplate(serialNumber, distinguishedName, validityTimeSpan, isCA, dnsNames)
 	// If signedBy is nil, we will set it to the template so that the generated certificate is self signed
 	if signedBy == nil {
 		signedBy = &template
@@ -73,6 +74,7 @@ func createCertificateTemplate(
 	distinguishedName pkix.Name,
 	validityTimeSpan time.Duration,
 	isCA bool,
+	dnsNames []string,
 ) x509.Certificate {
 	validFrom := time.Now()
 	template := x509.Certificate{
@@ -85,15 +87,19 @@ func createCertificateTemplate(
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
+
+		DNSNames: dnsNames,
 	}
 	if isCA {
 		template.IsCA = true
 		template.KeyUsage |= x509.KeyUsageCertSign
 	}
+
 	// TODO: make generic so can be used for generating other kinds of certs
 	// Add localhost, because the helm client will open a port forwarder via the Kubernetes API to access Tiller.
 	// Because of that, helm requires a certificate that allows localhost.
 	template.IPAddresses = append(template.IPAddresses, net.ParseIP("127.0.0.1"))
+
 	return template
 }
 

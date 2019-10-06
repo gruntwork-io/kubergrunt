@@ -31,6 +31,7 @@ func CreateECDSACertificateKeyPair(
 	signedBy *x509.Certificate,
 	signedByKey interface{}, // We don't know what format the signing key is in, so we will accept any type
 	isCA bool,
+	dnsNames []string,
 	ecdsaCurve string,
 ) (TLSECDSACertificateKeyPair, error) {
 	privateKey, publicKey, err := CreateECDSAKeyPair(ecdsaCurve)
@@ -48,6 +49,7 @@ func CreateECDSACertificateKeyPair(
 		distinguishedName,
 		signedBy,
 		isCA,
+		dnsNames,
 		publicKey,
 		signingKey,
 	)
