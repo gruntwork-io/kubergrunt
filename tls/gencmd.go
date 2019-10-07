@@ -34,6 +34,7 @@ func GenerateAndStoreAsK8SSecret(
 	genCA bool,
 	filenameBase string,
 	tlsOptions TLSOptions,
+	dnsNames []string,
 ) error {
 	logger := logging.GetProjectLogger()
 	logger.Info("Generating certificate key pairs")
@@ -67,7 +68,7 @@ func GenerateAndStoreAsK8SSecret(
 			return err
 		}
 		caCertPath = caKeyPairPath.CertificatePath
-		keyPairPath, err = generateSignedTLSKeyPair(tlsPath, tlsOptions, caKeyPairPath, caKeyPairAlgorithm, filenameBase)
+		keyPairPath, err = generateSignedTLSKeyPair(tlsPath, tlsOptions, caKeyPairPath, caKeyPairAlgorithm, filenameBase, dnsNames)
 		if err != nil {
 			return err
 		}
@@ -105,6 +106,7 @@ func generateCAKeyPair(tlsPath string, tlsOptions TLSOptions, filenameBase strin
 		true,
 		nil,
 		nil,
+		nil,
 	)
 	if err == nil {
 		logger.Info("Successfully generated CA TLS certificate key pair and stored in temp workspace.")
@@ -121,6 +123,7 @@ func generateSignedTLSKeyPair(
 	caKeyPairPath CertificateKeyPairPath,
 	caKeyPairAlgorithm string,
 	filenameBase string,
+	dnsNames []string,
 ) (CertificateKeyPairPath, error) {
 	logger := logging.GetProjectLogger()
 	logger.Info("Generating signed certificate key pairs from loaded CA and storing into temporary workspace")
@@ -149,6 +152,7 @@ func generateSignedTLSKeyPair(
 		tlsPath,
 		"", // TODO: support passworded key pairs
 		false,
+		dnsNames,
 		signingCertificate,
 		signingKey,
 	)

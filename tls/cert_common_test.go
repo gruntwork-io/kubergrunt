@@ -26,7 +26,7 @@ import (
 func TestStoreCertificateStoresInPEMFormat(t *testing.T) {
 	t.Parallel()
 
-	_, _, certificate, _ := CreateSampleCertKeyPair(t, nil, nil, false)
+	_, _, certificate, _ := CreateSampleCertKeyPair(t, nil, nil, false, nil)
 
 	tmpPath := StoreCertToTempFile(t, certificate)
 	defer os.Remove(tmpPath)
@@ -44,7 +44,7 @@ func TestStoreCertificateStoresInPEMFormat(t *testing.T) {
 func TestCreateCertificateCreatesWithConfiguredMetadata(t *testing.T) {
 	t.Parallel()
 
-	_, _, certificate, distinguishedName := CreateSampleCertKeyPair(t, nil, nil, false)
+	_, _, certificate, distinguishedName := CreateSampleCertKeyPair(t, nil, nil, false, nil)
 
 	tmpPath := StoreCertToTempFile(t, certificate)
 	defer os.Remove(tmpPath)
@@ -81,7 +81,7 @@ func TestCreateCertificateCreatesWithConfiguredMetadata(t *testing.T) {
 func TestCreateCertificateCreatesCertificatesCompatibleWithKeys(t *testing.T) {
 	t.Parallel()
 
-	privKey, pubKey, certificate, _ := CreateSampleCertKeyPair(t, nil, nil, false)
+	privKey, pubKey, certificate, _ := CreateSampleCertKeyPair(t, nil, nil, false, nil)
 
 	certTmpPath := StoreCertToTempFile(t, certificate)
 	defer os.Remove(certTmpPath)
@@ -114,10 +114,10 @@ func TestCreateCertificateCreatesCertificatesCompatibleWithKeys(t *testing.T) {
 func TestCreateCertificateSupportsCreatingCACertsAndSigning(t *testing.T) {
 	t.Parallel()
 
-	caPrivKey, _, caCertificate, _ := CreateSampleCertKeyPair(t, nil, nil, true)
+	caPrivKey, _, caCertificate, _ := CreateSampleCertKeyPair(t, nil, nil, true, nil)
 	caCertTmpPath := StoreCertToTempFile(t, caCertificate)
 	defer os.Remove(caCertTmpPath)
-	_, _, signedCertificate, _ := CreateSampleCertKeyPair(t, caCertificate, caPrivKey, false)
+	_, _, signedCertificate, _ := CreateSampleCertKeyPair(t, caCertificate, caPrivKey, false, nil)
 	signedCertTmpPath := StoreCertToTempFile(t, signedCertificate)
 	defer os.Remove(signedCertTmpPath)
 
@@ -204,6 +204,34 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresCACert(t *testing.T) {
 	assert.Equal(t, secret.Data["ca.crt"], mustReadFile(t, caCertPath))
 }
 
+func TestCreateCertificateCreatesWithConfiguredDNSName(t *testing.T) {
+	t.Parallel()
+
+	dnsName := "tiller-deploy.kube-system"
+	dnsNames := []string{dnsName}
+
+	_, _, certificate, _ := CreateSampleCertKeyPair(t, nil, nil, false, dnsNames)
+
+	tmpPath := StoreCertToTempFile(t, certificate)
+	defer os.Remove(tmpPath)
+
+	// Verify the format. We use openssl binary to read in the file and if it doesn't error, then we know the
+	// certificate is formatted correctly.
+	// See: https://stackoverflow.com/questions/26259432/how-to-check-a-public-rsa-key-file/26260514#26260514
+	cmd := shell.Command{
+		Command: "openssl",
+		Args:    []string{"x509", "-inform", "PEM", "-in", tmpPath, "-text", "-noout"},
+	}
+	out := shell.RunCommandAndGetOutput(t, cmd)
+
+	// openssl text output will encode the distinguished name in the following format
+	dnsNameString := fmt.Sprintf(
+		"DNS:%s,",
+		dnsName,
+	)
+	assert.True(t, strings.Contains(out, dnsNameString))
+}
+
 // parseValidityTimestampsFromOpensslCertOut takes the openssl cert text output and looks for the Not Before and Not
 // After timestamps, and parses them out as golang Time structs.
 func parseValidityTimestampsFromOpensslCertOut(t *testing.T, cmdOut string) (time.Time, time.Time) {
@@ -252,7 +280,7 @@ func CreateSampleDistinguishedName(t *testing.T) pkix.Name {
 	}
 }
 
-func CreateSampleCertKeyPair(t *testing.T, signedBy *x509.Certificate, signedByKey interface{}, isCA bool) (*rsa.PrivateKey, *rsa.PublicKey, *x509.Certificate, pkix.Name) {
+func CreateSampleCertKeyPair(t *testing.T, signedBy *x509.Certificate, signedByKey interface{}, isCA bool, dnsNames []string) (*rsa.PrivateKey, *rsa.PublicKey, *x509.Certificate, pkix.Name) {
 	privKey, pubKey := MustCreateRSAKeyPair(t)
 	distinguishedName := CreateSampleDistinguishedName(t)
 
@@ -261,7 +289,7 @@ func CreateSampleCertKeyPair(t *testing.T, signedBy *x509.Certificate, signedByK
 	if signedBy != nil {
 		signingKey = signedByKey
 	}
-	certificateBytes, err := CreateCertificateFromKeys(1*time.Hour, distinguishedName, signedBy, isCA, pubKey, signingKey)
+	certificateBytes, err := CreateCertificateFromKeys(1*time.Hour, distinguishedName, signedBy, isCA, dnsNames, pubKey, signingKey)
 	require.NoError(t, err)
 
 	certificate, err := x509.ParseCertificate(certificateBytes)

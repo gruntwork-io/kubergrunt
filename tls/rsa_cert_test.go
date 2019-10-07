@@ -13,12 +13,12 @@ func TestCreateRSACertificateKeyPairSupportsSigningCerts(t *testing.T) {
 	t.Parallel()
 
 	distinguishedName := CreateSampleDistinguishedName(t)
-	caKeyPair, err := CreateRSACertificateKeyPair(1*time.Hour, distinguishedName, nil, nil, true, 2048)
+	caKeyPair, err := CreateRSACertificateKeyPair(1*time.Hour, distinguishedName, nil, nil, true, nil, 2048)
 	require.NoError(t, err)
 	caCert, err := caKeyPair.Certificate()
 	require.NoError(t, err)
 
-	signedKeyPair, err := CreateRSACertificateKeyPair(1*time.Hour, distinguishedName, caCert, caKeyPair.PrivateKey, false, 2048)
+	signedKeyPair, err := CreateRSACertificateKeyPair(1*time.Hour, distinguishedName, caCert, caKeyPair.PrivateKey, false, nil, 2048)
 	require.NoError(t, err)
 	signedCert, err := signedKeyPair.Certificate()
 	require.NoError(t, err)
@@ -40,12 +40,12 @@ func TestCreateRSACertificateKeyPairSupportsSigningByECDSACerts(t *testing.T) {
 	t.Parallel()
 
 	distinguishedName := CreateSampleDistinguishedName(t)
-	caKeyPair, err := CreateECDSACertificateKeyPair(1*time.Hour, distinguishedName, nil, nil, true, "P256")
+	caKeyPair, err := CreateECDSACertificateKeyPair(1*time.Hour, distinguishedName, nil, nil, true, nil, "P256")
 	require.NoError(t, err)
 	caCert, err := caKeyPair.Certificate()
 	require.NoError(t, err)
 
-	signedKeyPair, err := CreateRSACertificateKeyPair(1*time.Hour, distinguishedName, caCert, caKeyPair.PrivateKey, false, 2048)
+	signedKeyPair, err := CreateRSACertificateKeyPair(1*time.Hour, distinguishedName, caCert, caKeyPair.PrivateKey, false, nil, 2048)
 	require.NoError(t, err)
 	signedCert, err := signedKeyPair.Certificate()
 	require.NoError(t, err)

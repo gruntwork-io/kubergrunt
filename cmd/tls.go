@@ -49,6 +49,12 @@ var (
 		Usage: "Basename to use for the TLS certificate key pair file names when storing in the Kubernetes Secret resource. Defaults to ca when generating CA certs, and tls otherwise.",
 	}
 
+	// Flags for adding Subject Alternitive Names
+	tlsDNSNamesFlag = cli.StringSliceFlag{
+		Name:  "tls-dns-name",
+		Usage: "The subject alternitive name to add to the certificate. Pass in multiple times for multiple DNS names.",
+	}
+
 	// NOTE: Configurations for setting up the TLS certificates are defined in cmd/common.go
 
 	// Configurations for how to authenticate with the Kubernetes cluster.
@@ -115,6 +121,7 @@ Pass in a --ca-secret-name to sign the newly generated TLS key pair using the CA
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					tlsDNSNamesFlag,
 
 					// Kubernetes auth flags
 					tlsKubectlContextNameFlag,
@@ -175,6 +182,7 @@ func generateTLSCertEntrypoint(cliContext *cli.Context) error {
 	} else if tlsSecretFileNameBase == "" && !genCA {
 		tlsSecretFileNameBase = "tls"
 	}
+	dnsNames := cliContext.StringSlice(tlsDNSNamesFlag.Name)
 
 	// Convert flags to structs
 	tlsSecretOptions := tls.KubernetesSecretOptions{
@@ -197,6 +205,7 @@ func generateTLSCertEntrypoint(cliContext *cli.Context) error {
 		genCA,
 		tlsSecretFileNameBase,
 		tlsOptions,
+		dnsNames,
 	)
 }
 

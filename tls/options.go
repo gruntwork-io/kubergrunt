@@ -81,6 +81,7 @@ func (options *TLSOptions) GenerateAndStoreTLSCertificateKeyPair(
 	rootPath string,
 	keyPassword string,
 	isCA bool,
+	dnsNames []string,
 	signedBy *x509.Certificate,
 	signedByKey interface{}, // We don't know what format the signing key is in, so we will accept any type
 ) (CertificateKeyPairPath, error) {
@@ -92,9 +93,9 @@ func (options *TLSOptions) GenerateAndStoreTLSCertificateKeyPair(
 	}
 	switch options.PrivateKeyAlgorithm {
 	case ECDSAAlgorithm:
-		err = options.generateECDSATLSCertificateKeyPair(path, keyPassword, isCA, signedBy, signedByKey)
+		err = options.generateECDSATLSCertificateKeyPair(path, keyPassword, isCA, dnsNames, signedBy, signedByKey)
 	case RSAAlgorithm:
-		err = options.generateRSATLSCertificateKeyPair(path, keyPassword, isCA, signedBy, signedByKey)
+		err = options.generateRSATLSCertificateKeyPair(path, keyPassword, isCA, dnsNames, signedBy, signedByKey)
 	default:
 		err = errors.WithStackTrace(UnknownPrivateKeyAlgorithm{options.PrivateKeyAlgorithm})
 	}
@@ -105,10 +106,11 @@ func (options *TLSOptions) generateECDSATLSCertificateKeyPair(
 	certificateKeyPairPath CertificateKeyPairPath,
 	keyPassword string,
 	isCA bool,
+	dnsNames []string,
 	signedBy *x509.Certificate,
 	signedByKey interface{}, // We don't know what format the signing key is in, so we will accept any type
 ) error {
-	keypair, err := CreateECDSACertificateKeyPair(options.ValidityTimeSpan, options.DistinguishedName, signedBy, signedByKey, isCA, options.ECDSACurve)
+	keypair, err := CreateECDSACertificateKeyPair(options.ValidityTimeSpan, options.DistinguishedName, signedBy, signedByKey, isCA, dnsNames, options.ECDSACurve)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -131,10 +133,11 @@ func (options *TLSOptions) generateRSATLSCertificateKeyPair(
 	certificateKeyPairPath CertificateKeyPairPath,
 	keyPassword string,
 	isCA bool,
+	dnsNames []string,
 	signedBy *x509.Certificate,
 	signedByKey interface{}, // We don't know what format the signing key is in, so we will accept any type
 ) error {
-	keypair, err := CreateRSACertificateKeyPair(options.ValidityTimeSpan, options.DistinguishedName, signedBy, signedByKey, isCA, options.RSABits)
+	keypair, err := CreateRSACertificateKeyPair(options.ValidityTimeSpan, options.DistinguishedName, signedBy, signedByKey, isCA, dnsNames, options.RSABits)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
