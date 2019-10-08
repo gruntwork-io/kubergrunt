@@ -269,7 +269,7 @@ func grantAndConfigureLocalClient(
 		return errors.WithStackTrace(UnknownRBACEntityType{localClientRBACEntity.EntityType()})
 	}
 
-	err := GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, rbacServiceAccounts)
+	err := GrantAccess(kubectlOptions, tlsOptions, TillerDeploymentName, tillerNamespace, rbacGroups, rbacUsers, rbacServiceAccounts)
 	if err != nil {
 		return err
 	}

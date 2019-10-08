@@ -28,6 +28,7 @@ import (
 func GrantAccess(
 	kubectlOptions *kubectl.KubectlOptions,
 	tlsOptions tls.TLSOptions,
+	tillerDeploymentName string,
 	tillerNamespace string,
 	rbacGroups []string,
 	rbacUsers []string,
@@ -63,14 +64,14 @@ func GrantAccess(
 	logger.Infof("Successfully downloaded CA TLS certificates for Tiller deployed in namespace %s.", tillerNamespace)
 
 	logger.Infof("Granting access to deployed Tiller in namespace %s to RBAC groups", tillerNamespace)
-	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, convertToGroupInfos(rbacGroups)); err != nil {
+	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerDeploymentName, tillerNamespace, convertToGroupInfos(rbacGroups)); err != nil {
 		logger.Errorf("Error granting access to deployed Tiller in namespace %s to RBAC groups: %s", tillerNamespace, err)
 		return err
 	}
 	logger.Infof("Successfully granted access to deployed Tiller in namespace %s to RBAC groups", tillerNamespace)
 
 	logger.Infof("Granting access to deployed Tiller in namespace %s to RBAC users", tillerNamespace)
-	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, convertToUserInfos(rbacUsers)); err != nil {
+	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerDeploymentName, tillerNamespace, convertToUserInfos(rbacUsers)); err != nil {
 		logger.Errorf("Error granting access to deployed Tiller in namespace %s to RBAC users: %s", tillerNamespace, err)
 		return err
 	}
@@ -81,7 +82,7 @@ func GrantAccess(
 	if err != nil {
 		return err
 	}
-	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerNamespace, serviceAccountInfos); err != nil {
+	if err := grantAccessToRBACEntities(kubectlOptions, tlsOptions, caKeyPairPath, tillerDeploymentName, tillerNamespace, serviceAccountInfos); err != nil {
 		logger.Errorf("Error granting access to deployed Tiller in namespace %s to Service Accounts: %s", tillerNamespace, err)
 		return err
 	}
@@ -136,6 +137,7 @@ func grantAccessToRBACEntities(
 	kubectlOptions *kubectl.KubectlOptions,
 	tlsOptions tls.TLSOptions,
 	caKeyPairPath tls.CertificateKeyPairPath,
+	tillerDeploymentName string,
 	tillerNamespace string,
 	rbacEntities []RBACEntity,
 ) error {
@@ -152,7 +154,7 @@ func grantAccessToRBACEntities(
 		logger.Infof("Successfully generated and stored certificate key pair for %s", rbacEntity)
 
 		logger.Infof("Creating and binding RBAC roles to %s", rbacEntity)
-		err = createAndBindRBACRolesForTillerAccess(kubectlOptions, tillerNamespace, clientSecretName, rbacEntity)
+		err = createAndBindRBACRolesForTillerAccess(kubectlOptions, tillerDeploymentName, tillerNamespace, clientSecretName, rbacEntity)
 		if err != nil {
 			logger.Errorf("Error creating and binding RBAC roles to %s", rbacEntity)
 			return err
@@ -254,6 +256,7 @@ func generateAndStoreSignedCertificateKeyPair(
 // - Get the client TLS certificate Secret resource in the tiller namespace.
 func createAndBindRBACRolesForTillerAccess(
 	kubectlOptions *kubectl.KubectlOptions,
+	tillerDeploymentName string,
 	tillerNamespace string,
 	clientSecretName string,
 	rbacEntity RBACEntity,
@@ -262,7 +265,7 @@ func createAndBindRBACRolesForTillerAccess(
 	roleName := getTillerAccessRoleName(rbacEntity.EntityID(), tillerNamespace)
 
 	logger.Infof("Creating RBAC role to grant access to Tiller in namespace %s to %s", tillerNamespace, rbacEntity)
-	err := createTillerRBACRole(kubectlOptions, tillerNamespace, clientSecretName, roleName, rbacEntity)
+	err := createTillerRBACRole(kubectlOptions, tillerDeploymentName, tillerNamespace, clientSecretName, roleName, rbacEntity)
 	if err != nil {
 		logger.Errorf("Error creating RBAC role to grant access to Tiller: %s", err)
 		return err
@@ -282,6 +285,7 @@ func createAndBindRBACRolesForTillerAccess(
 
 func createTillerRBACRole(
 	kubectlOptions *kubectl.KubectlOptions,
+	tillerDeploymentName string,
 	tillerNamespace string,
 	clientSecretName string,
 	roleName string,
@@ -293,6 +297,12 @@ func createTillerRBACRole(
 			Verbs:     []string{"get", "list"},
 			APIGroups: []string{""},
 			Resources: []string{"pods"},
+		},
+		rbacv1.PolicyRule{
+			Verbs:         []string{"get"},
+			APIGroups:     []string{"apps"},
+			Resources:     []string{"deployments"},
+			ResourceNames: []string{tillerDeploymentName},
 		},
 		rbacv1.PolicyRule{
 			Verbs:         []string{"get"},

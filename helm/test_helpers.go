@@ -26,7 +26,7 @@ func getHelmHome(t *testing.T) string {
 	return helmHome
 }
 
-func bindNamespaceAdminRole(t *testing.T, ttKubectlOptions *k8s.KubectlOptions, serviceAccountName string) {
+func bindNamespaceAdminRole(t *testing.T, ttKubectlOptions *k8s.KubectlOptions, serviceAccountNamespace string, serviceAccountName string) {
 	clientset, err := k8s.GetKubernetesClientFromOptionsE(t, ttKubectlOptions)
 	require.NoError(t, err)
 
@@ -52,7 +52,7 @@ func bindNamespaceAdminRole(t *testing.T, ttKubectlOptions *k8s.KubectlOptions, 
 				Kind:      "ServiceAccount",
 				APIGroup:  "",
 				Name:      serviceAccountName,
-				Namespace: ttKubectlOptions.Namespace,
+				Namespace: serviceAccountNamespace,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
