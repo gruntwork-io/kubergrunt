@@ -71,7 +71,7 @@ func TestValidateRequiredResourcesForDeploy(t *testing.T) {
 func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	t.Parallel()
 
-	imageSpec := "gcr.io/kubernetes-helm/tiller:v2.14.0"
+	imageSpec := "gcr.io/kubernetes-helm/tiller:v2.14.3"
 
 	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 	terratestKubectlOptions := k8s.NewKubectlOptions("", "")
@@ -80,32 +80,40 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	tlsOptions := tls.SampleTlsOptions(tls.ECDSAAlgorithm)
 	clientTLSOptions := tls.SampleTlsOptions(tls.ECDSAAlgorithm)
 	clientTLSOptions.DistinguishedName.CommonName = "client"
-	namespaceName := strings.ToLower(random.UniqueId())
-	serviceAccountName := fmt.Sprintf("%s-service-account", namespaceName)
+	tillerNamespaceName := strings.ToLower(random.UniqueId())
+	resourceNamespaceName := strings.ToLower(random.UniqueId())
+	serviceAccountName := fmt.Sprintf("%s-service-account", tillerNamespaceName)
 
-	defer k8s.DeleteNamespace(t, terratestKubectlOptions, namespaceName)
-	k8s.CreateNamespace(t, terratestKubectlOptions, namespaceName)
-	terratestKubectlOptions.Namespace = namespaceName
+	defer k8s.DeleteNamespace(t, terratestKubectlOptions, tillerNamespaceName)
+	k8s.CreateNamespace(t, terratestKubectlOptions, tillerNamespaceName)
+	defer k8s.DeleteNamespace(t, terratestKubectlOptions, resourceNamespaceName)
+	k8s.CreateNamespace(t, terratestKubectlOptions, resourceNamespaceName)
 
-	// Create a test service account we can use for auth
+	// Create a test service account we can use for auth in the resource namespace
+	terratestKubectlOptions.Namespace = resourceNamespaceName
 	testServiceAccountName, testServiceAccountKubectlOptions := createServiceAccountForAuth(t, terratestKubectlOptions)
 	defer k8s.DeleteConfigContextE(t, testServiceAccountKubectlOptions.ContextName)
 	testServiceAccountInfo := ServiceAccountInfo{Name: testServiceAccountName, Namespace: terratestKubectlOptions.Namespace}
 
 	// Create a service account for Tiller
+	terratestKubectlOptions.Namespace = tillerNamespaceName
 	k8s.CreateServiceAccount(t, terratestKubectlOptions, serviceAccountName)
-	bindNamespaceAdminRole(t, terratestKubectlOptions, serviceAccountName)
+	bindNamespaceAdminRole(t, terratestKubectlOptions, tillerNamespaceName, serviceAccountName)
+
+	// Also make sure to bind admin roles for resource namespace
+	terratestKubectlOptions.Namespace = resourceNamespaceName
+	bindNamespaceAdminRole(t, terratestKubectlOptions, tillerNamespaceName, serviceAccountName)
 
 	defer func() {
 		// Make sure to undeploy all helm releases before undeploying the server. However, don't force undeploy the
 		// server so that it crashes should the release removal fail.
-		assert.NoError(t, Undeploy(kubectlOptions, namespaceName, "", false, true))
+		assert.NoError(t, Undeploy(kubectlOptions, tillerNamespaceName, "", false, true))
 	}()
 	// Deploy, Grant, and Configure
 	assert.NoError(t, Deploy(
 		kubectlOptions,
-		namespaceName,
-		namespaceName,
+		tillerNamespaceName,
+		resourceNamespaceName,
 		serviceAccountName,
 		tlsOptions,
 		clientTLSOptions,
@@ -115,10 +123,11 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	))
 
 	// Check tiller pod is in chosen namespace
+	terratestKubectlOptions.Namespace = tillerNamespaceName
 	tillerPodName := validateTillerPodDeployedInNamespace(t, terratestKubectlOptions)
 
 	// Check tiller pod is using the right image
-	validateTillerPodImage(t, terratestKubectlOptions, namespaceName, imageSpec)
+	validateTillerPodImage(t, terratestKubectlOptions, tillerNamespaceName, imageSpec)
 
 	// Check tiller pod is launched with the right service account
 	validateTillerPodServiceAccount(t, terratestKubectlOptions, tillerPodName, serviceAccountName)
@@ -133,29 +142,32 @@ func TestHelmDeployConfigureUndeploy(t *testing.T) {
 	validateTillerAndClientTLSDifferent(t, terratestKubectlOptions, testServiceAccountInfo)
 
 	// Check that we can deploy a helm chart
-	validateHelmChartDeploy(t, testServiceAccountKubectlOptions, namespaceName)
+	validateHelmChartDeploy(t, testServiceAccountKubectlOptions, tillerNamespaceName, resourceNamespaceName)
+
+	// Check that the test service account can get the tiller deployment resource
+	validateGetTillerDeployment(t, testServiceAccountKubectlOptions, tillerNamespaceName)
 
 	// Check that the rendered helm env file works
 	validateHelmEnvFile(t, testServiceAccountKubectlOptions)
 
-	// Revoke the tiller service account
+	// Revoke the test service account
 	rbacGroups := []string{}
 	rbacUsers := []string{}
-	serviceAccounts := []string{fmt.Sprintf("%s/%s", namespaceName, testServiceAccountName)}
-	require.NoError(t, RevokeAccess(kubectlOptions, namespaceName, rbacGroups, rbacUsers, serviceAccounts))
+	serviceAccounts := []string{fmt.Sprintf("%s/%s", resourceNamespaceName, testServiceAccountName)}
+	require.NoError(t, RevokeAccess(kubectlOptions, tillerNamespaceName, rbacGroups, rbacUsers, serviceAccounts))
 
 	// ServiceAccount role has been removed
-	err = validateNoRole(t, kubeClient, namespaceName, testServiceAccountName)
-	roleName := getTillerAccessRoleName(testServiceAccountName, namespaceName)
+	err = validateNoRole(t, kubeClient, tillerNamespaceName, testServiceAccountName)
+	roleName := getTillerAccessRoleName(testServiceAccountName, tillerNamespaceName)
 	assert.Equal(t, err.Error(), fmt.Sprintf("roles.rbac.authorization.k8s.io \"%s\" not found", roleName))
 
 	// ServiceAccount role binding has been removed
-	err = validateNoRoleBinding(t, kubeClient, namespaceName, testServiceAccountName)
+	err = validateNoRoleBinding(t, kubeClient, tillerNamespaceName, testServiceAccountName)
 	roleBindingName := getTillerAccessRoleBindingName(testServiceAccountName, roleName)
 	assert.Equal(t, err.Error(), fmt.Sprintf("rolebindings.rbac.authorization.k8s.io \"%s\" not found", roleBindingName))
 
 	// ServiceAccount TLS secret has been removed
-	err = validateNoTLSSecret(t, kubeClient, namespaceName, serviceAccountName)
+	err = validateNoTLSSecret(t, kubeClient, tillerNamespaceName, serviceAccountName)
 	secretName := getTillerClientCertSecretName(serviceAccountName)
 	assert.Equal(t, err.Error(), fmt.Sprintf("secrets \"%s\" not found", secretName))
 }
@@ -237,6 +249,7 @@ func validateGenerateCertificateKeyPair(t *testing.T, algorithm string) {
 		algorithm,
 		tmpDir,
 	)
+	require.NoError(t, err)
 
 	// Make sure the keys are compatible with cert
 	validateKeyCompatibility(t, caCertificateKeyPair)
@@ -279,7 +292,12 @@ func validateKeyCompatibility(t *testing.T, certKeyPair tls.CertificateKeyPairPa
 }
 
 // validateHelmChartDeploy checks if we can deploy a simple helm chart to the server.
-func validateHelmChartDeploy(t *testing.T, kubectlOptions *kubectl.KubectlOptions, namespace string) {
+func validateHelmChartDeploy(
+	t *testing.T,
+	kubectlOptions *kubectl.KubectlOptions,
+	tillerNamespace string,
+	resourceNamespace string,
+) {
 	require.NoError(
 		t,
 		RunHelm(
@@ -290,11 +308,20 @@ func validateHelmChartDeploy(t *testing.T, kubectlOptions *kubectl.KubectlOption
 			"--tls",
 			"--tls-verify",
 			"--tiller-namespace",
-			namespace,
+			tillerNamespace,
 			"--namespace",
-			namespace,
+			resourceNamespace,
 		),
 	)
+}
+
+// validateGetTillerDeployment verifies that the provided account has access to read the tiller deployment resource.
+func validateGetTillerDeployment(t *testing.T, options *kubectl.KubectlOptions, tillerNamespace string) {
+	tillerDeploymentName := "tiller-deploy"
+	client, err := kubectl.GetKubernetesClientFromOptions(options)
+	require.NoError(t, err)
+	_, err = client.AppsV1().Deployments(tillerNamespace).Get(tillerDeploymentName, metav1.GetOptions{})
+	require.NoError(t, err)
 }
 
 // validateHelmEnvFile sources the generated helm env file and verifies it sets the necessary and sufficient
@@ -323,7 +350,7 @@ func validateHelmEnvFile(t *testing.T, options *kubectl.KubectlOptions) {
 }
 
 // validateServiceAccountRoleRemoved
-func validateNoRole(t *testing.T, client *kubernetes.Clientset, namespace, serviceAccountName string) error {
+func validateNoRole(t *testing.T, client *kubernetes.Clientset, namespace string, serviceAccountName string) error {
 	roleName := getTillerAccessRoleName(serviceAccountName, namespace)
 	_, err := client.RbacV1().Roles(namespace).Get(roleName, metav1.GetOptions{})
 	return err

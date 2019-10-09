@@ -350,6 +350,7 @@ At least one of --%s, --%s, or --%s are required.`, RbacUserFlag, RbacGroupFlag,
 					tlsAlgorithmFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
+					tillerDeploymentNameFlag,
 					helmKubectlContextNameFlag,
 					helmKubeconfigFlag,
 					helmKubectlServerFlag,
@@ -618,13 +619,14 @@ func grantHelmAccess(cliContext *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	tillerDeploymentName := cliContext.String(tillerDeploymentNameFlag.Name)
 	rbacGroups := cliContext.StringSlice(grantedRbacGroupsFlag.Name)
 	rbacUsers := cliContext.StringSlice(grantedRbacUsersFlag.Name)
 	serviceAccounts := cliContext.StringSlice(grantedServiceAccountsFlag.Name)
 	if len(rbacGroups) == 0 && len(rbacUsers) == 0 && len(serviceAccounts) == 0 {
 		return entrypoint.NewRequiredArgsError(fmt.Sprintf("At least one --%s, --%s, or --%s is required", RbacUserFlag, RbacGroupFlag, RbacServiceAccountFlag))
 	}
-	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
+	return helm.GrantAccess(kubectlOptions, tlsOptions, tillerDeploymentName, tillerNamespace, rbacGroups, rbacUsers, serviceAccounts)
 }
 
 // revokeHelmAccess is the action function for the helm revoke command.
