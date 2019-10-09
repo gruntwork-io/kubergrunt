@@ -187,8 +187,9 @@ var (
 	}
 	// This is also used in configure
 	helmHomeFlag = cli.StringFlag{
-		Name:  "helm-home",
-		Usage: "Home directory that is configured for accessing deployed Tiller server. (default: \"~/.helm\")",
+		Name:   "helm-home",
+		Usage:  "Home directory that is configured for accessing deployed Tiller server. You can also set this using the environment variable HELM_HOME. (default: \"~/.helm\")",
+		EnvVar: "HELM_HOME",
 	}
 
 	// Configurations for configuring the helm client
