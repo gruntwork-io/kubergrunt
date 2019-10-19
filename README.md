@@ -57,6 +57,7 @@ The following commands are available as part of `kubergrunt`:
     * [revoke](#revoke)
 1. [k8s](#k8s)
     * [wait-for-ingress](#wait-for-ingress)
+    * [kubectl](#kubectl)
 1. [tls](#tls)
     * [gen](#gen)
 
@@ -508,6 +509,26 @@ this command will query the Kubernetes API to check the `Ingress` resource up to
 inbetween each try for a total of 150 seconds (2.5 minutes) before timing out.
 
 Run `kubergrunt k8s wait-for-ingress --help` to see all the available options.
+
+#### kubectl
+
+This subcommand will call out to kubectl with a temporary file that acts as the kubeconfig, set up with the parameters
+`--kubectl-server-endpoint`, `--kubectl-certificate-authority`, `--kubectl-token`. Unlike using kubectl directly, this
+command allows you to pass in the base64 encoded certificate authority data directly as opposed to as a file.
+
+To forward args to kubectl, pass all the args you wish to forward after a `--`. For example, the following command runs
+`kubectl get pods -n kube-system`:
+
+```
+kubergrunt k8s kubectl \
+  --kubectl-server-endpoint $SERVER_ENDPOINT \
+  --kubectl-certificate-authority $SERVER_CA \
+  --kubectl-token $TOKEN \
+  -- get pods -n kube-system
+```
+
+Run `kubergrunt k8s kubectl --help` to see all the available options.
+
 
 ### tls
 
