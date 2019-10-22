@@ -44,15 +44,15 @@ var (
 	}
 	k8sKubectlServerFlag = cli.StringFlag{
 		Name:  KubectlServerFlagName,
-		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
+		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
 	}
 	k8sKubectlCAFlag = cli.StringFlag{
 		Name:  KubectlCAFlagName,
-		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
+		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
 	}
 	k8sKubectlTokenFlag = cli.StringFlag{
 		Name:  KubectlTokenFlagName,
-		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
+		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
 	}
 )
 
@@ -77,6 +77,28 @@ You can configure the timeout settings using the --max-retries and --sleep-betwe
 					maxRetriesFlag,
 					sleepBetweenRetriesFlag,
 
+					// Kubernetes auth flags
+					k8sKubectlContextNameFlag,
+					k8sKubeconfigFlag,
+					k8sKubectlServerFlag,
+					k8sKubectlCAFlag,
+					k8sKubectlTokenFlag,
+				},
+			},
+			cli.Command{
+				Name:  "kubectl",
+				Usage: "Thin wrapper around kubectl to rely on kubergrunt for temporarily authenticating to the cluster.",
+				Description: `This command will call out to kubectl with a temporary file that acts as the kubeconfig, set up with the parameters --kubectl-server-endpoint, --kubectl-certificate-authority, --kubectl-token. Unlike using kubectl directly, this command allows you to pass in the base64 encoded certificate authority data directly as opposed to as a file.
+
+To forward args to kubectl, pass all the args you wish to forward after a "--". For example, the following command runs "kubectl get pods -n kube-system":
+
+  kubergrunt k8s kubectl \
+    --kubectl-server-endpoint $SERVER_ENDPOINT \
+	--kubectl-certificate-authority $SERVER_CA \
+	--kubectl-token $TOKEN \
+	-- get pods -n kube-system`,
+				Action: kubectlWrapper,
+				Flags: []cli.Flag{
 					// Kubernetes auth flags
 					k8sKubectlContextNameFlag,
 					k8sKubeconfigFlag,
@@ -113,4 +135,21 @@ func waitForIngressEndpoint(cliContext *cli.Context) error {
 
 	// Now call waiting logic for the ingress endpoint
 	return kubectl.WaitUntilIngressEndpointProvisioned(kubectlOptions, namespace, ingressName, maxRetries, sleepBetweenRetries)
+}
+
+// kubectlWrapper is the action function for k8s kubectl command.
+func kubectlWrapper(cliContext *cli.Context) error {
+	// Extract Kubernetes auth information
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+	return kubectl.RunKubectl(kubectlOptions, parseKubectlWrapperArgs(cliContext.Args())...)
+}
+
+func parseKubectlWrapperArgs(args cli.Args) []string {
+	if args.Get(0) == "--" {
+		return args[1:]
+	}
+	return args
 }

@@ -1,6 +1,10 @@
 package kubectl
 
 import (
+	"io/ioutil"
+	"os"
+
+	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/gruntwork-cli/shell"
 )
 
@@ -18,12 +22,23 @@ func RunKubectl(options *KubectlOptions, args ...string) error {
 		cmdArgs = append(cmdArgs, "--server", options.Server)
 		cmdArgs = append(cmdArgs, "--certificate-authority", caFile)
 		cmdArgs = append(cmdArgs, "--token", options.BearerToken)
-	}
-	if options.ContextName != "" {
-		cmdArgs = append(cmdArgs, "--context", options.ContextName)
-	}
-	if options.ConfigPath != "" {
-		cmdArgs = append(cmdArgs, "--kubeconfig", options.ConfigPath)
+
+		// Create a temp file to use as the kubeconfig file. This avoids collision with existing servers that may
+		// overlap.
+		tmpConfigFile, err := ioutil.TempFile("", "")
+		if err != nil {
+			return errors.WithStackTrace(err)
+		}
+		tmpConfigFile.Close()
+		defer os.Remove(tmpConfigFile.Name())
+		cmdArgs = append(cmdArgs, "--kubeconfig", tmpConfigFile.Name())
+	} else {
+		if options.ContextName != "" {
+			cmdArgs = append(cmdArgs, "--context", options.ContextName)
+		}
+		if options.ConfigPath != "" {
+			cmdArgs = append(cmdArgs, "--kubeconfig", options.ConfigPath)
+		}
 	}
 	cmdArgs = append(cmdArgs, args...)
 	_, err := shell.RunShellCommandAndGetAndStreamOutput(shellOptions, "kubectl", cmdArgs...)
