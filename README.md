@@ -12,7 +12,7 @@ Some of the features of `kubergrunt` include:
   in the [our production deployment guide](https://gruntwork.io/guides/kubernetes/how-to-deploy-production-grade-kubernetes-cluster-aws/#authenticate).
 * Managing Helm and associated TLS certificates on any Kubernetes cluster.
 * Setting up Helm client with TLS certificates on any Kubernetes cluster.
-* Generating TLS certificate key pairs and storing them as Kubernets `Secrets` on any Kubernetes cluster.
+* Generating TLS certificate key pairs and storing them as Kubernetes `Secrets` on any Kubernetes cluster.
 
 
 ## Installation
