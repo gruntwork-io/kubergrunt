@@ -31,6 +31,7 @@ func RollOutDeployment(
 	eksAsgName string,
 	kubectlOptions *kubectl.KubectlOptions,
 	drainTimeout time.Duration,
+	deleteLocalData bool,
 	maxRetries int,
 	sleepBetweenRetries time.Duration,
 ) error {
@@ -109,7 +110,7 @@ func RollOutDeployment(
 	logger.Infof("Successfully cordoned old instances in cluster ASG %s", eksAsgName)
 
 	logger.Infof("Draining Pods on old instances in cluster ASG %s", eksAsgName)
-	err = drainNodesInAsg(ec2Svc, kubectlOptions, currentInstanceIds, drainTimeout)
+	err = drainNodesInAsg(ec2Svc, kubectlOptions, currentInstanceIds, drainTimeout, deleteLocalData)
 	if err != nil {
 		logger.Errorf("Error while draining nodes.")
 		logger.Errorf("Continue to drain nodes that failed manually, and then terminate the underlying instances to complete the rollout.")
