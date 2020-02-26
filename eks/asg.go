@@ -193,6 +193,7 @@ func drainNodesInAsg(
 	kubectlOptions *kubectl.KubectlOptions,
 	asgInstanceIds []string,
 	drainTimeout time.Duration,
+	deleteLocalData bool,
 ) error {
 	instances, err := instanceDetailsFromIds(ec2Svc, asgInstanceIds)
 	if err != nil {
@@ -200,7 +201,7 @@ func drainNodesInAsg(
 	}
 	eksKubeNodeNames := kubeNodeNamesFromInstances(instances)
 
-	return kubectl.DrainNodes(kubectlOptions, eksKubeNodeNames, drainTimeout)
+	return kubectl.DrainNodes(kubectlOptions, eksKubeNodeNames, drainTimeout, deleteLocalData)
 }
 
 // Make the call to cordon all the provided nodes in Kubernetes so that they won't be used to schedule new Pods.

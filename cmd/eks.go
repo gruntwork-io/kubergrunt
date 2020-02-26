@@ -59,6 +59,10 @@ var (
 		Value: 15 * time.Minute,
 		Usage: "The length of time as duration (e.g 10m = 10 minutes) to wait for draining nodes before giving up, zero means infinite. Defaults to 15 minutes.",
 	}
+	deleteLocalDataFlag = cli.BoolFlag{
+		Name:  "delete-local-data",
+		Usage: "Continue even if there are pods using emptyDir (local data that will be deleted when the node is drained).",
+	}
 	waitMaxRetriesFlag = cli.IntFlag{
 		Name:  "max-retries",
 		Value: 0,
@@ -164,6 +168,7 @@ If max-retries is unspecified, this command will use a value that translates to 
 					eksKubectlCAFlag,
 					eksKubectlTokenFlag,
 					drainTimeoutFlag,
+					deleteLocalDataFlag,
 					waitMaxRetriesFlag,
 					waitSleepBetweenRetriesFlag,
 				},
@@ -285,6 +290,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		return errors.WithStackTrace(err)
 	}
 	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
+	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
 	waitMaxRetries := cliContext.Int(waitMaxRetriesFlag.Name)
 	waitSleepBetweenRetries := cliContext.Duration(waitSleepBetweenRetriesFlag.Name)
 
@@ -293,6 +299,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		asgName,
 		kubectlOptions,
 		drainTimeout,
+		deleteLocalData,
 		waitMaxRetries,
 		waitSleepBetweenRetries,
 	)
