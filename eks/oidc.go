@@ -96,7 +96,7 @@ func getThumbprint(jwksURL string) (string, error) {
 		hostname = net.JoinHostPort(hostname, "443")
 	}
 
-	tlsConfig := tls.Config{}
+	tlsConfig := tls.Config{ServerName: parsedURL.Host}
 	conn, err := tls.Dial("tcp", hostname, &tlsConfig)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
