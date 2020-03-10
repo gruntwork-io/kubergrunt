@@ -86,11 +86,15 @@ func GetLoadBalancerNameFromService(service corev1.Service) (string, error) {
 
 	// TODO: When expanding to GCP, update this logic
 
-	// For ELB, the subdomain will be NAME-TIME
+	// For ELB, the subdomain will be one of NAME-TIME or internal-NAME-TIME
 	loadbalancerHostnameSubDomain := strings.Split(loadbalancerHostname, ".")[0]
 	loadbalancerHostnameSubDomainParts := strings.Split(loadbalancerHostnameSubDomain, "-")
-	if len(loadbalancerHostnameSubDomainParts) != 2 {
+	numParts := len(loadbalancerHostnameSubDomainParts)
+	if numParts == 2 {
+		return loadbalancerHostnameSubDomainParts[0], nil
+	} else if numParts == 3 {
+		return loadbalancerHostnameSubDomainParts[1], nil
+	} else {
 		return "", NewLoadBalancerNameFormatError(loadbalancerHostname)
 	}
-	return loadbalancerHostnameSubDomainParts[0], nil
 }
