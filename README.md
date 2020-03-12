@@ -28,6 +28,11 @@ Installer](https://github.com/gruntwork-io/gruntwork-installer). For example, to
 gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.5.8"
 ```
 
+Install with Chocolatey:
+
+```cmd
+choco install kubergrunt
+```
 
 ## Building from source
 
