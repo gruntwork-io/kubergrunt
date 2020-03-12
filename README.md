@@ -28,7 +28,11 @@ Installer](https://github.com/gruntwork-io/gruntwork-installer). For example, to
 gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.5.8"
 ```
 
-Install with Chocolatey:
+### 3rd party package managers
+
+Note that third-party Kubergrunt packages may not be updated with the latest version, but are often close. Please check your version against the latest available on the [Releases Page](/../../releases).
+
+Chocolatey (Windows):
 
 ```cmd
 choco install kubergrunt
