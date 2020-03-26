@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/elb"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
+	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
@@ -39,7 +40,7 @@ func RollOutDeployment(
 	logger.Infof("Beginning roll out for EKS cluster worker group %s in %s", eksAsgName, region)
 
 	// Construct clients for AWS
-	sess, err := NewAuthenticatedSession(region)
+	sess, err := eksawshelper.NewAuthenticatedSession(region)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}

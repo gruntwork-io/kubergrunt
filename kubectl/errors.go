@@ -27,6 +27,15 @@ func NewContextAlreadyExistsError(contextName string) ContextAlreadyExistsError 
 	return ContextAlreadyExistsError{contextName}
 }
 
+// AuthSchemeNotSupported is returned when the specified auth scheme in KubectlOptions is not supported.
+type AuthSchemeNotSupported struct {
+	scheme AuthScheme
+}
+
+func (err AuthSchemeNotSupported) Error() string {
+	return fmt.Sprintf("The auth scheme %s is not supported", authSchemeToString(err.scheme))
+}
+
 // NodeReadyTimeoutError is returned when we timeout waiting for nodes to reach ready state
 type NodeReadyTimeoutError struct {
 	numNodes int

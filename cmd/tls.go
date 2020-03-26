@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
@@ -57,30 +56,6 @@ var (
 
 	// NOTE: Configurations for setting up the TLS certificates are defined in cmd/common.go
 
-	// Configurations for how to authenticate with the Kubernetes cluster.
-	// NOTE: this is the same as eksKubectlContextNameFlag and eksKubeconfigFlag, except the descriptions are updated to
-	// fit this series of subcommands.
-	tlsKubectlContextNameFlag = cli.StringFlag{
-		Name:  KubectlContextNameFlagName,
-		Usage: "The name to use for the config context that is set up to authenticate with the Kubernetes cluster.",
-	}
-	tlsKubeconfigFlag = cli.StringFlag{
-		Name:   KubeconfigFlagName,
-		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. You can also set this using the environment variable KUBECONFIG. (default: \"~/.kube/config\")",
-		EnvVar: "KUBECONFIG",
-	}
-	tlsKubectlServerFlag = cli.StringFlag{
-		Name:  KubectlServerFlagName,
-		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
-	}
-	tlsKubectlCAFlag = cli.StringFlag{
-		Name:  KubectlCAFlagName,
-		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
-	}
-	tlsKubectlTokenFlag = cli.StringFlag{
-		Name:  KubectlTokenFlagName,
-		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
-	}
 )
 
 func SetupTLSCommand() cli.Command {
@@ -124,11 +99,12 @@ Pass in a --ca-secret-name to sign the newly generated TLS key pair using the CA
 					tlsDNSNamesFlag,
 
 					// Kubernetes auth flags
-					tlsKubectlContextNameFlag,
-					tlsKubeconfigFlag,
-					tlsKubectlServerFlag,
-					tlsKubectlCAFlag,
-					tlsKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 		},
