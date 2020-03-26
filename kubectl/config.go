@@ -178,7 +178,8 @@ func LoadApiClientConfigFromOptions(options *KubectlOptions) (*restclient.Config
 		server = serverRaw
 		token = tokenRaw
 	default:
-		// TODO: return an error
+		// This should never happen, but is required by the compiler
+		return nil, errors.WithStackTrace(AuthSchemeNotSupported{scheme})
 	}
 
 	config := &restclient.Config{
