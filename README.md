@@ -48,18 +48,19 @@ The following commands are available as part of `kubergrunt`:
     * [token](#token)
     * [oidc-thumbprint](#oidc-thumbprint)
     * [deploy](#deploy)
-1. [helm](#helm)
+1. [k8s](#k8s)
+    * [wait-for-ingress](#wait-for-ingress)
+    * [kubectl](#kubectl)
+1. [tls](#tls)
+    * [gen](#gen)
+1. [helm (deprecated)](#helm-deprecated)
     * [deploy](#helm-deploy)
     * [wait-for-tiller](#wait-for-tiller)
     * [undeploy](#undeploy)
     * [configure](#helm-configure)
     * [grant](#grant)
     * [revoke](#revoke)
-1. [k8s](#k8s)
-    * [wait-for-ingress](#wait-for-ingress)
-    * [kubectl](#kubectl)
-1. [tls](#tls)
-    * [gen](#gen)
+
 
 ### eks
 
@@ -241,7 +242,113 @@ plan to bake in checks into the deployment command to verify that all services h
 the user of any services that do not have a check.
 
 
-### helm
+### k8s
+
+The `k8s` subcommand of `kubergrunt` includes commands that directly interact with the Kubernetes resources.
+
+#### wait-for-ingress
+
+This subcommand waits for the Ingress endpoint to be provisioned. This will monitor the Ingress resource, continuously
+checking until the endpoint is allocated to the Ingress resource or times out. By default, this will try for 5 minutes
+(max retries 60 and time betweeen sleep of 5 seconds).
+
+You can configure the timeout settings using the --max-retries and --sleep-between-retries CLI args. This will check for
+--max-retries times, sleeping for --sleep-between-retries inbetween tries.
+
+For example, if you ran the command:
+
+```bash
+kubergrunt k8s wait-for-ingress \
+    --ingress-name $INGRESS_NAME \
+    --namespace $NAMESPACE \
+    --max-retries 10 \
+    --sleep-between-retries 15s
+```
+
+this command will query the Kubernetes API to check the `Ingress` resource up to 10 times, waiting for 15 seconds
+inbetween each try for a total of 150 seconds (2.5 minutes) before timing out.
+
+Run `kubergrunt k8s wait-for-ingress --help` to see all the available options.
+
+#### kubectl
+
+This subcommand will call out to kubectl with a temporary file that acts as the kubeconfig, set up with the parameters
+`--kubectl-server-endpoint`, `--kubectl-certificate-authority`, `--kubectl-token`. Unlike using kubectl directly, this
+command allows you to pass in the base64 encoded certificate authority data directly as opposed to as a file.
+
+To forward args to kubectl, pass all the args you wish to forward after a `--`. For example, the following command runs
+`kubectl get pods -n kube-system`:
+
+```
+kubergrunt k8s kubectl \
+  --kubectl-server-endpoint $SERVER_ENDPOINT \
+  --kubectl-certificate-authority $SERVER_CA \
+  --kubectl-token $TOKEN \
+  -- get pods -n kube-system
+```
+
+Run `kubergrunt k8s kubectl --help` to see all the available options.
+
+
+### tls
+
+The `tls` subcommand of `kubergrunt` is used to manage TLS certificate key pairs as Kubernetes Secrets.
+
+#### gen
+
+This subcommand will generate new TLS certificate key pairs based on the provided configuration arguments. Once the
+certificates are generated, they will be stored on your targeted Kubernetes cluster as
+[Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). This supports features such as:
+
+- Generating a new CA key pair and storing the generated key pair in your Kubernetes cluster.
+- Issuing a new signed TLS certificate key pair using an existing CA stored in your Kubernetes cluster.
+- Replacing the stored certificate key pair in your Kubernetes cluster with a newly generated one.
+- Controlling which Namespace the Secrets are stored in.
+
+For example, to generate a new CA key pair, issue a TLS certificate key pair, storing each of those as the Secrets
+`ca-keypair` and `tls-keypair` respectively:
+
+```bash
+# Generate the CA key pair
+kubergrunt tls gen \
+    --namespace kube-system \
+    --secret-name ca-keypair \
+    --ca \
+    --tls-common-name kiam-ca \
+    --tls-org Gruntwork \
+    --tls-org-unit IT \
+    --tls-city Phoenix \
+    --tls-state AZ \
+    --tls-country US \
+    --secret-annotation "gruntwork.io/version=v1"
+# Generate a signed TLS key pair using the previously created CA
+kubergrunt tls gen \
+    --namespace kube-system \
+    --secret-name tls-keypair \
+    --ca-secret-name ca-keypair \
+    --tls-common-name kiam-server \
+    --tls-org Gruntwork \
+    --tls-org-unit IT \
+    --tls-city Phoenix \
+    --tls-state AZ \
+    --tls-country US \
+    --secret-annotation "gruntwork.io/version=v1"
+```
+
+The first command will generate a CA key pair and store it as the Secret `ca-keypair`. The `--ca` argument signals to
+`kubergrunt` that the TLS certificate is for a CA.
+
+The second command uses the generated CA key pair to issue a new TLS key pair. The `--ca-secret-name` signals
+`kubergrunt` to use the CA key pair stored in the Kubernetes Secret `ca-keypair`.
+
+This command should be run by a **cluster administrator** to ensure access to the Secrets are tightly controlled.
+
+See the command help for all the available options: `kubergrunt tls gen --help`.
+
+
+### helm (Deprecated)
+
+**NOTE: This subcommand contains utilities for managing Helm v2 and is not necessary for Helm v3.**
 
 The `helm` subcommand of `kubergrunt` provides the ability to manage various Helm Server (Tiller) installs on your
 Kubernetes cluster, in addition to setting up operator machines to authenticate with the designated Helm Server for the
@@ -249,7 +356,7 @@ operator, while following the security best practices from the community.
 
 If you are not familiar with Helm, be sure to check out [our guide](/HELM_GUIDE.md).
 
-**Note**: The `helm` subcommand requires the `helm` client to be installed on the operators' machine. Refer to the
+The `helm` subcommand requires the `helm` client to be installed on the operators' machine. Refer to the
 [official docs](https://docs.helm.sh/) for instructions on installing the client.
 
 
@@ -482,108 +589,7 @@ still authenticate to tiller, even after running `kubergrunt helm revoke`. Howev
 with that entity, the entity is effectively disabled. If you wish to render the signed keypair invalid, you must generate a new
 Certificate Authority for tiller and reissue all keypairs.
 
-### k8s
 
-The `k8s` subcommand of `kubergrunt` includes commands that directly interact with the Kubernetes resources.
-
-#### wait-for-ingress
-
-This subcommand waits for the Ingress endpoint to be provisioned. This will monitor the Ingress resource, continuously
-checking until the endpoint is allocated to the Ingress resource or times out. By default, this will try for 5 minutes
-(max retries 60 and time betweeen sleep of 5 seconds).
-
-You can configure the timeout settings using the --max-retries and --sleep-between-retries CLI args. This will check for
---max-retries times, sleeping for --sleep-between-retries inbetween tries.
-
-For example, if you ran the command:
-
-```bash
-kubergrunt k8s wait-for-ingress \
-    --ingress-name $INGRESS_NAME \
-    --namespace $NAMESPACE \
-    --max-retries 10 \
-    --sleep-between-retries 15s
-```
-
-this command will query the Kubernetes API to check the `Ingress` resource up to 10 times, waiting for 15 seconds
-inbetween each try for a total of 150 seconds (2.5 minutes) before timing out.
-
-Run `kubergrunt k8s wait-for-ingress --help` to see all the available options.
-
-#### kubectl
-
-This subcommand will call out to kubectl with a temporary file that acts as the kubeconfig, set up with the parameters
-`--kubectl-server-endpoint`, `--kubectl-certificate-authority`, `--kubectl-token`. Unlike using kubectl directly, this
-command allows you to pass in the base64 encoded certificate authority data directly as opposed to as a file.
-
-To forward args to kubectl, pass all the args you wish to forward after a `--`. For example, the following command runs
-`kubectl get pods -n kube-system`:
-
-```
-kubergrunt k8s kubectl \
-  --kubectl-server-endpoint $SERVER_ENDPOINT \
-  --kubectl-certificate-authority $SERVER_CA \
-  --kubectl-token $TOKEN \
-  -- get pods -n kube-system
-```
-
-Run `kubergrunt k8s kubectl --help` to see all the available options.
-
-
-### tls
-
-The `tls` subcommand of `kubergrunt` is used to manage TLS certificate key pairs as Kubernetes Secrets.
-
-#### gen
-
-This subcommand will generate new TLS certificate key pairs based on the provided configuration arguments. Once the
-certificates are generated, they will be stored on your targeted Kubernetes cluster as
-[Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). This supports features such as:
-
-- Generating a new CA key pair and storing the generated key pair in your Kubernetes cluster.
-- Issuing a new signed TLS certificate key pair using an existing CA stored in your Kubernetes cluster.
-- Replacing the stored certificate key pair in your Kubernetes cluster with a newly generated one.
-- Controlling which Namespace the Secrets are stored in.
-
-For example, to generate a new CA key pair, issue a TLS certificate key pair, storing each of those as the Secrets
-`ca-keypair` and `tls-keypair` respectively:
-
-```bash
-# Generate the CA key pair
-kubergrunt tls gen \
-    --namespace kube-system \
-    --secret-name ca-keypair \
-    --ca \
-    --tls-common-name kiam-ca \
-    --tls-org Gruntwork \
-    --tls-org-unit IT \
-    --tls-city Phoenix \
-    --tls-state AZ \
-    --tls-country US \
-    --secret-annotation "gruntwork.io/version=v1"
-# Generate a signed TLS key pair using the previously created CA
-kubergrunt tls gen \
-    --namespace kube-system \
-    --secret-name tls-keypair \
-    --ca-secret-name ca-keypair \
-    --tls-common-name kiam-server \
-    --tls-org Gruntwork \
-    --tls-org-unit IT \
-    --tls-city Phoenix \
-    --tls-state AZ \
-    --tls-country US \
-    --secret-annotation "gruntwork.io/version=v1"
-```
-
-The first command will generate a CA key pair and store it as the Secret `ca-keypair`. The `--ca` argument signals to
-`kubergrunt` that the TLS certificate is for a CA.
-
-The second command uses the generated CA key pair to issue a new TLS key pair. The `--ca-secret-name` signals
-`kubergrunt` to use the CA key pair stored in the Kubernetes Secret `ca-keypair`.
-
-This command should be run by a **cluster administrator** to ensure access to the Secrets are tightly controlled.
-
-See the command help for all the available options: `kubergrunt tls gen --help`.
 
 
 ## Who maintains this project?
@@ -619,4 +625,4 @@ MINOR, and PATCH versions on each release to indicate any incompatibilities.
 
 Please see [LICENSE](/LICENSE) and [NOTICE](/NOTICE) for how the code in this repo is licensed.
 
-Copyright &copy; 2019 Gruntwork, Inc.
+Copyright &copy; 2020 Gruntwork, Inc.
