@@ -64,8 +64,8 @@ func (options *KubectlOptions) TempConfigFromAuthInfo() (string, error) {
 	default:
 		return "", errors.WithStackTrace(AuthSchemeNotSupported{scheme})
 	}
-	return tmpfile.Name(), err
 
+	return tmpfile.Name(), err
 }
 
 func tempConfigFromDirectAuthInfo(
