@@ -22,12 +22,46 @@ const (
 	KubectlContextNameFlagName = "kubectl-context-name"
 
 	// Alternative to using contexts
-	KubectlServerFlagName = "kubectl-server-endpoint"
-	KubectlCAFlagName     = "kubectl-certificate-authority"
-	KubectlTokenFlagName  = "kubectl-token"
+	KubectlServerFlagName        = "kubectl-server-endpoint"
+	KubectlCAFlagName            = "kubectl-certificate-authority"
+	KubectlTokenFlagName         = "kubectl-token"
+	KubectlEKSClusterArnFlagName = "kubectl-eks-cluster-arn"
 )
 
 var (
+	genericKubectlContextNameFlag = cli.StringFlag{
+		Name:  KubectlContextNameFlagName,
+		Usage: "The kubectl config context to use for authenticating with the Kubernetes cluster.",
+	}
+	genericKubeconfigFlag = cli.StringFlag{
+		Name:   KubeconfigFlagName,
+		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. You can also set this using the environment variable KUBECONFIG. (default: \"~/.kube/config\")",
+		EnvVar: "KUBECONFIG",
+	}
+	genericKubectlServerFlag = cli.StringFlag{
+		Name:  KubectlServerFlagName,
+		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
+	}
+	genericKubectlCAFlag = cli.StringFlag{
+		Name:  KubectlCAFlagName,
+		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
+	}
+	genericKubectlTokenFlag = cli.StringFlag{
+		Name:  KubectlTokenFlagName,
+		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
+	}
+	genericKubectlEKSClusterArnFlag = cli.StringFlag{
+		Name: KubectlEKSClusterArnFlagName,
+		Usage: fmt.Sprintf(
+			"The ARN of an EKS cluster for authenticating to the Kubernetes API. Can be used in place of the config args (--%s and --%s) or the server args (--%s and --%s and --%s)",
+			KubeconfigFlagName,
+			KubectlContextNameFlagName,
+			KubectlServerFlagName,
+			KubectlCAFlagName,
+			KubectlTokenFlagName,
+		),
+	}
+
 	tlsSubjectJsonFlag = cli.StringFlag{
 		Name:  "tls-subject-json",
 		Usage: "Provide the TLS subject info as json. You can specify the common name (common_name), org (org), org unit (org_unit), city (city), state (state), and country (country) fields.",
@@ -245,28 +279,45 @@ func (tlsSubjectInfo TLSSubjectInfo) DistinguishedName() pkix.Name {
 func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, error) {
 	logger := logging.GetProjectLogger()
 
-	// Set defaults for the optional parameters, if unset
-	var kubectlCA, kubectlToken string
-	var err error
+	// Extract all relevant parameters
 	kubectlServer := cliContext.String(KubectlServerFlagName)
-	if kubectlServer != "" {
+	eksClusterArn := cliContext.String(KubectlEKSClusterArnFlagName)
+	kubectlContextName := cliContext.String(KubectlContextNameFlagName)
+	kubeconfigPath := cliContext.String(KubeconfigFlagName)
+	kubectlCA := cliContext.String(KubectlCAFlagName)
+	kubectlToken := cliContext.String(KubectlTokenFlagName)
+
+	// Helpers for determining which auth scheme to use
+	useDirect := kubectlServer != ""
+	useEKSCluster := eksClusterArn != ""
+
+	// Configure kubectl options based on auth scheme
+	if useDirect {
+		// When using direct auth scheme, we need to ensure kubectlCA and kubectlToken are set. Note that we only
+		// extract the err and not the value, as we already have the value above, outside the if block.
 		logger.Infof("--%s provided. Checking for --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName, KubectlTokenFlagName)
-		kubectlCA, err = entrypoint.StringFlagRequiredE(cliContext, KubectlCAFlagName)
-		if err != nil {
+		if _, err := entrypoint.StringFlagRequiredE(cliContext, KubectlCAFlagName); err != nil {
 			return nil, err
 		}
-		kubectlToken, err = entrypoint.StringFlagRequiredE(cliContext, KubectlTokenFlagName)
-		if err != nil {
+		if _, err := entrypoint.StringFlagRequiredE(cliContext, KubectlTokenFlagName); err != nil {
 			return nil, err
 		}
+		options := &kubectl.KubectlOptions{
+			Server:                        kubectlServer,
+			Base64PEMCertificateAuthority: kubectlCA,
+			BearerToken:                   kubectlToken,
+		}
+		return options, nil
+	} else if useEKSCluster {
+		options := &kubectl.KubectlOptions{EKSClusterArn: eksClusterArn}
+		return options, nil
 	}
 
-	kubectlContextName := cliContext.String(KubectlContextNameFlagName)
-	if kubectlServer == "" && kubectlContextName == "" {
+	// Assume config based auth scheme
+	if kubectlContextName == "" {
 		logger.Infof("No context name provided. Using default.")
 	}
-	kubeconfigPath := cliContext.String(KubeconfigFlagName)
-	if kubectlServer == "" && kubeconfigPath == "" {
+	if kubeconfigPath == "" {
 		defaultKubeconfigPath, err := kubectl.KubeConfigPathFromHomeDir()
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
@@ -276,11 +327,8 @@ func parseKubectlOptions(cliContext *cli.Context) (*kubectl.KubectlOptions, erro
 	}
 
 	kubectlOptions := &kubectl.KubectlOptions{
-		ContextName:                   kubectlContextName,
-		ConfigPath:                    kubeconfigPath,
-		Server:                        kubectlServer,
-		Base64PEMCertificateAuthority: kubectlCA,
-		BearerToken:                   kubectlToken,
+		ContextName: kubectlContextName,
+		ConfigPath:  kubeconfigPath,
 	}
 	return kubectlOptions, nil
 }

@@ -9,10 +9,10 @@ import (
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/gruntwork-cli/shell"
-	"github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token"
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/kubergrunt/eks"
+	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 )
 
 var (
@@ -27,23 +27,6 @@ var (
 	eksKubectlContextNameFlag = cli.StringFlag{
 		Name:  KubectlContextNameFlagName,
 		Usage: "The name to use for the config context that is set up to authenticate with the EKS cluster. Defaults to the cluster ARN.",
-	}
-	eksKubeconfigFlag = cli.StringFlag{
-		Name:   KubeconfigFlagName,
-		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. (default: \"~/.kube/config\")",
-		EnvVar: "KUBECONFIG",
-	}
-	eksKubectlServerFlag = cli.StringFlag{
-		Name:  KubectlServerFlagName,
-		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
-	}
-	eksKubectlCAFlag = cli.StringFlag{
-		Name:  KubectlCAFlagName,
-		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
-	}
-	eksKubectlTokenFlag = cli.StringFlag{
-		Name:  KubectlTokenFlagName,
-		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Overrides the settings in the kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
 	}
 
 	clusterRegionFlag = cli.StringFlag{
@@ -118,7 +101,7 @@ func SetupEksCommand() cli.Command {
 				Flags: []cli.Flag{
 					eksClusterArnFlag,
 					eksKubectlContextNameFlag,
-					eksKubeconfigFlag,
+					genericKubeconfigFlag,
 				},
 			},
 			cli.Command{
@@ -163,10 +146,11 @@ If max-retries is unspecified, this command will use a value that translates to 
 					clusterRegionFlag,
 					clusterAsgNameFlag,
 					eksKubectlContextNameFlag,
-					eksKubeconfigFlag,
-					eksKubectlServerFlag,
-					eksKubectlCAFlag,
-					eksKubectlTokenFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 					drainTimeoutFlag,
 					deleteLocalDataFlag,
 					waitMaxRetriesFlag,
@@ -212,7 +196,7 @@ func setupKubectl(cliContext *cli.Context) error {
 		return errors.WithStackTrace(err)
 	}
 
-	cluster, err := eks.GetClusterByArn(eksClusterArn)
+	cluster, err := eksawshelper.GetClusterByArn(eksClusterArn)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -230,14 +214,11 @@ func getAuthToken(cliContext *cli.Context) error {
 	}
 	tokenAsTFData := cliContext.Bool(tokenAsTFDataFlag.Name)
 
-	gen, err := token.NewGenerator(false)
+	tok, jsonData, err := eksawshelper.GetKubernetesTokenForCluster(clusterID)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
-	tok, err := gen.Get(clusterID)
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
+
 	if tokenAsTFData {
 		// When using as a terraform data source, we need to return the token itself.
 		tokenData := struct {
@@ -249,9 +230,8 @@ func getAuthToken(cliContext *cli.Context) error {
 		}
 		os.Stdout.Write(bytesOut)
 	} else {
-		out := gen.FormatJSON(tok)
 		// `kubectl` will parse the JSON from stdout to read in what token to use for authenticating with the cluster.
-		fmt.Println(out)
+		fmt.Println(jsonData)
 	}
 	return nil
 }

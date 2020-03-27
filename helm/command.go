@@ -22,7 +22,16 @@ func RunHelmAndGetOutput(options *kubectl.KubectlOptions, args ...string) (strin
 
 	// If KubectlOptions is configured with a direct auth info, use that instead of the context. Note that since helm
 	// does not support directly using auth infos as CLI args, we create a tmp file that holds this info.
-	if options.Server != "" {
+	scheme := options.AuthScheme()
+	switch scheme {
+	case kubectl.ConfigBased:
+		if options.ContextName != "" {
+			cmdArgs = append(cmdArgs, "--kube-context", options.ContextName)
+		}
+		if options.ConfigPath != "" {
+			cmdArgs = append(cmdArgs, "--kubeconfig", options.ConfigPath)
+		}
+	default:
 		tmpfile, err := options.TempConfigFromAuthInfo()
 		if tmpfile != "" {
 			// Make sure to delete the tmp file at the end
@@ -32,13 +41,6 @@ func RunHelmAndGetOutput(options *kubectl.KubectlOptions, args ...string) (strin
 			return "", err
 		}
 		cmdArgs = append(cmdArgs, "--kubeconfig", tmpfile)
-	} else {
-		if options.ContextName != "" {
-			cmdArgs = append(cmdArgs, "--kube-context", options.ContextName)
-		}
-		if options.ConfigPath != "" {
-			cmdArgs = append(cmdArgs, "--kubeconfig", options.ConfigPath)
-		}
 	}
 
 	cmdArgs = append(cmdArgs, args...)

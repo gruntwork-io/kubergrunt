@@ -10,39 +10,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/eks"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
+	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
-
-// GetClusterByArn returns the EKS Cluster object that corresponds to the given ARN.
-func GetClusterByArn(eksClusterArn string) (*eks.Cluster, error) {
-	logger := logging.GetProjectLogger()
-	logger.Infof("Retrieving details for EKS cluster %s", eksClusterArn)
-
-	region, err := GetRegionFromArn(eksClusterArn)
-	if err != nil {
-		return nil, errors.WithStackTrace(err)
-	}
-	logger.Infof("Detected cluster deployed in region %s", region)
-
-	client, err := NewEksClient(region)
-	if err != nil {
-		return nil, errors.WithStackTrace(err)
-	}
-
-	eksClusterName, err := GetClusterNameFromArn(eksClusterArn)
-	if err != nil {
-		return nil, errors.WithStackTrace(err)
-	}
-
-	describeClusterOutput, err := client.DescribeCluster(&eks.DescribeClusterInput{Name: aws.String(eksClusterName)})
-	if err != nil {
-		return nil, errors.WithStackTrace(err)
-	}
-
-	logger.Infof("Successfully retrieved EKS cluster details")
-
-	return describeClusterOutput.Cluster, nil
-}
 
 // VerifyCluster verifies that the cluster exists, and that the Kubernetes api server is up and accepting traffic.
 // If waitForCluster is true, this command will wait for each stage to reach the true state.
@@ -60,7 +30,7 @@ func VerifyCluster(
 		waitMaxRetries = int(math.Trunc(300 / waitSleepBetweenRetries.Seconds()))
 	}
 
-	clusterInfo, err := GetClusterByArn(eksClusterArn)
+	clusterInfo, err := eksawshelper.GetClusterByArn(eksClusterArn)
 	if err == nil && !clusterIsActive(clusterInfo) {
 		err = EKSClusterNotReady{eksClusterArn}
 	}
@@ -106,7 +76,7 @@ func waitForClusterActive(eksClusterArn string, maxRetries int, sleepBetweenRetr
 	logger.Infof("Waiting for cluster %s to reach active state.", eksClusterArn)
 	for i := 0; i < maxRetries; i++ {
 		logger.Info("Checking EKS cluster info")
-		clusterInfo, err := GetClusterByArn(eksClusterArn)
+		clusterInfo, err := eksawshelper.GetClusterByArn(eksClusterArn)
 		// We do nothing with the error other than log, because it could mean the cluster hasn't been created yet.
 		if err != nil {
 			logger.Warnf("Error retrieving cluster info %s", err)
@@ -126,7 +96,7 @@ func waitForClusterActive(eksClusterArn string, maxRetries int, sleepBetweenRetr
 func checkKubernetesApiServer(eksClusterArn string) bool {
 	logger := logging.GetProjectLogger()
 	logger.Info("Checking EKS cluster info")
-	clusterInfo, err := GetClusterByArn(eksClusterArn)
+	clusterInfo, err := eksawshelper.GetClusterByArn(eksClusterArn)
 	if err != nil {
 		logger.Warnf("Error retrieving cluster info %s", err)
 		logger.Warnf("Marking api server as not ready")
@@ -191,13 +161,4 @@ func waitForKubernetesApiServer(eksClusterArn string, maxRetries int, sleepBetwe
 		time.Sleep(sleepBetweenRetries)
 	}
 	return errors.WithStackTrace(EKSClusterReadyTimeoutError{eksClusterArn})
-}
-
-// NewEksClient creates an EKS client.
-func NewEksClient(region string) (*eks.EKS, error) {
-	sess, err := NewAuthenticatedSession(region)
-	if err != nil {
-		return nil, err
-	}
-	return eks.New(sess), nil
 }

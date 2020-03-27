@@ -83,31 +83,6 @@ var (
 		Usage: "The amount of time to sleep inbetween each check attempt. Accepted as a duration (5s, 10m, 1h).",
 	}
 
-	// Configurations for how to authenticate with the Kubernetes cluster.
-	// NOTE: this is the same as eksKubectlContextNameFlag and eksKubeconfigFlag, except the descriptions are updated to
-	// fit this series of subcommands.
-	helmKubectlContextNameFlag = cli.StringFlag{
-		Name:  KubectlContextNameFlagName,
-		Usage: "The kubectl config context to use for authenticating with the Kubernetes cluster.",
-	}
-	helmKubeconfigFlag = cli.StringFlag{
-		Name:   KubeconfigFlagName,
-		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. You can also set this using the environment variable KUBECONFIG. (default: \"~/.kube/config\")",
-		EnvVar: "KUBECONFIG",
-	}
-	helmKubectlServerFlag = cli.StringFlag{
-		Name:  KubectlServerFlagName,
-		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
-	}
-	helmKubectlCAFlag = cli.StringFlag{
-		Name:  KubectlCAFlagName,
-		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
-	}
-	helmKubectlTokenFlag = cli.StringFlag{
-		Name:  KubectlTokenFlagName,
-		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
-	}
-
 	// Configurations for setting up the TLS certificates.
 	// NOTE: the args for setting up the CA and server TLS certificates are defined in cmd/common.go
 	clientTLSSubjectJsonFlag = cli.StringFlag{
@@ -265,11 +240,12 @@ Additionally, this command will grant access to an RBAC entity and configure the
 					clientTLSStateFlag,
 					clientTLSCountryFlag,
 					helmHomeFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-					helmKubectlServerFlag,
-					helmKubectlCAFlag,
-					helmKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 			cli.Command{
@@ -284,11 +260,12 @@ Note: By default, this will not undeploy the Helm server if there are any deploy
 					undeployReleasesFlag,
 					helmHomeFlag,
 					tillerNamespaceFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-					helmKubectlServerFlag,
-					helmKubectlCAFlag,
-					helmKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 			cli.Command{
@@ -319,11 +296,12 @@ This allows you to use the configure command as a data source that is passed int
 					tillerNamespaceFlag,
 					resourceNamespaceFlag,
 					setKubectlNamespaceFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-					helmKubectlServerFlag,
-					helmKubectlCAFlag,
-					helmKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 					helmConfigureAsTFDataFlag,
 				},
 			},
@@ -351,11 +329,12 @@ At least one of --%s, --%s, or --%s are required.`, RbacUserFlag, RbacGroupFlag,
 					tlsECDSACurveFlag,
 					tlsRSABitsFlag,
 					tillerDeploymentNameFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-					helmKubectlServerFlag,
-					helmKubectlCAFlag,
-					helmKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 			cli.Command{
@@ -370,11 +349,12 @@ At least one of --%s, --%s, or --%s are required.`, RbacUserFlag, RbacGroupFlag,
 					revokedRbacGroupsFlag,
 					revokedRbacUsersFlag,
 					revokedServiceAccountsFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-					helmKubectlServerFlag,
-					helmKubectlCAFlag,
-					helmKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 			cli.Command{
@@ -391,11 +371,12 @@ You can configure the timeout settings using the --timeout and --sleep-between-r
 					expectedTillerVersionFlag,
 					tillerWaitTimeoutFlag,
 					tillerWaitSleepBetweenRetriesFlag,
-					helmKubectlContextNameFlag,
-					helmKubeconfigFlag,
-					helmKubectlServerFlag,
-					helmKubectlCAFlag,
-					helmKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 		},

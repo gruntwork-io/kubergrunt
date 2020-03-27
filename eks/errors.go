@@ -116,15 +116,6 @@ func NewLookupError(objectType string, objectId string, objectProperty string) L
 	return LookupError{objectProperty: objectProperty, objectType: objectType, objectId: objectId}
 }
 
-// CredentialsError is an error that occurs because AWS credentials can't be found.
-type CredentialsError struct {
-	UnderlyingErr error
-}
-
-func (err CredentialsError) Error() string {
-	return fmt.Sprintf("Error finding AWS credentials. Did you set the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables or configure an AWS profile? Underlying error: %v", err.UnderlyingErr)
-}
-
 // NoPeerCertificatesError is returned when we couldn't find any TLS peer certificates for the provided URL.
 type NoPeerCertificatesError struct {
 	URL string

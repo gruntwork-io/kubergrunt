@@ -140,26 +140,51 @@ func LoadConfigFromPath(path string) clientcmd.ClientConfig {
 	return config
 }
 
-// LoadApiClientConfig will load a ClientConfig object based on the provided KubectlOptions. Specifically, this will
-// create the config in memory if using direct auth, and load from disk if not.
+// LoadApiClientConfigFromOptions will load a ClientConfig object based on the provided KubectlOptions. Specifically,
+// this will create the config in memory if using direct auth, and load from disk if not.
 func LoadApiClientConfigFromOptions(options *KubectlOptions) (*restclient.Config, error) {
 	logger := logging.GetProjectLogger()
 
-	if options.Server == "" {
-		// Direct auth info is not filled in, so assume loading from file.
-		logger.Infof("No direct auth methods provided. Using config on disk and context.")
-		return LoadApiClientConfig(options.ConfigPath, options.ContextName)
-	}
+	var server, token string
+	var caData []byte
 
-	logger.Infof("Using direct auth methods to setup client.")
-	caData, err := base64.StdEncoding.DecodeString(options.Base64PEMCertificateAuthority)
-	if err != nil {
-		return nil, err
+	authScheme := options.AuthScheme()
+	switch authScheme {
+	case ConfigBased:
+		logger.Infof("Using config on disk and context.")
+		return LoadApiClientConfig(options.ConfigPath, options.ContextName)
+	// for the other two methods, we need to extract the server cadata and token to construct the client config
+	case DirectAuth:
+		logger.Infof("Using direct auth methods to setup client.")
+		caDataRaw, err := base64.StdEncoding.DecodeString(options.Base64PEMCertificateAuthority)
+		if err != nil {
+			return nil, err
+		}
+		caData = caDataRaw
+		server = options.Server
+		token = options.BearerToken
+	case EKSClusterBased:
+		info, err := getKubeCredentialsFromEKSCluster(options.EKSClusterArn)
+		if err != nil {
+			return nil, err
+		}
+
+		caDataRaw, err := base64.StdEncoding.DecodeString(info.Base64PEMCertificateAuthority)
+		if err != nil {
+			return nil, err
+		}
+
+		caData = caDataRaw
+		server = info.Server
+		token = info.BearerToken
+	default:
+		// This should never happen, but is required by the compiler
+		return nil, errors.WithStackTrace(AuthSchemeNotSupported{authScheme})
 	}
 
 	config := &restclient.Config{
-		Host:        options.Server,
-		BearerToken: options.BearerToken,
+		Host:        server,
+		BearerToken: token,
 		ContentConfig: restclient.ContentConfig{
 			GroupVersion:         &corev1.SchemeGroupVersion,
 			NegotiatedSerializer: scheme.Codecs,

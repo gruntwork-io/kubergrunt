@@ -1,4 +1,4 @@
-package eks
+package eksawshelper
 
 import (
 	"github.com/aws/aws-sdk-go/aws"

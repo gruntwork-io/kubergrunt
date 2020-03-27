@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
@@ -30,30 +29,6 @@ var (
 		Value: 5 * time.Second,
 		Usage: "The amount of time to sleep inbetween each check attempt. Accepted as a duration (5s, 10m, 1h).",
 	}
-
-	// Configurations for how to authenticate with the Kubernetes cluster.
-	// NOTE: this is the same as helmKubectlContextNameFlag and helmKubeconfigFlag, except the descriptions are updated to
-	k8sKubectlContextNameFlag = cli.StringFlag{
-		Name:  KubectlContextNameFlagName,
-		Usage: "The kubectl config context to use for authenticating with the Kubernetes cluster.",
-	}
-	k8sKubeconfigFlag = cli.StringFlag{
-		Name:   KubeconfigFlagName,
-		Usage:  "The path to the kubectl config file to use to authenticate with Kubernetes. You can also set this using the environment variable KUBECONFIG. (default: \"~/.kube/config\")",
-		EnvVar: "KUBECONFIG",
-	}
-	k8sKubectlServerFlag = cli.StringFlag{
-		Name:  KubectlServerFlagName,
-		Usage: fmt.Sprintf("The Kubernetes server endpoint where the API is located. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlCAFlagName, KubectlTokenFlagName),
-	}
-	k8sKubectlCAFlag = cli.StringFlag{
-		Name:  KubectlCAFlagName,
-		Usage: fmt.Sprintf("The base64 encoded certificate authority data in PEM format to use to validate the Kubernetes server. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlTokenFlagName),
-	}
-	k8sKubectlTokenFlag = cli.StringFlag{
-		Name:  KubectlTokenFlagName,
-		Usage: fmt.Sprintf("The bearer token to use to authenticate to the Kubernetes server API. Use in place of kubeconfig. Must also set --%s and --%s.", KubectlServerFlagName, KubectlCAFlagName),
-	}
 )
 
 func SetupK8SCommand() cli.Command {
@@ -78,11 +53,12 @@ You can configure the timeout settings using the --max-retries and --sleep-betwe
 					sleepBetweenRetriesFlag,
 
 					// Kubernetes auth flags
-					k8sKubectlContextNameFlag,
-					k8sKubeconfigFlag,
-					k8sKubectlServerFlag,
-					k8sKubectlCAFlag,
-					k8sKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 			cli.Command{
@@ -100,11 +76,12 @@ To forward args to kubectl, pass all the args you wish to forward after a "--". 
 				Action: kubectlWrapper,
 				Flags: []cli.Flag{
 					// Kubernetes auth flags
-					k8sKubectlContextNameFlag,
-					k8sKubeconfigFlag,
-					k8sKubectlServerFlag,
-					k8sKubectlCAFlag,
-					k8sKubectlTokenFlag,
+					genericKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
 				},
 			},
 		},
