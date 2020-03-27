@@ -38,6 +38,12 @@ type KubectlOptions struct {
 	EKSClusterArn string
 }
 
+type serverInfo struct {
+	Server                        string
+	Base64PEMCertificateAuthority string
+	BearerToken                   string
+}
+
 // TempConfigFromAuthInfo will create a temporary kubeconfig file that can be used with commands that don't support
 // directly configuring auth info (e.g helm).
 func (options *KubectlOptions) TempConfigFromAuthInfo() (string, error) {
@@ -58,7 +64,14 @@ func (options *KubectlOptions) TempConfigFromAuthInfo() (string, error) {
 	switch scheme {
 	case DirectAuth:
 		err = tempConfigFromDirectAuthInfo(
-			logger, tmpfile, options.Server, options.Base64PEMCertificateAuthority, options.BearerToken)
+			logger,
+			tmpfile,
+			serverInfo{
+				Server:                        options.Server,
+				Base64PEMCertificateAuthority: options.Base64PEMCertificateAuthority,
+				BearerToken:                   options.BearerToken,
+			},
+		)
 	case EKSClusterBased:
 		err = tempConfigFromEKSClusterInfo(logger, tmpfile, options.EKSClusterArn)
 	default:
@@ -68,19 +81,13 @@ func (options *KubectlOptions) TempConfigFromAuthInfo() (string, error) {
 	return tmpfile.Name(), err
 }
 
-func tempConfigFromDirectAuthInfo(
-	logger *logrus.Entry,
-	tmpfile *os.File,
-	server string,
-	base64PEMCA string,
-	bearerToken string,
-) error {
+func tempConfigFromDirectAuthInfo(logger *logrus.Entry, tmpfile *os.File, serverInfo serverInfo) error {
 	config := &api.Config{}
 	err := AddClusterToConfig(
 		config,
 		"default",
-		server,
-		base64PEMCA,
+		serverInfo.Server,
+		serverInfo.Base64PEMCertificateAuthority,
 	)
 	if err != nil {
 		return err
@@ -88,7 +95,7 @@ func tempConfigFromDirectAuthInfo(
 
 	logger.Infof("Adding auth info to config")
 	authInfo := api.NewAuthInfo()
-	authInfo.Token = bearerToken
+	authInfo.Token = serverInfo.BearerToken
 	config.AuthInfos["default"] = authInfo
 	logger.Infof("Done adding auth info to config")
 
@@ -101,26 +108,32 @@ func tempConfigFromDirectAuthInfo(
 }
 
 func tempConfigFromEKSClusterInfo(logger *logrus.Entry, tmpfile *os.File, eksClusterArn string) error {
-	server, b64PEMCA, token, err := getKubeCredentialsFromEKSCluster(eksClusterArn)
+	info, err := getKubeCredentialsFromEKSCluster(eksClusterArn)
 	if err != nil {
 		return err
 	}
-	return tempConfigFromDirectAuthInfo(logger, tmpfile, server, b64PEMCA, token)
+	return tempConfigFromDirectAuthInfo(logger, tmpfile, *info)
 }
 
-func getKubeCredentialsFromEKSCluster(eksClusterArn string) (string, string, string, error) {
+func getKubeCredentialsFromEKSCluster(eksClusterArn string) (*serverInfo, error) {
 	cluster, err := eksawshelper.GetClusterByArn(eksClusterArn)
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
 
 	server := aws.StringValue(cluster.Endpoint)
 	b64PEMCA := aws.StringValue(cluster.CertificateAuthority.Data)
 	token, _, err := eksawshelper.GetKubernetesTokenForCluster(eksClusterArn)
 	if err != nil {
-		return "", "", "", err
+		return nil, err
 	}
-	return server, b64PEMCA, token.Token, nil
+
+	info := serverInfo{
+		Server:                        server,
+		Base64PEMCertificateAuthority: b64PEMCA,
+		BearerToken:                   token.Token,
+	}
+	return &info, nil
 }
 
 // TempCAFile creates a temporary file to hold the Certificate Authority data so that it can be passed on to kubectl.

@@ -164,19 +164,19 @@ func LoadApiClientConfigFromOptions(options *KubectlOptions) (*restclient.Config
 		server = options.Server
 		token = options.BearerToken
 	case EKSClusterBased:
-		serverRaw, b64PEMCA, tokenRaw, err := getKubeCredentialsFromEKSCluster(options.EKSClusterArn)
+		info, err := getKubeCredentialsFromEKSCluster(options.EKSClusterArn)
 		if err != nil {
 			return nil, err
 		}
 
-		caDataRaw, err := base64.StdEncoding.DecodeString(b64PEMCA)
+		caDataRaw, err := base64.StdEncoding.DecodeString(info.Base64PEMCertificateAuthority)
 		if err != nil {
 			return nil, err
 		}
 
 		caData = caDataRaw
-		server = serverRaw
-		token = tokenRaw
+		server = info.Server
+		token = info.BearerToken
 	default:
 		// This should never happen, but is required by the compiler
 		return nil, errors.WithStackTrace(AuthSchemeNotSupported{authScheme})
