@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
@@ -82,7 +83,7 @@ func (options *KubectlOptions) TempConfigFromAuthInfo() (string, error) {
 }
 
 func tempConfigFromDirectAuthInfo(logger *logrus.Entry, tmpfile *os.File, serverInfo serverInfo) error {
-	config := &api.Config{}
+	config := api.NewConfig()
 	err := AddClusterToConfig(
 		config,
 		"default",
@@ -99,12 +100,21 @@ func tempConfigFromDirectAuthInfo(logger *logrus.Entry, tmpfile *os.File, server
 	config.AuthInfos["default"] = authInfo
 	logger.Infof("Done adding auth info to config")
 
-	return AddContextToConfig(
+	err = AddContextToConfig(
 		config,
 		"default",
 		"default",
 		"default",
 	)
+	if err != nil {
+		return err
+	}
+	config.CurrentContext = "default"
+
+	if err := saveConfigToFile(config, tmpfile); err != nil {
+		return errors.WithStackTrace(err)
+	}
+	return nil
 }
 
 func tempConfigFromEKSClusterInfo(logger *logrus.Entry, tmpfile *os.File, eksClusterArn string) error {
@@ -115,6 +125,21 @@ func tempConfigFromEKSClusterInfo(logger *logrus.Entry, tmpfile *os.File, eksClu
 	return tempConfigFromDirectAuthInfo(logger, tmpfile, *info)
 }
 
+func saveConfigToFile(config *api.Config, tmpfile *os.File) error {
+	// In order to be able to render and save the config, we need to have the config file be in a format that k8s
+	// understands, so we first initialize the empty file with a minimal config structure.
+	if err := CreateInitialConfig(tmpfile.Name()); err != nil {
+		return err
+	}
+
+	// Then load the contents into a struct that can be saved, and save the generated config data.
+	kubeconfig := LoadConfigFromPath(tmpfile.Name())
+	if err := clientcmd.ModifyConfig(kubeconfig.ConfigAccess(), *config, false); err != nil {
+		return errors.WithStackTrace(err)
+	}
+	return nil
+}
+
 func getKubeCredentialsFromEKSCluster(eksClusterArn string) (*serverInfo, error) {
 	cluster, err := eksawshelper.GetClusterByArn(eksClusterArn)
 	if err != nil {
@@ -123,7 +148,12 @@ func getKubeCredentialsFromEKSCluster(eksClusterArn string) (*serverInfo, error)
 
 	server := aws.StringValue(cluster.Endpoint)
 	b64PEMCA := aws.StringValue(cluster.CertificateAuthority.Data)
-	token, _, err := eksawshelper.GetKubernetesTokenForCluster(eksClusterArn)
+
+	clusterName, err := eksawshelper.GetClusterNameFromArn(eksClusterArn)
+	if err != nil {
+		return nil, err
+	}
+	token, _, err := eksawshelper.GetKubernetesTokenForCluster(clusterName)
 	if err != nil {
 		return nil, err
 	}
