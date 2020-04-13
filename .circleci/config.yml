@@ -117,7 +117,7 @@ jobs:
               --src-path ./cmd \
               --dest-path ./bin \
               --ld-flags "-X main.VERSION=$CIRCLE_TAG -extldflags '-static'"
-            cd ./bin && sha256sum * > SHA256SUMS
+            (cd ./bin && sha256sum * > SHA256SUMS)
             upload-github-release-assets ./bin/*
           no_output_timeout: 900s
 
