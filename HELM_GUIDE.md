@@ -1,3 +1,10 @@
+# IMPORTANT
+
+**This guide is for Helm v2 with Tiller. For the security model of Helm v3, refer to [the official Kubernetes RBAC
+documentation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/) as authorization in Helm v3 relies on
+Kubernetes RBAC.**
+
+
 # What is Helm?
 
 [Helm](https://helm.sh/) is a package and module manager for Kubernetes that allows you to define, install, and manage
