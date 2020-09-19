@@ -129,7 +129,7 @@ func SetupEksCommand() cli.Command {
 				},
 			},
 			cli.Command{
-				Name: "sync-core-components",
+				Name:  "sync-core-components",
 				Usage: "Update the core Kubernetes applications deployed on to the EKS cluster to match the Kubernetes version.",
 				Description: `Update the core Kubernetes applications deployed on to an EKS cluster to ensure that the versions match with the expected versions deployed for the configured Kubernetes version.
 
@@ -138,15 +138,15 @@ There are three core applications on an EKS cluster:
     - coredns
     - VPC CNI Plugin
 
-Each of these are managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use `kubectl` under the hood to patch the manifests to deploy the expected version based on what the current Kubernetes version is of the cluster. As such, this command should be run every time the Kubernetes version is updated on the EKS cluster.
+Each of these are managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use kubectl under the hood to patch the manifests to deploy the expected version based on what the current Kubernetes version is of the cluster. As such, this command should be run every time the Kubernetes version is updated on the EKS cluster.
 
 The versions deployed are based on what is listed in the official guide provided by AWS: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html`,
-	Action: syncClusterComponents,
-	Flags: []cli.Flag{
-		eksClusterArnFlag,
-		waitFlag,
-		waitTimeoutFlag,
-	},
+				Action: syncClusterComponents,
+				Flags: []cli.Flag{
+					eksClusterArnFlag,
+					waitFlag,
+					waitTimeoutFlag,
+				},
 			},
 			cli.Command{
 				Name:  "deploy",

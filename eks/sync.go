@@ -1,6 +1,7 @@
 package eks
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -97,10 +98,10 @@ func SyncClusterComponents(
 	if err != nil {
 		return err
 	}
-	if err := upgradeKubeProxy(kubectlOptions, clientset, awsRegion, kubeProxyVersion, shouldWait); err != nil {
+	if err := upgradeKubeProxy(kubectlOptions, clientset, awsRegion, kubeProxyVersion, shouldWait, waitTimeout); err != nil {
 		return err
 	}
-	if err := upgradeCoreDNS(kubectlOptions, clientset, awsRegion, coreDNSVersion, shouldWait); err != nil {
+	if err := upgradeCoreDNS(kubectlOptions, clientset, awsRegion, coreDNSVersion, shouldWait, waitTimeout); err != nil {
 		return err
 	}
 	if err := updateVPCCNI(kubectlOptions, amznVPCCNIVersion); err != nil {
@@ -119,6 +120,7 @@ func upgradeKubeProxy(
 	awsRegion string,
 	kubeProxyVersion string,
 	shouldWait bool,
+	waitTimeout string,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -155,7 +157,7 @@ func upgradeKubeProxy(
 
 // getCurrentDeployedKubeProxyImage will return the currently configured kube-proxy image on the daemonset.
 func getCurrentDeployedKubeProxyImage(clientset *kubernetes.Clientset) (string, error) {
-	daemonset, err := clientset.AppsV1().DaemonSets(componentNamespace).Get(kubeProxyDaemonSetName, metav1.GetOptions{})
+	daemonset, err := clientset.AppsV1().DaemonSets(componentNamespace).Get(context.Background(), kubeProxyDaemonSetName, metav1.GetOptions{})
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -186,7 +188,7 @@ func updateKubeProxyDaemonsetImage(clientset *kubernetes.Clientset, targetImage 
 		return errors.WithStackTrace(err)
 	}
 	daemonsetAPI := clientset.AppsV1().DaemonSets(componentNamespace)
-	if _, err := daemonsetAPI.Patch(kubeProxyDaemonSetName, k8stypes.JSONPatchType, patchOpJson); err != nil {
+	if _, err := daemonsetAPI.Patch(context.Background(), kubeProxyDaemonSetName, k8stypes.JSONPatchType, patchOpJson, metav1.PatchOptions{}); err != nil {
 		return errors.WithStackTrace(err)
 	}
 	return nil
@@ -200,6 +202,7 @@ func upgradeCoreDNS(
 	awsRegion string,
 	coreDNSVersion string,
 	shouldWait bool,
+	waitTimeout string,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -236,7 +239,7 @@ func upgradeCoreDNS(
 
 // getCurrentDeployedCoreDNSImage will return the currently configured coredns image on the deployment.
 func getCurrentDeployedCoreDNSImage(clientset *kubernetes.Clientset) (string, error) {
-	deployment, err := clientset.AppsV1().Deployments(componentNamespace).Get(corednsDeploymentName, metav1.GetOptions{})
+	deployment, err := clientset.AppsV1().Deployments(componentNamespace).Get(context.Background(), corednsDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -267,7 +270,7 @@ func updateCoreDNSDeploymentImage(clientset *kubernetes.Clientset, targetImage s
 		return errors.WithStackTrace(err)
 	}
 	deploymentAPI := clientset.AppsV1().Deployments(componentNamespace)
-	if _, err := deploymentAPI.Patch(corednsDeploymentName, k8stypes.JSONPatchType, patchOpJson); err != nil {
+	if _, err := deploymentAPI.Patch(context.Background(), corednsDeploymentName, k8stypes.JSONPatchType, patchOpJson, metav1.PatchOptions{}); err != nil {
 		return errors.WithStackTrace(err)
 	}
 	return nil
