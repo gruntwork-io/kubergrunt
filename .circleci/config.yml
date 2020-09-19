@@ -39,9 +39,6 @@ jobs:
           command: setup-minikube
 
       - run:
-          <<: *install_helm_client
-
-      - run:
           name: run kubergrunt tests
           command: |
             mkdir -p /tmp/logs
