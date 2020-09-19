@@ -57,6 +57,7 @@ The following commands are available as part of `kubergrunt`:
     * [token](#token)
     * [oidc-thumbprint](#oidc-thumbprint)
     * [deploy](#deploy)
+    * [sync-core-components](#sync-core-components)
 1. [k8s](#k8s)
     * [wait-for-ingress](#wait-for-ingress)
     * [kubectl](#kubectl)
@@ -245,6 +246,25 @@ Currently `kubergrunt` does not implement any checks for these resources to be i
 plan to bake in checks into the deployment command to verify that all services have a disruption budget set, and warn
 the user of any services that do not have a check.
 
+#### sync-core-components
+
+This subcommand will sync the core components of an EKS cluster to match the deployed Kubernetes version by following
+the steps listed [in the official documentation](https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html).
+
+The core components managed by this command are:
+
+- kube-proxy
+- Amazon VPC CNI plug-in
+- CoreDNS
+
+By default, this command will rotate the images without waiting for the Pods to be redeployed. You can use the `--wait`
+option to force the command to wait until all the Pods have been replaced.
+
+Example:
+
+```bash
+kubergrunt eks sync-core-components --eks-cluster-arn EKS_CLUSTER_ARN
+```
 
 ### k8s
 

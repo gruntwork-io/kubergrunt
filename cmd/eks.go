@@ -56,6 +56,11 @@ var (
 		Value: 15 * time.Second,
 		Usage: "The amount of time to sleep between retries as duration (e.g 10m = 10 minutes) for retry loops during the command. The total amount of time this command will try is based on max-retries and sleep-between-retries. Defaults to 15 seconds.",
 	}
+	waitTimeoutFlag = cli.StringFlag{
+		Name:  "wait-timeout",
+		Value: "10m",
+		Usage: "The amount of time to wait for operations as a duration (e.g., 10m = 10 minutes). Defaults to 10 minutes.",
+	}
 
 	// Token related flags
 	clusterIDFlag = cli.StringFlag{
@@ -122,6 +127,26 @@ func SetupEksCommand() cli.Command {
 				Flags: []cli.Flag{
 					oidcIssuerUrlFlag,
 				},
+			},
+			cli.Command{
+				Name: "sync-core-components",
+				Usage: "Update the core Kubernetes applications deployed on to the EKS cluster to match the Kubernetes version.",
+				Description: `Update the core Kubernetes applications deployed on to an EKS cluster to ensure that the versions match with the expected versions deployed for the configured Kubernetes version.
+
+There are three core applications on an EKS cluster:
+    - kube-proxy
+    - coredns
+    - VPC CNI Plugin
+
+Each of these are managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use `kubectl` under the hood to patch the manifests to deploy the expected version based on what the current Kubernetes version is of the cluster. As such, this command should be run every time the Kubernetes version is updated on the EKS cluster.
+
+The versions deployed are based on what is listed in the official guide provided by AWS: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html`,
+	Action: syncClusterComponents,
+	Flags: []cli.Flag{
+		eksClusterArnFlag,
+		waitFlag,
+		waitTimeoutFlag,
+	},
 			},
 			cli.Command{
 				Name:  "deploy",
@@ -283,4 +308,15 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		waitMaxRetries,
 		waitSleepBetweenRetries,
 	)
+}
+
+// Command action for `kubergrunt eks sync-core-components`
+func syncClusterComponents(cliContext *cli.Context) error {
+	eksClusterArn, err := entrypoint.StringFlagRequiredE(cliContext, eksClusterArnFlag.Name)
+	if err != nil {
+		return err
+	}
+	shouldWait := cliContext.Bool(waitFlag.Name)
+	waitTimeout := cliContext.String(waitTimeoutFlag.Name)
+	return eks.SyncClusterComponents(eksClusterArn, shouldWait, waitTimeout)
 }
