@@ -10,7 +10,8 @@ defaults: &defaults
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
     GOLANG_VERSION: 1.14
-    KUBECTL_VERSION: v1.15.0
+    KUBECTL_VERSION: v1.17.0
+    MINIKUBE_VERSION: v1.11.0
     KUBECONFIG: /home/circleci/.kube/config
 
 
@@ -40,7 +41,7 @@ jobs:
       - run:
           command: |
             cd /home/circleci
-            setup-minikube --k8s-version "${KUBECTL_VERSION}"
+            setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}"
 
       - run:
           name: run kubergrunt tests
