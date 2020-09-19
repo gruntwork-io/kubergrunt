@@ -27,8 +27,7 @@ func TestGetIngressEReturnsCorrectIngressInCorrectNamespace(t *testing.T) {
 	t.Parallel()
 
 	uniqueID := strings.ToLower(random.UniqueId())
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
-	ttKubectlOptions.Namespace = uniqueID
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", uniqueID)
 	configData := fmt.Sprintf(EXAMPLE_INGRESS_DEPLOYMENT_YAML_TEMPLATE, uniqueID, uniqueID, uniqueID, uniqueID)
 	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
 	k8s.KubectlApplyFromString(t, ttKubectlOptions, configData)
@@ -47,8 +46,7 @@ func TestWaitUntilIngressAvailableReturnsSuccessfully(t *testing.T) {
 	t.Parallel()
 
 	uniqueID := strings.ToLower(random.UniqueId())
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
-	ttKubectlOptions.Namespace = uniqueID
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", uniqueID)
 	configData := fmt.Sprintf(EXAMPLE_INGRESS_DEPLOYMENT_YAML_TEMPLATE, uniqueID, uniqueID, uniqueID, uniqueID)
 	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
 	k8s.KubectlApplyFromString(t, ttKubectlOptions, configData)

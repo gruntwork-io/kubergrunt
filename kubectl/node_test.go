@@ -14,7 +14,7 @@ func TestWaitForNodesReady(t *testing.T) {
 
 	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
 	require.NoError(t, err)
-	ttKubectlOptions := k8s.NewKubectlOptions("", kubeConfigPath)
+	ttKubectlOptions := k8s.NewKubectlOptions("", kubeConfigPath, "")
 
 	node := getNodes(t, ttKubectlOptions)[0]
 	nodeID := node.Name
@@ -26,7 +26,7 @@ func TestFilterNodesById(t *testing.T) {
 
 	kubeConfigPath, err := k8s.GetKubeConfigPathE(t)
 	require.NoError(t, err)
-	ttKubectlOptions := k8s.NewKubectlOptions("", kubeConfigPath)
+	ttKubectlOptions := k8s.NewKubectlOptions("", kubeConfigPath, "")
 
 	nodes := getNodes(t, ttKubectlOptions)
 	require.Equal(t, len(filterNodesByID(nodes, []string{})), 0)
