@@ -133,7 +133,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresAllFiles(t *testing.T) {
 	t.Parallel()
 
 	// Construct kubectl options
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", "")
 	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
@@ -171,7 +171,7 @@ func TestStoreCertificateKeyPairAsKubernetesSecretStoresCACert(t *testing.T) {
 	t.Parallel()
 
 	// Construct kubectl options
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", "")
 	kubectlOptions := kubectl.GetTestKubectlOptions(t)
 
 	// Create a namespace so we don't collide with other tests
