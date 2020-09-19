@@ -4,24 +4,13 @@ defaults: &defaults
     image: "ubuntu-1604:201903-01"
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.21
-    TERRATEST_LOG_PARSER_VERSION: v0.13.13
-    MODULE_CI_VERSION: v0.14.1
+    TERRATEST_LOG_PARSER_VERSION: v0.29.0
+    MODULE_CI_VERSION: v0.28.2
     TERRAFORM_VERSION: NONE
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
-    GOLANG_VERSION: 1.11.2
+    GOLANG_VERSION: 1.14
     KUBECONFIG: /home/circleci/.kube/config
-    HELM_VERSION: v2.14.0
-
-
-install_helm_client: &install_helm_client
-  name: install helm
-  command: |
-    # install helm
-    curl -Lo helm.tar.gz https://storage.googleapis.com/kubernetes-helm/helm-${HELM_VERSION}-linux-amd64.tar.gz
-    tar -xvf helm.tar.gz
-    chmod +x linux-amd64/helm
-    sudo mv linux-amd64/helm /usr/local/bin/
 
 
 install_gruntwork_utils: &install_gruntwork_utils
@@ -32,52 +21,22 @@ install_gruntwork_utils: &install_gruntwork_utils
     gruntwork-install --module-name "kubernetes-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "${MODULE_CI_VERSION}"
     gruntwork-install --binary-name "terratest_log_parser" --repo "https://github.com/gruntwork-io/terratest" --tag "${TERRATEST_LOG_PARSER_VERSION}"
     configure-environment-for-gruntwork-module \
-      --circle-ci-2-machine-executor \
       --terraform-version ${TERRAFORM_VERSION} \
       --terragrunt-version ${TERRAGRUNT_VERSION} \
       --packer-version ${PACKER_VERSION} \
-      --use-go-dep \
-      --go-version ${GOLANG_VERSION} \
-      --go-src-path ./
+      --go-version ${GOLANG_VERSION}
 
 
 version: 2
 jobs:
-  setup:
-    <<: *defaults
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-          - dep-{{ checksum "Gopkg.lock" }}
-
-      # Install gruntwork utilities
-      - run:
-          <<: *install_gruntwork_utils
-
-      - save_cache:
-          key: dep-{{ checksum "Gopkg.lock" }}
-          paths:
-          - ./vendor
-
-      - persist_to_workspace:
-          root: /home/circleci
-          paths:
-            - project
-
   kubergrunt_tests:
     <<: *defaults
     steps:
-      - attach_workspace:
-          at: /home/circleci
-
       - run:
           <<: *install_gruntwork_utils
 
       - run:
-          command: |
-            cd /home/circleci
-            setup-minikube
+          command: setup-minikube
 
       - run:
           <<: *install_helm_client
@@ -99,9 +58,6 @@ jobs:
   deploy:
     <<: *defaults
     steps:
-      - attach_workspace:
-          at: /home/circleci
-
       - run:
           <<: *install_gruntwork_utils
 
@@ -110,9 +66,7 @@ jobs:
       # Build and upload binaries for kubergrunt
       - run:
           command: |
-            cd ~/.go_workspace/src/github.com/gruntwork-io/kubergrunt
             build-go-binaries \
-              --circle-ci-2 \
               --app-name kubergrunt \
               --src-path ./cmd \
               --dest-path ./bin \
@@ -125,23 +79,16 @@ workflows:
   version: 2
   test-and-deploy:
     jobs:
-    - setup:
-        filters:
-          tags:
-            only: /^v.*/
+      - kubergrunt_tests:
+          filters:
+            tags:
+              only: /^v.*/
 
-    - kubergrunt_tests:
-        requires:
-          - setup
-        filters:
-          tags:
-            only: /^v.*/
-
-    - deploy:
-        requires:
-          - kubergrunt_tests
-        filters:
-          tags:
-            only: /^v.*/
-          branches:
-            ignore: /.*/
+      - deploy:
+          requires:
+            - kubergrunt_tests
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
