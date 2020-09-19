@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/x509/pkix"
 	"strings"
+	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
 	"github.com/urfave/cli"
@@ -54,8 +56,47 @@ var (
 		Usage: "The subject alternitive name to add to the certificate. Pass in multiple times for multiple DNS names.",
 	}
 
-	// NOTE: Configurations for setting up the TLS certificates are defined in cmd/common.go
+	// Configurations for setting up the TLS certificates.
+	// NOTE: the args for setting up the CA and server TLS certificates are defined in cmd/common.go
+	clientTLSSubjectJsonFlag = cli.StringFlag{
+		Name:  "client-tls-subject-json",
+		Usage: "Provide the client TLS subject info as json. You can specify the common name (common_name), org (org), org unit (org_unit), city (city), state (state), and country (country) fields.",
+	}
+	clientTLSCommonNameFlag = cli.StringFlag{
+		Name:  "client-tls-common-name",
+		Usage: "(Required) The name that will go into the CN (CommonName) field of the identifier for the client. Can be omitted if the information is provided in --client-tls-subject-json.",
+	}
+	clientTLSOrgFlag = cli.StringFlag{
+		Name:  "client-tls-org",
+		Usage: "(Required) The name of the company that is generating this cert for the client. Can be omitted if the information is provided in --client-tls-subject-json.",
+	}
+	clientTLSOrgUnitFlag = cli.StringFlag{
+		Name:  "client-tls-org-unit",
+		Usage: "The name of the unit in --client-tls-org that is generating this cert.",
+	}
+	clientTLSCityFlag = cli.StringFlag{
+		Name:  "client-tls-city",
+		Usage: "The city where --client-tls-org is located.",
+	}
+	clientTLSStateFlag = cli.StringFlag{
+		Name:  "client-tls-state",
+		Usage: "The state where --client-tls-org is located.",
+	}
+	clientTLSCountryFlag = cli.StringFlag{
+		Name:  "client-tls-country",
+		Usage: "The country where --client-tls-org is located.",
+	}
+	clientTLSSubjectInfoFlags = TLSFlags{
+		SubjectInfoJsonFlagName: clientTLSSubjectJsonFlag.Name,
+		CommonNameFlagName:      clientTLSCommonNameFlag.Name,
+		OrgFlagName:             clientTLSOrgFlag.Name,
+		OrgUnitFlagName:         clientTLSOrgUnitFlag.Name,
+		CityFlagName:            clientTLSCityFlag.Name,
+		StateFlagName:           clientTLSStateFlag.Name,
+		CountryFlagName:         clientTLSCountryFlag.Name,
+	}
 
+	// NOTE: Configurations for setting up the TLS certificates are defined in cmd/common.go
 )
 
 func SetupTLSCommand() cli.Command {
@@ -196,4 +237,38 @@ func tagArgsToMap(tagArgs []string) map[string]string {
 		out[key] = val
 	}
 	return out
+}
+
+// parseTLSArgs will take CLI args pertaining to TLS and extract out a TLSOptions struct.
+func parseTLSArgs(cliContext *cli.Context, isClient bool) (tls.TLSOptions, error) {
+	var distinguishedName pkix.Name
+	var err error
+	if isClient {
+		distinguishedName, err = parseTLSFlagsToPkixName(cliContext, clientTLSSubjectInfoFlags)
+	} else {
+		distinguishedName, err = parseTLSFlagsToPkixName(cliContext, tlsSubjectInfoFlags)
+	}
+	if err != nil {
+		return tls.TLSOptions{}, err
+	}
+
+	// Get additional options
+	tlsValidityInDays := cliContext.Int(tlsValidityFlag.Name)
+	tlsAlgorithm := cliContext.String(tlsAlgorithmFlag.Name)
+	tlsECDSACurve := cliContext.String(tlsECDSACurveFlag.Name)
+	tlsRSABits := cliContext.Int(tlsRSABitsFlag.Name)
+
+	// Create tls options struct
+	tlsValidity := time.Duration(tlsValidityInDays) * 24 * time.Hour
+	tlsOptions := tls.TLSOptions{
+		DistinguishedName:   distinguishedName,
+		ValidityTimeSpan:    tlsValidity,
+		PrivateKeyAlgorithm: tlsAlgorithm,
+		ECDSACurve:          tlsECDSACurve,
+		RSABits:             tlsRSABits,
+	}
+	if err := tlsOptions.Validate(); err != nil {
+		return tlsOptions, err
+	}
+	return tlsOptions, nil
 }

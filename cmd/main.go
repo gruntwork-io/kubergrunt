@@ -60,7 +60,6 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		SetupEksCommand(),
-		SetupHelmCommand(),
 		SetupK8SCommand(),
 		SetupTLSCommand(),
 	}

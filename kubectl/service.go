@@ -1,6 +1,7 @@
 package kubectl
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
@@ -21,7 +22,7 @@ func GetAllServices(clientset *kubernetes.Clientset) ([]corev1.Service, error) {
 	services := []corev1.Service{}
 	params := metav1.ListOptions{}
 	for {
-		resp, err := servicesApi.List(params)
+		resp, err := servicesApi.List(context.Background(), params)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}

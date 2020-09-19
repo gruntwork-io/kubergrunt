@@ -1,6 +1,7 @@
 package kubectl
 
 import (
+	"context"
 	"time"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
@@ -17,7 +18,7 @@ func GetIngress(options *KubectlOptions, namespace string, ingressName string) (
 		return nil, err
 	}
 
-	return client.ExtensionsV1beta1().Ingresses(namespace).Get(ingressName, metav1.GetOptions{})
+	return client.ExtensionsV1beta1().Ingresses(namespace).Get(context.Background(), ingressName, metav1.GetOptions{})
 }
 
 // IsIngressAvailable returns true if the Ingress endpoint is provisioned and available.

@@ -4,7 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/eks"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
-	"github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token"
+	"sigs.k8s.io/aws-iam-authenticator/pkg/token"
 
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
@@ -41,7 +41,7 @@ func GetClusterByArn(eksClusterArn string) (*eks.Cluster, error) {
 }
 
 func GetKubernetesTokenForCluster(clusterID string) (*token.Token, string, error) {
-	gen, err := token.NewGenerator(false)
+	gen, err := token.NewGenerator(false, false)
 	if err != nil {
 		return nil, "", errors.WithStackTrace(err)
 	}
