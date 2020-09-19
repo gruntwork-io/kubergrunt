@@ -37,7 +37,7 @@ jobs:
           <<: *install_gruntwork_utils
 
       - run:
-          command: setup-minikube
+          command: setup-minikube --k8s-version v1.17.12
 
       - run:
           name: run kubergrunt tests
