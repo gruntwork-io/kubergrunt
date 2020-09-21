@@ -1,6 +1,7 @@
 package kubectl
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -195,7 +196,7 @@ func waitForAllCordons(wg *sync.WaitGroup, errChannel chan<- NodeCordonError) {
 // GetNodes queries Kubernetes for information about the worker nodes registered to the cluster, given a
 // clientset.
 func GetNodes(clientset *kubernetes.Clientset, options metav1.ListOptions) ([]corev1.Node, error) {
-	nodes, err := clientset.CoreV1().Nodes().List(options)
+	nodes, err := clientset.CoreV1().Nodes().List(context.Background(), options)
 	if err != nil {
 		return nil, err
 	}

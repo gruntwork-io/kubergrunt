@@ -1,6 +1,8 @@
 package kubectl
 
 import (
+	"context"
+
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +34,7 @@ func CreateRole(options *KubectlOptions, newRole *rbacv1.Role) error {
 		return err
 	}
 
-	_, err = client.RbacV1().Roles(newRole.Namespace).Create(newRole)
+	_, err = client.RbacV1().Roles(newRole.Namespace).Create(context.Background(), newRole, metav1.CreateOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -46,7 +48,7 @@ func GetRole(options *KubectlOptions, namespace string, name string) (*rbacv1.Ro
 		return nil, err
 	}
 
-	role, err := client.RbacV1().Roles(namespace).Get(name, metav1.GetOptions{})
+	role, err := client.RbacV1().Roles(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
@@ -60,7 +62,7 @@ func ListRoles(options *KubectlOptions, namespace string, filters metav1.ListOpt
 		return nil, err
 	}
 
-	resp, err := client.RbacV1().Roles(namespace).List(filters)
+	resp, err := client.RbacV1().Roles(namespace).List(context.Background(), filters)
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
@@ -74,7 +76,7 @@ func DeleteRole(options *KubectlOptions, namespace string, name string) error {
 		return err
 	}
 
-	err = client.RbacV1().Roles(namespace).Delete(name, &metav1.DeleteOptions{})
+	err = client.RbacV1().Roles(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}

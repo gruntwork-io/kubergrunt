@@ -23,7 +23,7 @@ func TestGenerateAndStoreAsK8SSecret(t *testing.T) {
 	t.Parallel()
 
 	// Create a namespace so we don't collide with other tests
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", "")
 	namespace := strings.ToLower(random.UniqueId())
 	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
 	defer k8s.DeleteNamespace(t, ttKubectlOptions, namespace)
@@ -89,7 +89,7 @@ func TestGenerateAndStoreAsK8SSecretErrorsIfCADoesNotExist(t *testing.T) {
 	t.Parallel()
 
 	// Create a namespace so we don't collide with other tests
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", "")
 	namespace := strings.ToLower(random.UniqueId())
 	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
 	defer k8s.DeleteNamespace(t, ttKubectlOptions, namespace)
@@ -129,7 +129,7 @@ func TestGenerateAndStoreAsK8SSecretSupportsTagging(t *testing.T) {
 	t.Parallel()
 
 	// Create a namespace so we don't collide with other tests
-	ttKubectlOptions := k8s.NewKubectlOptions("", "")
+	ttKubectlOptions := k8s.NewKubectlOptions("", "", "")
 	namespace := strings.ToLower(random.UniqueId())
 	k8s.CreateNamespace(t, ttKubectlOptions, namespace)
 	defer k8s.DeleteNamespace(t, ttKubectlOptions, namespace)
@@ -188,7 +188,7 @@ func TestGenerateAndStoreAsK8SSecretAnnotatesAdditionalMetadata(t *testing.T) {
 			t.Parallel()
 
 			// Create a namespace so we don't collide with other tests
-			ttKubectlOptions := k8s.NewKubectlOptions("", "")
+			ttKubectlOptions := k8s.NewKubectlOptions("", "", "")
 			namespace := strings.ToLower(random.UniqueId())
 			k8s.CreateNamespace(t, ttKubectlOptions, namespace)
 			defer k8s.DeleteNamespace(t, ttKubectlOptions, namespace)

@@ -1,6 +1,8 @@
 package kubectl
 
 import (
+	"context"
+
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +35,7 @@ func CreateRoleBinding(options *KubectlOptions, newRoleBinding *rbacv1.RoleBindi
 		return err
 	}
 
-	_, err = client.RbacV1().RoleBindings(newRoleBinding.Namespace).Create(newRoleBinding)
+	_, err = client.RbacV1().RoleBindings(newRoleBinding.Namespace).Create(context.Background(), newRoleBinding, metav1.CreateOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -47,7 +49,7 @@ func GetRoleBinding(options *KubectlOptions, namespace string, name string) (*rb
 		return nil, err
 	}
 
-	roleBinding, err := client.RbacV1().RoleBindings(namespace).Get(name, metav1.GetOptions{})
+	roleBinding, err := client.RbacV1().RoleBindings(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
@@ -61,7 +63,7 @@ func ListRoleBindings(options *KubectlOptions, namespace string, filters metav1.
 		return nil, err
 	}
 
-	resp, err := client.RbacV1().RoleBindings(namespace).List(filters)
+	resp, err := client.RbacV1().RoleBindings(namespace).List(context.Background(), filters)
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
@@ -75,7 +77,7 @@ func DeleteRoleBinding(options *KubectlOptions, namespace string, name string) e
 		return err
 	}
 
-	err = client.RbacV1().RoleBindings(namespace).Delete(name, &metav1.DeleteOptions{})
+	err = client.RbacV1().RoleBindings(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}

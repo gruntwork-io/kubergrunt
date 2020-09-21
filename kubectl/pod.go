@@ -1,6 +1,8 @@
 package kubectl
 
 import (
+	"context"
+
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +15,7 @@ func ListPods(options *KubectlOptions, namespace string, filters metav1.ListOpti
 		return nil, err
 	}
 
-	resp, err := client.CoreV1().Pods(namespace).List(filters)
+	resp, err := client.CoreV1().Pods(namespace).List(context.Background(), filters)
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}

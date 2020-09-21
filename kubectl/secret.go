@@ -1,6 +1,7 @@
 package kubectl
 
 import (
+	"context"
 	"io/ioutil"
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
@@ -47,7 +48,7 @@ func CreateSecret(options *KubectlOptions, newSecret *corev1.Secret) error {
 		return err
 	}
 
-	_, err = client.CoreV1().Secrets(newSecret.Namespace).Create(newSecret)
+	_, err = client.CoreV1().Secrets(newSecret.Namespace).Create(context.Background(), newSecret, metav1.CreateOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -61,7 +62,7 @@ func GetSecret(options *KubectlOptions, namespace string, name string) (*corev1.
 		return nil, err
 	}
 
-	secret, err := client.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
@@ -75,7 +76,7 @@ func ListSecrets(options *KubectlOptions, namespace string, filters metav1.ListO
 		return nil, err
 	}
 
-	resp, err := client.CoreV1().Secrets(namespace).List(filters)
+	resp, err := client.CoreV1().Secrets(namespace).List(context.Background(), filters)
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
@@ -89,7 +90,7 @@ func DeleteSecret(options *KubectlOptions, namespace string, secretName string) 
 		return err
 	}
 
-	err = client.CoreV1().Secrets(namespace).Delete(secretName, &metav1.DeleteOptions{})
+	err = client.CoreV1().Secrets(namespace).Delete(context.Background(), secretName, metav1.DeleteOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}

@@ -1,6 +1,8 @@
 package kubectl
 
 import (
+	"context"
+
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -12,7 +14,7 @@ func ValidateNamespaceExists(kubectlOptions *KubectlOptions, namespace string) e
 		return errors.WithStackTrace(err)
 	}
 
-	_, err = client.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+	_, err = client.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -27,7 +29,7 @@ func ValidateServiceAccountExists(kubectlOptions *KubectlOptions, namespace stri
 		return errors.WithStackTrace(err)
 	}
 
-	_, err = client.CoreV1().ServiceAccounts(namespace).Get(serviceAccount, metav1.GetOptions{})
+	_, err = client.CoreV1().ServiceAccounts(namespace).Get(context.Background(), serviceAccount, metav1.GetOptions{})
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
