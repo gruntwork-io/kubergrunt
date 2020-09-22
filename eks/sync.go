@@ -291,14 +291,15 @@ func updateVPCCNI(kubectlOptions *kubectl.KubectlOptions, region string, vpcCNIV
 
 	// Figure out the manifest URL based on region
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
+	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/", vpcCNIVersion, vpcCNIVersion)
 	if strings.HasPrefix(region, "cn-") {
-		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni-cn.yaml", vpcCNIVersion, vpcCNIVersion)
+		manifestPath = baseURL + "aws-k8s-cni-cn.yaml"
 	} else if region == "us-gov-east-1" {
-		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni-us-gov-east-1.yaml", vpcCNIVersion, vpcCNIVersion)
+		manifestPath = baseURL + "aws-k8s-cni-us-gov-east-1.yaml"
 	} else if region == "us-gov-west-1" {
-		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni-us-gov-west-1.yaml", vpcCNIVersion, vpcCNIVersion)
+		manifestPath = baseURL + "aws-k8s-cni-us-gov-west-1.yaml"
 	} else if region == "us-west-2" {
-		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni.yaml", vpcCNIVersion, vpcCNIVersion)
+		manifestPath = baseURL + "aws-k8s-cni.yaml"
 	} else {
 		// This is technically the same manifest as us-west-2, but we need to replace references to us-west-2 with the
 		// appropriate region, so we need to first download the manifest to a temporary dir and update the region before
@@ -310,7 +311,7 @@ func updateVPCCNI(kubectlOptions *kubectl.KubectlOptions, region string, vpcCNIV
 		defer os.RemoveAll(workingDir)
 		manifestPath = filepath.Join(workingDir, "aws-k8s-cni.yaml")
 
-		manifestURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni.yaml", vpcCNIVersion, vpcCNIVersion)
+		manifestURL := baseURL + "aws-k8s-cni.yaml"
 		if err := downloadVPCCNIManifestAndUpdateRegion(manifestURL, manifestPath, region); err != nil {
 			return err
 		}
