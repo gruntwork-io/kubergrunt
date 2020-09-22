@@ -1,9 +1,15 @@
 package eks
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/gruntwork-io/gruntwork-cli/collections"
@@ -104,7 +110,7 @@ func SyncClusterComponents(
 	if err := upgradeCoreDNS(kubectlOptions, clientset, awsRegion, coreDNSVersion, shouldWait, waitTimeout); err != nil {
 		return err
 	}
-	if err := updateVPCCNI(kubectlOptions, amznVPCCNIVersion); err != nil {
+	if err := updateVPCCNI(kubectlOptions, awsRegion, amznVPCCNIVersion); err != nil {
 		return err
 	}
 
@@ -280,7 +286,66 @@ func updateCoreDNSDeploymentImage(clientset *kubernetes.Clientset, targetImage s
 // would implement this using the raw Kubernetes API, but the CNI manifest contains additional resources on top of the
 // daemonset, and thus it is better to apply the manifests directly using kubectl than to translate it into underlying
 // API calls.
-func updateVPCCNI(kubectlOptions *kubectl.KubectlOptions, vpcCNIVersion string) error {
-	manifestURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni.yaml", vpcCNIVersion, vpcCNIVersion)
-	return kubectl.RunKubectl(kubectlOptions, "apply", "-f", manifestURL)
+func updateVPCCNI(kubectlOptions *kubectl.KubectlOptions, region string, vpcCNIVersion string) error {
+	var manifestPath string
+
+	// Figure out the manifest URL based on region
+	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
+	if strings.HasPrefix(region, "cn-") {
+		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni-cn.yaml", vpcCNIVersion, vpcCNIVersion)
+	} else if region == "us-gov-east-1" {
+		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni-us-gov-east-1.yaml", vpcCNIVersion, vpcCNIVersion)
+	} else if region == "us-gov-west-1" {
+		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni-us-gov-west-1.yaml", vpcCNIVersion, vpcCNIVersion)
+	} else if region == "us-west-2" {
+		manifestPath = fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni.yaml", vpcCNIVersion, vpcCNIVersion)
+	} else {
+		// This is technically the same manifest as us-west-2, but we need to replace references to us-west-2 with the
+		// appropriate region, so we need to first download the manifest to a temporary dir and update the region before
+		// applying.
+		workingDir, err := ioutil.TempDir("", "kubergrunt-sync")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(workingDir)
+		manifestPath = filepath.Join(workingDir, "aws-k8s-cni.yaml")
+
+		manifestURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/aws-k8s-cni.yaml", vpcCNIVersion, vpcCNIVersion)
+		if err := downloadVPCCNIManifestAndUpdateRegion(manifestURL, manifestPath, region); err != nil {
+			return err
+		}
+	}
+	return kubectl.RunKubectl(kubectlOptions, "apply", "-f", manifestPath)
+}
+
+// downloadVPCCNIManifestAndUpdateRegion will download the VPC CNI Kubernetes manifest at the given URL, update the
+// region, and save it the provided path. The region is always us-west-2 in the manifest (see
+// https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html)
+func downloadVPCCNIManifestAndUpdateRegion(url string, fpath string, region string) error {
+	out, err := os.Create(fpath)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	defer out.Close()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	defer resp.Body.Close()
+
+	// As we stream the body contents, update any references to the region. We use bufio.Scanner so that we read and
+	// write line by line, as reading by bytes risks reading a part of the region.
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if _, err := fmt.Fprintln(out, strings.ReplaceAll(line, "us-west-2", region)); err != nil {
+			return errors.WithStackTrace(err)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return errors.WithStackTrace(err)
+	}
+	return nil
 }
