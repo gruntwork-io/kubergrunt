@@ -59,7 +59,7 @@ var (
 	waitTimeoutFlag = cli.StringFlag{
 		Name:  "wait-timeout",
 		Value: "10m",
-		Usage: "The amount of time to wait for operations as a duration (e.g., 10m = 10 minutes). Defaults to 10 minutes.",
+		Usage: "The amount of time to wait for operations to complete, expressed as a duration (e.g., 10m = 10 minutes). Defaults to 10 minutes.",
 	}
 
 	// Token related flags
