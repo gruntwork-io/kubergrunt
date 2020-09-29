@@ -124,3 +124,23 @@ type NoPeerCertificatesError struct {
 func (err NoPeerCertificatesError) Error() string {
 	return fmt.Sprintf("Could not find any peer certificates for URL %s", err.URL)
 }
+
+// UnsupportedEKSVersion is returned when the Kubernetes version of the EKS cluster is not supported.
+type UnsupportedEKSVersion struct {
+	version string
+}
+
+func (err UnsupportedEKSVersion) Error() string {
+	return fmt.Sprintf("%s is not a supported version for kubergrunt eks upgrade. Please contact support@gruntwork.io for more info.", err.version)
+}
+
+// CoreComponentUnexpectedConfigurationErr error is returned when the EKS core components are in an unexpected
+// configuration, such as a different number of containers.
+type CoreComponentUnexpectedConfigurationErr struct {
+	component string
+	reason    string
+}
+
+func (err CoreComponentUnexpectedConfigurationErr) Error() string {
+	return fmt.Sprintf("Core component %s is in unexpected configuration: %s", err.component, err.reason)
+}
