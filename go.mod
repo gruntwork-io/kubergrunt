@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/aws/aws-sdk-go v1.34.27
+	github.com/blang/semver/v4 v4.0.0
 	github.com/gruntwork-io/gruntwork-cli v0.7.0
 	github.com/gruntwork-io/terratest v0.30.0
 	github.com/mitchellh/go-homedir v1.1.0
