@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/blang/semver/v4"
 	"github.com/gruntwork-io/gruntwork-cli/collections"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,10 +44,10 @@ var (
 	}
 
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.17": "1.6",
-		"1.16": "1.6",
-		"1.15": "1.6",
-		"1.14": "1.6",
+		"1.17": "1.7.5",
+		"1.16": "1.7.5",
+		"1.15": "1.7.5",
+		"1.14": "1.7.5",
 	}
 )
 
@@ -282,6 +283,20 @@ func updateCoreDNSDeploymentImage(clientset *kubernetes.Clientset, targetImage s
 	return nil
 }
 
+// getBaseURLForVPCCNIManifest returns the base github URL where the manifest for the VPC CNI is located given the
+// requested version.
+func getBaseURLForVPCCNIManifest(vpcCNIVersion string) (string, error) {
+	// Extract the major and minor version of the VPC CNI version as it is needed to construct the URL for the
+	// deployment config.
+	parsedVPCCNIVersion, err := semver.Make(vpcCNIVersion)
+	if err != nil {
+		return "", err
+	}
+	majorMinorVPCCNIVersion := fmt.Sprintf("%d.%d", parsedVPCCNIVersion.Major, parsedVPCCNIVersion.Minor)
+	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/v%s/", vpcCNIVersion, majorMinorVPCCNIVersion)
+	return baseURL, nil
+}
+
 // updateVPCCNI will apply the manifest to deploy the latest patch release of the target AWS VPC CNI version. Ideally we
 // would implement this using the raw Kubernetes API, but the CNI manifest contains additional resources on top of the
 // daemonset, and thus it is better to apply the manifests directly using kubectl than to translate it into underlying
@@ -291,7 +306,10 @@ func updateVPCCNI(kubectlOptions *kubectl.KubectlOptions, region string, vpcCNIV
 
 	// Figure out the manifest URL based on region
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
-	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/release-%s/config/v%s/", vpcCNIVersion, vpcCNIVersion)
+	baseURL, err := getBaseURLForVPCCNIManifest(vpcCNIVersion)
+	if err != nil {
+		return err
+	}
 	if strings.HasPrefix(region, "cn-") {
 		manifestPath = baseURL + "aws-k8s-cni-cn.yaml"
 	} else if region == "us-gov-east-1" {
