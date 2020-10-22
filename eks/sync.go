@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/blang/semver/v4"
 	"github.com/gruntwork-io/gruntwork-cli/collections"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -27,9 +29,10 @@ import (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.17", "1.16", "1.15", "1.14"}
+	supportedVersions = []string{"1.18", "1.17", "1.16", "1.15", "1.14"}
 
 	coreDNSVersionLookupTable = map[string]string{
+		"1.18": "1.7.0-eksbuild.1",
 		"1.17": "1.6.6-eksbuild.1",
 		"1.16": "1.6.6-eksbuild.1",
 		"1.15": "1.6.6-eksbuild.1",
@@ -37,6 +40,7 @@ var (
 	}
 
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.18": "1.18.8-eksbuild.1",
 		"1.17": "1.17.9-eksbuild.1",
 		"1.16": "1.16.13-eksbuild.1",
 		"1.15": "1.15.11-eksbuild.1",
@@ -44,6 +48,7 @@ var (
 	}
 
 	amazonVPCCNIVersionLookupTable = map[string]string{
+		"1.18": "1.7.5",
 		"1.17": "1.7.5",
 		"1.16": "1.7.5",
 		"1.15": "1.7.5",
@@ -52,9 +57,11 @@ var (
 )
 
 const (
-	componentNamespace     = "kube-system"
-	kubeProxyDaemonSetName = "kube-proxy"
-	corednsDeploymentName  = "coredns"
+	componentNamespace        = "kube-system"
+	kubeProxyDaemonSetName    = "kube-proxy"
+	corednsDeploymentName     = "coredns"
+	corednsConfigMapName      = "coredns"
+	corednsConfigMapConfigKey = "Corefile"
 )
 
 // SyncClusterComponents will perform the steps described in
@@ -223,10 +230,32 @@ func upgradeCoreDNS(
 		return nil
 	}
 
+	logger.Info("Confirming compatibility of coredns configuration with latest version.")
+	corednsConfigMap, err := getCorednsConfigMap(clientset)
+	if err != nil {
+		return err
+	}
+	// Need to check config for backwards incompatibility if updating to version >= 1.7.0. The keyword upstream was
+	// removed in 1.7 series of coredns, but is used in earlier versions.
+	compareVal, err := semverStringCompare(coreDNSVersion, "1.7.0-eksbuild.1")
+	if err != nil {
+		return err
+	}
+	// Looking for 1 or 0 here, since we want to know when coreDNSVersion is >= 1.7.0
+	if compareVal >= 0 && strings.Contains(corednsConfigMap.Data[corednsConfigMapConfigKey], "upstream") {
+		logger.Info("Detected old configuration for coredns. Reformatting configuration to latest.")
+		if err := removeUpstreamKeywordFromCorednsConfigMap(clientset, corednsConfigMap); err != nil {
+			return err
+		}
+	} else {
+		logger.Info("Configuration for coredns is up to date. Skipping configuration reformat.")
+	}
+
 	logger.Infof("Upgrading current deployed version of coredns (%s) to match expected version (%s).", currentImage, targetImage)
 	if err := updateCoreDNSDeploymentImage(clientset, targetImage); err != nil {
 		return err
 	}
+
 	if shouldWait {
 		logger.Info("Waiting until new image for coredns is rolled out.")
 		// Ideally we will implement the following routine using the raw client-go library, but implementing this
@@ -281,6 +310,16 @@ func updateCoreDNSDeploymentImage(clientset *kubernetes.Clientset, targetImage s
 		return errors.WithStackTrace(err)
 	}
 	return nil
+}
+
+// getCorednsConfigMap returns the configmap object containing the coredns configuration for the EKS cluster.
+func getCorednsConfigMap(clientset *kubernetes.Clientset) (*corev1.ConfigMap, error) {
+	configMapAPI := clientset.CoreV1().ConfigMaps(componentNamespace)
+	configMap, err := configMapAPI.Get(context.Background(), corednsConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	return configMap, nil
 }
 
 // getBaseURLForVPCCNIManifest returns the base github URL where the manifest for the VPC CNI is located given the
@@ -367,4 +406,42 @@ func downloadVPCCNIManifestAndUpdateRegion(url string, fpath string, region stri
 		return errors.WithStackTrace(err)
 	}
 	return nil
+}
+
+// semverStringCompare compares two semantic version strings. Returns:
+// -1 if v1 < v2
+// 0 if v1 == v2
+// 1 if v1 > v2
+// Note that in semantic versioning, annotations are considered an older version.
+// E.g., 1.7.0-eksbuild.1 is considered less than 1.7.0.
+func semverStringCompare(v1 string, v2 string) (int, error) {
+	parsedV1, err := semver.Make(v1)
+	if err != nil {
+		return 0, errors.WithStackTrace(err)
+	}
+	parsedV2, err := semver.Make(v2)
+	if err != nil {
+		return 0, errors.WithStackTrace(err)
+	}
+	return parsedV1.Compare(parsedV2), nil
+}
+
+// removeUpstreamKeywordFromCorednsConfigMap removes the upstream keyword from the CoreDNS ConfigMap config data and
+// saves it on the cluster.
+func removeUpstreamKeywordFromCorednsConfigMap(clientset *kubernetes.Clientset, corednsConfigMap *corev1.ConfigMap) error {
+	configData := corednsConfigMap.Data[corednsConfigMapConfigKey]
+
+	// Remove the line containing "upstream". Since this can appear in any nested block, we use regex to handle the
+	// whitespace during the removal.
+	lookForUpstreamRE, err := regexp.Compile(`[\s]+upstream[\t\r\n]+`)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	newConfigData := lookForUpstreamRE.ReplaceAllString(configData, "\n")
+	corednsConfigMap.Data[corednsConfigMapConfigKey] = newConfigData
+
+	// Now save the new configmap
+	configMapAPI := clientset.CoreV1().ConfigMaps(corednsConfigMap.ObjectMeta.Namespace)
+	_, err = configMapAPI.Update(context.Background(), corednsConfigMap, metav1.UpdateOptions{})
+	return errors.WithStackTrace(err)
 }
