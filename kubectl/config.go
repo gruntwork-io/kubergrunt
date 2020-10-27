@@ -106,6 +106,8 @@ func AddEksAuthInfoToConfig(config *api.Config, eksClusterArnString string, eksC
 	if err != nil {
 		// Fallback to `kubergrunt`?
 		executablePath = "kubergrunt"
+		logger.Warnf("Error finding the kubergrunt executable path: %s", err)
+		logger.Warn("Falling back to default kubergrunt, searching in the PATH.")
 	}
 
 	execConfig := api.ExecConfig{
