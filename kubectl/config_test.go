@@ -121,7 +121,6 @@ func TestAddEksConfigContextAppendsCorrectAuthInfo(t *testing.T) {
 	require.True(t, ok)
 
 	execInfo := authInfo.Exec
-	assert.Equal(t, execInfo.Command, "kubergrunt")
 	assert.Contains(t, execInfo.Args, mockData.EksName)
 
 	// Verify none of the other authentication styles are set
@@ -150,7 +149,6 @@ func TestAddEksAuthInfoToConfigAppendsCorrectAuthInfo(t *testing.T) {
 	require.True(t, ok)
 
 	execInfo := authInfo.Exec
-	assert.Equal(t, execInfo.Command, "kubergrunt")
 	assert.Contains(t, execInfo.Args, name)
 
 	// Verify none of the other authentication styles are set
