@@ -182,6 +182,18 @@ If max-retries is unspecified, this command will use a value that translates to 
 					waitSleepBetweenRetriesFlag,
 				},
 			},
+			cli.Command{
+				Name:        "cleanup-security-group",
+				Usage:       "Delete the AWS-managed security group created for the EKS cluster.",
+				Description: "When destroying the EKS cluster, the AWS provider leaves behind the security group created for the EKS cluster. This command makes sure to clean up that resource. It can be called before or after the EKS cluster itself is destroyed.",
+				Action:      cleanupSecurityGroup,
+				Flags: []cli.Flag{
+					eksClusterArnFlag,
+					waitFlag,
+					waitMaxRetriesFlag,
+					waitSleepBetweenRetriesFlag,
+				},
+			},
 		},
 	}
 }
@@ -319,4 +331,13 @@ func syncClusterComponents(cliContext *cli.Context) error {
 	shouldWait := cliContext.Bool(waitFlag.Name)
 	waitTimeout := cliContext.String(waitTimeoutFlag.Name)
 	return eks.SyncClusterComponents(eksClusterArn, shouldWait, waitTimeout)
+}
+
+// Command action for `kubergrunt eks cleanup-security-group`
+func cleanupSecurityGroup(cliContext *cli.Context) error {
+	clusterID, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-id")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	return eks.CleanupSecurityGroup(clusterID, securityGroupID, vpcID, region)
 }
