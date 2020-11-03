@@ -396,30 +396,30 @@ func cleanupSecurityGroup(cliContext *cli.Context) error {
 
 // Command action for `kubergrunt eks schedule-coredns ec2`
 func scheduleCorednsEc2(cliContext *cli.Context) error {
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
 	clusterName, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-name")
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
-	fargateProfileArn, err := entrypoint.StringFlagRequiredE(cliContext, "fargate-profile-arn")
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	return eks.ScheduleCoredns(clusterName, fargateProfileArn, "ec2")
+	return eks.ScheduleCoredns(kubectlOptions, clusterName, "ec2")
 }
 
 // Command action for `kubergrunt eks schedule-coredns fargate`
 func scheduleCorednsFargate(cliContext *cli.Context) error {
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
 	clusterName, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-name")
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
-	fargateProfileArn, err := entrypoint.StringFlagRequiredE(cliContext, "fargate-profile-arn")
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	return eks.ScheduleCoredns(clusterName, fargateProfileArn, "fargate")
+	return eks.ScheduleCoredns(kubectlOptions, clusterName, "fargate")
 }
