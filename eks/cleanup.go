@@ -13,13 +13,25 @@ import (
 // destroying the EKS cluster.
 // It also attempts to delete the security group left by ALB ingress controller.
 func CleanupSecurityGroup(
-	clusterID string,
+	clusterArn string,
 	securityGroupID string,
 	vpcID string,
-	region string,
 ) error {
 	logger := logging.GetProjectLogger()
 
+	// Get Region from ARN
+	region, err := eksawshelper.GetRegionFromArn(clusterArn)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	// Get Cluster Name from ARN
+	clusterID, err := eksawshelper.GetClusterNameFromArn(clusterArn)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	// Start new AWS session
 	sess, err := eksawshelper.NewAuthenticatedSession(region)
 	if err != nil {
 		return errors.WithStackTrace(err)
@@ -34,9 +46,12 @@ func CleanupSecurityGroup(
 	}
 	_, err = ec2Svc.DeleteSecurityGroup(delSGInput)
 	if err != nil {
+		// TODO?: check for Error.Code == 'InvalidGroup.NotFound'. This means it's already been deleted
 		return errors.WithStackTrace(err)
 	}
 	logger.Infof("Successfully deleted security group %s", securityGroupID)
+
+	// Now delete ALB Ingress Controller's security group, if it exists
 
 	logger.Infof("Looking up security group containing tag for EKS cluster %s", clusterID)
 	//
@@ -84,6 +99,7 @@ func CleanupSecurityGroup(
 		// so we can ignore the result.
 		_, err := ec2Svc.DeleteSecurityGroup(input)
 		if err != nil {
+			// TODO?: check for Error.Code == 'InvalidGroup.NotFound'. This means it's already been deleted
 			return errors.WithStackTrace(err)
 		}
 

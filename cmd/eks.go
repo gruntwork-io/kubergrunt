@@ -77,6 +77,17 @@ var (
 		Name:  "issuer-url",
 		Usage: "(Required) URL of the OIDC Issuer for which we want to retrieve CA certificate thumbprints for.",
 	}
+
+	// Flags for cleaning up security group
+	securityGroupIDFlag = cli.StringFlag{
+		Name:  "security-group-id",
+		Usage: "ID of the Security Group created by EKS to manage EKS nodes.",
+	}
+
+	vpcIDFlag = cli.StringFlag{
+		Name:  "vpc-id",
+		Usage: "ID of the VPC where EKS is running.",
+	}
 )
 
 // SetupEksCommand creates the cli.Command entry for the eks subcommand of kubergrunt
@@ -189,9 +200,8 @@ If max-retries is unspecified, this command will use a value that translates to 
 				Action:      cleanupSecurityGroup,
 				Flags: []cli.Flag{
 					eksClusterArnFlag,
-					waitFlag,
-					waitMaxRetriesFlag,
-					waitSleepBetweenRetriesFlag,
+					securityGroupIDFlag,
+					vpcIDFlag,
 				},
 			},
 		},
@@ -335,9 +345,20 @@ func syncClusterComponents(cliContext *cli.Context) error {
 
 // Command action for `kubergrunt eks cleanup-security-group`
 func cleanupSecurityGroup(cliContext *cli.Context) error {
-	clusterID, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-id")
+	eksClusterArn, err := entrypoint.StringFlagRequiredE(cliContext, "eks-cluster-arn")
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
-	return eks.CleanupSecurityGroup(clusterID, securityGroupID, vpcID, region)
+
+	securityGroupID, err := entrypoint.StringFlagRequiredE(cliContext, "security-group-id")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	vpcID, err := entrypoint.StringFlagRequiredE(cliContext, "vpc-id")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	return eks.CleanupSecurityGroup(eksClusterArn, securityGroupID, vpcID)
 }
