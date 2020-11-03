@@ -57,6 +57,9 @@ func CleanupSecurityGroup(
 		return errors.WithStackTrace(err)
 	}
 	logger.Infof("Found network interfaces for security group %s", securityGroupID)
+	for _, ni := range networkInterfacesResult.NetworkInterfaces {
+		logger.Infof("Found network interface %s", ni.NetworkInterfaceId)
+	}
 
 	// Detach network interfaces
 	for _, ni := range networkInterfacesResult.NetworkInterfaces {
@@ -67,14 +70,13 @@ func CleanupSecurityGroup(
 		if err != nil {
 			return errors.WithStackTrace(err)
 		}
-		logger.Infof("Submitted request to detach network interface %s for security group %s", *ni.Attachment.AttachmentId, securityGroupID)
+		logger.Infof("Submitted request to detach network interface %s for security group %s", *ni.NetworkInterfaceId, securityGroupID)
 	}
 
 	// Wait for network interfaces to be detached
-	waitSleepBetweenRetries := 10 * time.Second
-	waitMaxRetries := int(math.Trunc(300 / waitSleepBetweenRetries.Seconds()))
+	waitSleepBetweenRetries := 1 * time.Second
+	waitMaxRetries := int(math.Trunc(30 / waitSleepBetweenRetries.Seconds()))
 	err = waitForNetworkInterfacesToBeDetached(ec2Svc, networkInterfacesResult.NetworkInterfaces, waitMaxRetries, waitSleepBetweenRetries)
-	// TODO: is this error handling right? it's already returned with stack trace
 	if err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func waitForNetworkInterfacesToBeDetached(
 	logger := logging.GetProjectLogger()
 	for _, ni := range networkInterfaces {
 		for i := 0; i < maxRetries; i++ {
-			logger.Infof("Waiting for network interface %s to reach detached state.", ni.NetworkInterfaceId)
+			logger.Infof("Waiting for network interface %s to reach detached state.", *ni.NetworkInterfaceId)
 			logger.Info("Checking network interface attachment status.")
 
 			// Poll for the new status
@@ -191,18 +193,20 @@ func waitForNetworkInterfacesToBeDetached(
 				Attribute:          aws.String("attachment"),
 				NetworkInterfaceId: aws.String(*ni.NetworkInterfaceId),
 			}
+
 			niResult, err := ec2Svc.DescribeNetworkInterfaceAttribute(describeNetworkInterfacesInput)
 			if err != nil {
+				logger.Errorf("Error polling network interface attribute: attachment for %s", *ni.NetworkInterfaceId)
 				return errors.WithStackTrace(err)
 			}
 
 			// There should only be one interface in this result
 			if *niResult.Attachment.Status == "detached" {
-				logger.Infof("Network interface %s is detached.", ni.NetworkInterfaceId)
+				logger.Infof("Network interface %s is detached.", *ni.NetworkInterfaceId)
 				return nil
 			}
 
-			logger.Warnf("Network interface %s is not detached yet.", ni.NetworkInterfaceId)
+			logger.Warnf("Network interface %s is not detached yet.", *ni.NetworkInterfaceId)
 			logger.Infof("Waiting for %s...", sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
@@ -221,24 +225,24 @@ func waitForNetworkInterfacesToBeDeleted(
 	logger := logging.GetProjectLogger()
 	for _, ni := range networkInterfaces {
 		for i := 0; i < maxRetries; i++ {
-			logger.Infof("Waiting for network interface %s to be deleted.", ni.NetworkInterfaceId)
+			logger.Infof("Waiting for network interface %s to be deleted.", *ni.NetworkInterfaceId)
 			logger.Info("Checking for network interface not found.")
 
 			// Poll for the new status
 			describeNetworkInterfacesInput := &ec2.DescribeNetworkInterfacesInput{
-				NetworkInterfaceIds: []*string{ni.NetworkInterfaceId},
+				NetworkInterfaceIds: []*string{aws.String(*ni.NetworkInterfaceId)},
 			}
 			_, err := ec2Svc.DescribeNetworkInterfaces(describeNetworkInterfacesInput)
 			if err != nil {
 				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
-					logger.Infof("Network interface %s is deleted.", ni.NetworkInterfaceId)
+					logger.Infof("Network interface %s is deleted.", *ni.NetworkInterfaceId)
 					return nil
 				}
 
 				return errors.WithStackTrace(err)
 			}
 
-			logger.Warnf("Network interface %s is not deleted yet.", ni.NetworkInterfaceId)
+			logger.Warnf("Network interface %s is not deleted yet.", *ni.NetworkInterfaceId)
 			logger.Infof("Waiting for %s...", sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}

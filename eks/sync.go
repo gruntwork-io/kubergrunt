@@ -72,7 +72,7 @@ const (
 //    - coredns
 //    - VPC CNI Plugin
 //
-// Each of these are managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use
+// Each of these is managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use
 // the k8s API and kubectl command under the hood to patch the manifests to deploy the expected version based on what
 // the current Kubernetes version is of the cluster. As such, this command should be run every time the Kubernetes
 // version is updated on the EKS cluster.

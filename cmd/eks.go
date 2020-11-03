@@ -64,8 +64,8 @@ var (
 
 	// Token related flags
 	clusterIDFlag = cli.StringFlag{
-		Name:  "cluster-id, i",
-		Usage: "The name of the EKS cluster for which to retrieve an auth token for.",
+		Name:  "cluster-id",
+		Usage: "The name of the EKS cluster for which to retrieve an auth token.",
 	}
 	tokenAsTFDataFlag = cli.BoolFlag{
 		Name:  "as-tf-data",
@@ -88,6 +88,12 @@ var (
 		Name:  "vpc-id",
 		Usage: "ID of the VPC where EKS is running.",
 	}
+
+	// Fargate / Coredns related flags
+	clusterNameFlag = cli.StringFlag{
+		Name:  "cluster-name",
+		Usage: "The name of the EKS cluster.",
+	}
 )
 
 // SetupEksCommand creates the cli.Command entry for the eks subcommand of kubergrunt
@@ -97,6 +103,31 @@ func SetupEksCommand() cli.Command {
 		Usage:       "Helper commands to configure EKS.",
 		Description: "Helper commands to configure EKS, including setting up operator machines to authenticate with EKS.",
 		Subcommands: cli.Commands{
+			cli.Command{
+				Name:        "schedule-coredns",
+				Usage:       "Helper commands to modify coredns deployment annotations.",
+				Description: "Commands to add and remove annotations on coredns deployment resource to enable fargate or ec2.",
+				Subcommands: cli.Commands{
+					cli.Command{
+						Name:        "ec2",
+						Action:      scheduleCorednsEc2,
+						Usage:       "Add annotation on coredns deployment resource.",
+						Description: "Add annotation on coredns deployment resource to enable ec2.",
+						Flags: []cli.Flag{
+							clusterNameFlag,
+						},
+					},
+					cli.Command{
+						Name:        "fargate",
+						Usage:       "Remove annotation on coredns deployment resource.",
+						Description: "Remove annotation on coredns deployment resource to enable fargate.",
+						Action:      scheduleCorednsFargate,
+						Flags: []cli.Flag{
+							clusterNameFlag,
+						},
+					},
+				},
+			},
 			cli.Command{
 				Name:        "verify",
 				Usage:       "Verifies the cluster endpoint for the EKS cluster.",
@@ -361,4 +392,34 @@ func cleanupSecurityGroup(cliContext *cli.Context) error {
 	}
 
 	return eks.CleanupSecurityGroup(eksClusterArn, securityGroupID, vpcID)
+}
+
+// Command action for `kubergrunt eks schedule-coredns ec2`
+func scheduleCorednsEc2(cliContext *cli.Context) error {
+	clusterName, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-name")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	fargateProfileArn, err := entrypoint.StringFlagRequiredE(cliContext, "fargate-profile-arn")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	return eks.ScheduleCoredns(clusterName, fargateProfileArn, "ec2")
+}
+
+// Command action for `kubergrunt eks schedule-coredns fargate`
+func scheduleCorednsFargate(cliContext *cli.Context) error {
+	clusterName, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-name")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	fargateProfileArn, err := entrypoint.StringFlagRequiredE(cliContext, "fargate-profile-arn")
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	return eks.ScheduleCoredns(clusterName, fargateProfileArn, "fargate")
 }
