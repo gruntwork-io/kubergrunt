@@ -90,6 +90,7 @@ var (
 	}
 
 	// Fargate / Coredns related flags
+	// TODO: we might prefer to use cluster-id from token related flags instead?
 	clusterNameFlag = cli.StringFlag{
 		Name:  "eks-cluster-name",
 		Usage: "The name of the EKS cluster.",
