@@ -60,7 +60,7 @@ func CleanupSecurityGroup(
 		return errors.WithStackTrace(err)
 	}
 	for _, ni := range networkInterfacesResult.NetworkInterfaces {
-		logger.Infof("Found network interface %s", ni.NetworkInterfaceId)
+		logger.Infof("Found network interface %s", aws.StringValue(ni.NetworkInterfaceId))
 	}
 
 	// Detach network interfaces
@@ -94,7 +94,7 @@ func CleanupSecurityGroup(
 		if err != nil {
 			return errors.WithStackTrace(err)
 		}
-		logger.Infof("Requested to delete network interface %s for security group %s", *ni.NetworkInterfaceId, securityGroupID)
+		logger.Infof("Requested to delete network interface %s for security group %s", aws.StringValue(ni.NetworkInterfaceId), securityGroupID)
 	}
 
 	// Wait for network interfaces to be deleted
@@ -139,8 +139,8 @@ func CleanupSecurityGroup(
 	}
 
 	for _, result := range sgResult.SecurityGroups {
-		groupID := *result.GroupId
-		groupName := *result.GroupName
+		groupID := aws.StringValue(result.GroupId)
+		groupName := aws.StringValue(result.GroupName)
 		input := &ec2.DeleteSecurityGroupInput{
 			GroupId:   aws.String(groupID),
 			GroupName: aws.String(groupName),
