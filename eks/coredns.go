@@ -3,7 +3,7 @@ package eks
 import (
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	"encoding/json"
+	//"encoding/json"
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
