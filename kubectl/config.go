@@ -100,9 +100,19 @@ func AddClusterToConfig(
 func AddEksAuthInfoToConfig(config *api.Config, eksClusterArnString string, eksClusterName string) error {
 	logger := logging.GetProjectLogger()
 	logger.Infof("Appending EKS cluster authentication info for %s to kubectl config.", eksClusterArnString)
+
+	// Get the path of the currently running kubergrunt executable
+	executablePath, err := os.Executable()
+	if err != nil {
+		// Fallback to `kubergrunt`?
+		executablePath = "kubergrunt"
+		logger.Warnf("Error finding the kubergrunt executable path: %s", err)
+		logger.Warn("Falling back to default kubergrunt, searching in the PATH.")
+	}
+
 	execConfig := api.ExecConfig{
 		APIVersion: "client.authentication.k8s.io/v1alpha1",
-		Command:    "kubergrunt",
+		Command:    executablePath,
 		Args: []string{
 			"--loglevel",
 			"error",
