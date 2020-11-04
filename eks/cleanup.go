@@ -22,6 +22,10 @@ func CleanupSecurityGroup(
 ) error {
 	logger := logging.GetProjectLogger()
 
+	// Set wait variables for NetworkInterface detaching and deleting
+	waitSleepBetweenRetries := 1 * time.Second
+	waitMaxRetries := int(math.Trunc(30 / waitSleepBetweenRetries.Seconds()))
+
 	// Get Region from ARN
 	region, err := eksawshelper.GetRegionFromArn(clusterArn)
 	if err != nil {
@@ -55,7 +59,6 @@ func CleanupSecurityGroup(
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
-	logger.Infof("Found network interfaces for security group %s", securityGroupID)
 	for _, ni := range networkInterfacesResult.NetworkInterfaces {
 		logger.Infof("Found network interface %s", ni.NetworkInterfaceId)
 	}
@@ -73,13 +76,13 @@ func CleanupSecurityGroup(
 	}
 
 	// Wait for network interfaces to be detached
-	waitSleepBetweenRetries := 1 * time.Second
-	waitMaxRetries := int(math.Trunc(30 / waitSleepBetweenRetries.Seconds()))
-	err = waitForNetworkInterfacesToBeDetached(ec2Svc, networkInterfacesResult.NetworkInterfaces, waitMaxRetries, waitSleepBetweenRetries)
-	if err != nil {
-		return err
+	if len(networkInterfacesResult.NetworkInterfaces) > 0 {
+		err = waitForNetworkInterfacesToBeDetached(ec2Svc, networkInterfacesResult.NetworkInterfaces, waitMaxRetries, waitSleepBetweenRetries)
+		if err != nil {
+			return err
+		}
+		logger.Info("Verified network interfaces are detached.")
 	}
-	logger.Info("Verified network interfaces are detached.")
 
 	// Delete network interfaces
 	for _, ni := range networkInterfacesResult.NetworkInterfaces {
@@ -117,7 +120,6 @@ func CleanupSecurityGroup(
 	logger.Infof("Successfully deleted security group %s", securityGroupID)
 
 	// Now delete ALB Ingress Controller's security group, if it exists
-
 	logger.Infof("Looking up security group containing tag for EKS cluster %s", clusterID)
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		Filters: []*ec2.Filter{
@@ -135,8 +137,6 @@ func CleanupSecurityGroup(
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
-
-	logger.Infof("Found security group")
 
 	for _, result := range sgResult.SecurityGroups {
 		groupID := *result.GroupId
