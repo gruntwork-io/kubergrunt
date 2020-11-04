@@ -120,6 +120,7 @@ func CleanupSecurityGroup(
 	logger.Infof("Successfully deleted security group %s", securityGroupID)
 
 	// Now delete ALB Ingress Controller's security group, if it exists
+	// TODO: delete ENIs
 	logger.Infof("Looking up security group containing tag for EKS cluster %s", clusterID)
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		Filters: []*ec2.Filter{

@@ -3,7 +3,7 @@ package eks
 import (
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	//"encoding/json"
+	"encoding/json"
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
@@ -44,17 +44,22 @@ func ScheduleCoredns(
 	case Fargate:
 		logger.Info("Doing fargate annotation")
 
-		patch := `{
+		patch := `[{
 			"op": "remove",
 			"path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"
-		}`
+		}]`
 
+		// type p struct {
+		// 	Op    string `json:"op"`
+		// 	Path  string `json:"path"`
+		// 	Value string `json:"value,omitempty"`
+		// }
 		// var raw map[string]interface{}
+		// var raw p
 
 		// if err := json.Unmarshal(patch, &raw); err != nil {
 		// 	return errors.WithStackTrace(err)
 		// }
-		// raw["count"] = 1
 
 		// out, err := json.Marshal(raw)
 		// if err != nil {
@@ -65,7 +70,7 @@ func ScheduleCoredns(
 			kubectlOptions,
 			"patch", "deployment", "coredns",
 			"-n", "kube-system",
-			//"--patch", string(patch),
+			"--type", "json",
 			"--patch", patch,
 		)
 
@@ -99,7 +104,7 @@ func ScheduleCoredns(
 			kubectlOptions,
 			"patch", "deployment", "coredns",
 			"-n", "kube-system",
-			//"--patch", string(patch),
+			"--type", "json",
 			"--patch", patch,
 		)
 
