@@ -91,8 +91,13 @@ var (
 
 	// Fargate / Coredns related flags
 	clusterNameFlag = cli.StringFlag{
-		Name:  "cluster-name",
+		Name:  "eks-cluster-name",
 		Usage: "The name of the EKS cluster.",
+	}
+
+	fargateProfileArnFlag = cli.StringFlag{
+		Name:  "fargate-profile-arn",
+		Usage: "The ARN of the Fargate profile.",
 	}
 )
 
@@ -115,6 +120,7 @@ func SetupEksCommand() cli.Command {
 						Description: "Add annotation on coredns deployment resource to enable ec2.",
 						Flags: []cli.Flag{
 							clusterNameFlag,
+							fargateProfileArnFlag,
 						},
 					},
 					cli.Command{
@@ -124,6 +130,7 @@ func SetupEksCommand() cli.Command {
 						Action:      scheduleCorednsFargate,
 						Flags: []cli.Flag{
 							clusterNameFlag,
+							fargateProfileArnFlag,
 						},
 					},
 				},
@@ -376,17 +383,17 @@ func syncClusterComponents(cliContext *cli.Context) error {
 
 // Command action for `kubergrunt eks cleanup-security-group`
 func cleanupSecurityGroup(cliContext *cli.Context) error {
-	eksClusterArn, err := entrypoint.StringFlagRequiredE(cliContext, "eks-cluster-arn")
+	eksClusterArn, err := entrypoint.StringFlagRequiredE(cliContext, eksClusterArnFlag.Name)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
-	securityGroupID, err := entrypoint.StringFlagRequiredE(cliContext, "security-group-id")
+	securityGroupID, err := entrypoint.StringFlagRequiredE(cliContext, securityGroupIDFlag.Name)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
-	vpcID, err := entrypoint.StringFlagRequiredE(cliContext, "vpc-id")
+	vpcID, err := entrypoint.StringFlagRequiredE(cliContext, vpcIDFlag.Name)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -401,12 +408,17 @@ func scheduleCorednsEc2(cliContext *cli.Context) error {
 		return err
 	}
 
-	clusterName, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-name")
+	eksClusterName, err := entrypoint.StringFlagRequiredE(cliContext, clusterNameFlag.Name)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
-	return eks.ScheduleCoredns(kubectlOptions, clusterName, "ec2")
+	fargateProfileArn, err := entrypoint.StringFlagRequiredE(cliContext, fargateProfileArnFlag.Name)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	return eks.ScheduleCoredns(kubectlOptions, eksClusterName, fargateProfileArn, "ec2")
 }
 
 // Command action for `kubergrunt eks schedule-coredns fargate`
@@ -416,10 +428,15 @@ func scheduleCorednsFargate(cliContext *cli.Context) error {
 		return err
 	}
 
-	clusterName, err := entrypoint.StringFlagRequiredE(cliContext, "cluster-name")
+	eksClusterName, err := entrypoint.StringFlagRequiredE(cliContext, clusterNameFlag.Name)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
-	return eks.ScheduleCoredns(kubectlOptions, clusterName, "fargate")
+	fargateProfileArn, err := entrypoint.StringFlagRequiredE(cliContext, fargateProfileArnFlag.Name)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	return eks.ScheduleCoredns(kubectlOptions, eksClusterName, fargateProfileArn, "fargate")
 }

@@ -3,6 +3,8 @@ package eks
 import (
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
+	//"encoding/json"
+	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
@@ -19,39 +21,86 @@ const (
 func ScheduleCoredns(
 	kubectlOptions *kubectl.KubectlOptions,
 	clusterName string,
+	fargateProfileArn string,
 	corednsAnnotation CorednsAnnotation,
 ) error {
 	logger := logging.GetProjectLogger()
 
+	region, err := eksawshelper.GetRegionFromArn(fargateProfileArn)
+	if err != nil {
+		return err
+	}
+	logger.Infof("Got region %s", region)
+
+	eksClusterArn, err := eksawshelper.GetClusterArnByNameAndRegion(clusterName, region)
+	if err != nil {
+		return err
+	}
+	logger.Infof("Got cluster arn %s", eksClusterArn)
+
+	kubectlOptions.EKSClusterArn = eksClusterArn
+
 	switch corednsAnnotation {
 	case Fargate:
-		err := kubectl.RunKubectl(
+		logger.Info("Doing fargate annotation")
+
+		patch := `{
+			"op": "remove",
+			"path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"
+		}`
+
+		// var raw map[string]interface{}
+
+		// if err := json.Unmarshal(patch, &raw); err != nil {
+		// 	return errors.WithStackTrace(err)
+		// }
+		// raw["count"] = 1
+
+		// out, err := json.Marshal(raw)
+		// if err != nil {
+		// 	return errors.WithStackTrace(err)
+		// }
+
+		err = kubectl.RunKubectl(
 			kubectlOptions,
 			"patch", "deployment", "coredns",
 			"-n", "kube-system",
-			"--type", "json",
-			"--patch", `[{
-					op = "remove"
-					path = "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"
-				}]`,
+			//"--patch", string(patch),
+			"--patch", patch,
 		)
 
 		if err != nil {
 			return errors.WithStackTrace(err)
 		}
 	case EC2:
-		err := kubectl.RunKubectl(
+		logger.Info("Doing ec2 annotation")
+
+		patch := `{
+			"op": "add",
+			"path": "/spec/template/metadata/annotations",
+			"value": {
+				"eks.amazonaws.com/compute-type": "ec2"
+			}
+		}`
+
+		// var raw map[string]interface{}
+
+		// if err := json.Unmarshal(patch, &raw); err != nil {
+		// 	return errors.WithStackTrace(err)
+		// }
+		// raw["count"] = 1
+
+		// out, err := json.Marshal(raw)
+		// if err != nil {
+		// 	return errors.WithStackTrace(err)
+		// }
+
+		err = kubectl.RunKubectl(
 			kubectlOptions,
 			"patch", "deployment", "coredns",
 			"-n", "kube-system",
-			"--type", "json",
-			"--patch", `[{
-				op   = "add"
-				path = "/spec/template/metadata/annotations"
-				value = {
-					"eks.amazonaws.com/compute-type" = "ec2"
-				}
-			}]`,
+			//"--patch", string(patch),
+			"--patch", patch,
 		)
 
 		if err != nil {
