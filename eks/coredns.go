@@ -3,7 +3,6 @@ package eks
 import (
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 
-	//"encoding/json"
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
@@ -44,34 +43,12 @@ func ScheduleCoredns(
 	case Fargate:
 		logger.Info("Doing fargate annotation")
 
-		patch := `[{
-			"op": "remove",
-			"path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"
-		}]`
-
-		// type p struct {
-		// 	Op    string `json:"op"`
-		// 	Path  string `json:"path"`
-		// 	Value string `json:"value,omitempty"`
-		// }
-		// var raw map[string]interface{}
-		// var raw p
-
-		// if err := json.Unmarshal(patch, &raw); err != nil {
-		// 	return errors.WithStackTrace(err)
-		// }
-
-		// out, err := json.Marshal(raw)
-		// if err != nil {
-		// 	return errors.WithStackTrace(err)
-		// }
-
 		err = kubectl.RunKubectl(
 			kubectlOptions,
 			"patch", "deployment", "coredns",
 			"-n", "kube-system",
 			"--type", "json",
-			"--patch", patch,
+			"--patch", `[{"op": "remove","path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"}]`,
 		)
 
 		if err != nil {
@@ -80,32 +57,12 @@ func ScheduleCoredns(
 	case EC2:
 		logger.Info("Doing ec2 annotation")
 
-		patch := `{
-			"op": "add",
-			"path": "/spec/template/metadata/annotations",
-			"value": {
-				"eks.amazonaws.com/compute-type": "ec2"
-			}
-		}`
-
-		// var raw map[string]interface{}
-
-		// if err := json.Unmarshal(patch, &raw); err != nil {
-		// 	return errors.WithStackTrace(err)
-		// }
-		// raw["count"] = 1
-
-		// out, err := json.Marshal(raw)
-		// if err != nil {
-		// 	return errors.WithStackTrace(err)
-		// }
-
 		err = kubectl.RunKubectl(
 			kubectlOptions,
 			"patch", "deployment", "coredns",
 			"-n", "kube-system",
 			"--type", "json",
-			"--patch", patch,
+			"--patch", `[{"op": "add","path": "/spec/template/metadata/annotations","value": {"eks.amazonaws.com/compute-type": "ec2"}}]`,
 		)
 
 		if err != nil {
