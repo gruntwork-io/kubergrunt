@@ -183,26 +183,8 @@ func waitForNetworkInterfacesToBeDetached(
 				return errors.WithStackTrace(err)
 			}
 
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("What is niResult?")
-			logger.Infof("%+v", niResult)
-			// There should only be one interface in this result
-			if aws.StringValue(niResult.Attachment.Status) == "detached" {
+			logger.Infof("What is niResult? %+v", niResult)
+			if niResult.Attachment == nil || aws.StringValue(niResult.Attachment.Status) == "detached" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
 				return nil
 			}
