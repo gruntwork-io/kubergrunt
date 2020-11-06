@@ -166,6 +166,8 @@ func waitForNetworkInterfacesToBeDetached(
 	sleepBetweenRetries time.Duration,
 ) error {
 	logger := logging.GetProjectLogger()
+	countOfNetworkInterfaces := len(networkInterfaces)
+
 	for _, ni := range networkInterfaces {
 		for i := 0; i < maxRetries; i++ {
 			logger.Infof("Waiting for network interface %s to reach detached state.", aws.StringValue(ni.NetworkInterfaceId))
@@ -185,7 +187,10 @@ func waitForNetworkInterfacesToBeDetached(
 
 			if niResult.Attachment == nil || aws.StringValue(niResult.Attachment.Status) == "detached" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
-				return nil
+				countOfNetworkInterfaces = countOfNetworkInterfaces - 1
+				if countOfNetworkInterfaces == 0 {
+					return nil
+				}
 			}
 
 			logger.Warnf("Network interface %s is not detached yet. Status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
@@ -205,6 +210,8 @@ func waitForNetworkInterfacesToBeDeleted(
 	sleepBetweenRetries time.Duration,
 ) error {
 	logger := logging.GetProjectLogger()
+	countOfNetworkInterfaces := len(networkInterfaces)
+
 	for _, ni := range networkInterfaces {
 		for i := 0; i < maxRetries; i++ {
 			logger.Infof("Waiting for network interface %s to be deleted.", aws.StringValue(ni.NetworkInterfaceId))
@@ -215,10 +222,15 @@ func waitForNetworkInterfacesToBeDeleted(
 				NetworkInterfaceIds: []*string{ni.NetworkInterfaceId},
 			}
 			_, err := ec2Svc.DescribeNetworkInterfaces(describeNetworkInterfacesInput)
+
+			// If we have an error, check that it's NotFound. This is actually a success.
 			if err != nil {
 				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
 					logger.Infof("Network interface %s is deleted.", aws.StringValue(ni.NetworkInterfaceId))
-					return nil
+					countOfNetworkInterfaces = countOfNetworkInterfaces - 1
+					if countOfNetworkInterfaces == 0 {
+						return nil
+					}
 				}
 
 				return errors.WithStackTrace(err)
