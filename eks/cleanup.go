@@ -1,7 +1,6 @@
 package eks
 
 import (
-	"math"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,6 +12,10 @@ import (
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
+// Set wait variables for NetworkInterface detaching and deleting
+const waitSleepBetweenRetries time.Duration = 1 * time.Second
+const waitMaxRetries int = 30
+
 // CleanupSecurityGroup deletes the AWS EKS managed security group, which otherwise doesn't get cleaned up when
 // destroying the EKS cluster. It also attempts to delete the security group left by ALB ingress controller, if applicable.
 func CleanupSecurityGroup(
@@ -21,10 +24,6 @@ func CleanupSecurityGroup(
 	vpcID string,
 ) error {
 	logger := logging.GetProjectLogger()
-
-	// Set wait variables for NetworkInterface detaching and deleting
-	waitSleepBetweenRetries := 1 * time.Second
-	waitMaxRetries := int(math.Trunc(30 / waitSleepBetweenRetries.Seconds()))
 
 	// Get Region from ARN
 	region, err := eksawshelper.GetRegionFromArn(clusterArn)
@@ -45,6 +44,65 @@ func CleanupSecurityGroup(
 	}
 	ec2Svc := ec2.New(sess)
 	logger.Infof("Successfully authenticated with AWS")
+
+	err = deleteDependencies(ec2Svc, securityGroupID)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	// Delete main AWS-managed EKS security group
+	logger.Infof("Deleting security group %s", securityGroupID)
+	delSGInput := &ec2.DeleteSecurityGroupInput{
+		GroupId: aws.String(securityGroupID),
+	}
+	_, err = ec2Svc.DeleteSecurityGroup(delSGInput)
+	if err != nil {
+		if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidGroup.NotFound" {
+			logger.Infof("Security group %s already deleted.", securityGroupID)
+			return nil
+		}
+		return errors.WithStackTrace(err)
+	}
+	logger.Infof("Successfully deleted security group with name = %s", securityGroupID)
+
+	// Now delete ALB Ingress Controller's security group, if it exists
+	sgResult, err := lookupSecurityGroup(ec2Svc, vpcID, clusterID)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	for _, result := range sgResult.SecurityGroups {
+		groupID := aws.StringValue(result.GroupId)
+		groupName := aws.StringValue(result.GroupName)
+
+		err = deleteDependencies(ec2Svc, groupID)
+		if err != nil {
+			return errors.WithStackTrace(err)
+		}
+
+		input := &ec2.DeleteSecurityGroupInput{
+			GroupId:   aws.String(groupID),
+			GroupName: aws.String(groupName),
+		}
+		_, err := ec2Svc.DeleteSecurityGroup(input)
+		if err != nil {
+			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidGroup.NotFound" {
+				logger.Infof("Security group %s already deleted.", securityGroupID)
+				return nil
+			}
+			return errors.WithStackTrace(err)
+		}
+
+		logger.Infof("Successfully deleted security group with name=%s, id=%s", groupID, groupName)
+	}
+
+	return nil
+}
+
+// Used to detach and delete elastic network interfaces used by the security group
+// so that the security group can be deleted.
+func deleteDependencies(ec2Svc *ec2.EC2, securityGroupID string) error {
+	logger := logging.GetProjectLogger()
 
 	// Find network interfaces for AWS-managed security group
 	describeNetworkInterfacesInput := &ec2.DescribeNetworkInterfacesInput{
@@ -104,23 +162,17 @@ func CleanupSecurityGroup(
 	}
 	logger.Info("Verified network interfaces are deleted.")
 
-	// Delete security group
-	logger.Infof("Deleting security group %s", securityGroupID)
-	delSGInput := &ec2.DeleteSecurityGroupInput{
-		GroupId: aws.String(securityGroupID),
-	}
-	_, err = ec2Svc.DeleteSecurityGroup(delSGInput)
-	if err != nil {
-		if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidGroup.NotFound" {
-			logger.Infof("Security group %s already deleted.", securityGroupID)
-			return nil
-		}
-		return errors.WithStackTrace(err)
-	}
-	logger.Infof("Successfully deleted security group %s", securityGroupID)
+	return nil
+}
 
-	// Now delete ALB Ingress Controller's security group, if it exists
-	// TODO: delete ENIs
+// Used to look up the security group for the ALB ingress controller
+func lookupSecurityGroup(
+	ec2Svc *ec2.EC2,
+	vpcID string,
+	clusterID string,
+) (*ec2.DescribeSecurityGroupsOutput, error) {
+	logger := logging.GetProjectLogger()
+
 	logger.Infof("Looking up security group containing tag for EKS cluster %s", clusterID)
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		Filters: []*ec2.Filter{
@@ -136,27 +188,10 @@ func CleanupSecurityGroup(
 
 	sgResult, err := ec2Svc.DescribeSecurityGroups(sgInput)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return nil, errors.WithStackTrace(err)
 	}
 
-	for _, result := range sgResult.SecurityGroups {
-		groupID := aws.StringValue(result.GroupId)
-		groupName := aws.StringValue(result.GroupName)
-		input := &ec2.DeleteSecurityGroupInput{
-			GroupId:   aws.String(groupID),
-			GroupName: aws.String(groupName),
-		}
-		// DeleteSecurityGroup returns a struct with only private fields
-		// so we can ignore the result.
-		_, err := ec2Svc.DeleteSecurityGroup(input)
-		if err != nil {
-			return errors.WithStackTrace(err)
-		}
-
-		logger.Infof("Successfully deleted security group with name=%s, id=%s", groupID, groupName)
-	}
-
-	return nil
+	return sgResult, nil
 }
 
 func waitForNetworkInterfacesToBeDetached(
