@@ -86,7 +86,7 @@ var (
 
 	vpcIDFlag = cli.StringFlag{
 		Name:  "vpc-id",
-		Usage: "ID of the VPC where EKS is running.",
+		Usage: "(Required) ID of the VPC where EKS is running.",
 	}
 
 	// Fargate / Coredns related flags
