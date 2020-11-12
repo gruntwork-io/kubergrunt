@@ -234,7 +234,11 @@ func waitForNetworkInterfacesToBeDetached(
 				}
 			}
 
-			logger.Warnf("Network interface %s is not detached yet. Status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
+			//logger.Warnf("Network interface %s is not detached yet. Status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
+			// TODO: there is a nil pointer dereference in the above line, I think
+
+			logger.Warn("Network interface is not detached yet..")
+
 			logger.Infof("Waiting for %s...", sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
