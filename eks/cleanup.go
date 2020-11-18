@@ -227,18 +227,24 @@ func waitForNetworkInterfacesToBeDetached(
 
 			if niResult.Attachment == nil || aws.StringValue(niResult.Attachment.Status) == "detached" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
+
+				// break out of all for loops
 				countOfNetworkInterfaces = countOfNetworkInterfaces - 1
 				if countOfNetworkInterfaces == 0 {
+					logger.Infof("All network interfaces are detached.")
 					return nil
 				}
+
+				// break out of the retry for loop
+				logger.Infof("Checking next network interface.")
+				break
 			}
 
-			//logger.Warnf("Network interface %s is not detached yet. Status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
-			// TODO: there is a nil pointer dereference in the above line, I think
+			if niResult.Attachment != nil {
+				logger.Warnf("Network interface %s attachment status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
+			}
 
-			logger.Warn("Network interface is not detached yet..")
-
-			logger.Infof("Waiting for %s...", sleepBetweenRetries)
+			logger.Infof("Retrying after %s...", sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
 
