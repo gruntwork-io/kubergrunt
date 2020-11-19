@@ -123,6 +123,13 @@ func deleteDependencies(ec2Svc *ec2.EC2, securityGroupID string) error {
 
 	// Detach network interfaces
 	for _, ni := range networkInterfacesResult.NetworkInterfaces {
+		// First check the network interface has an attachment. It might have gotten detached before we can even process it.
+		// If it doesn't have an attachment, continue to the next network interface.
+		if ni.Attachment == nil || aws.StringValue(ni.Attachment.Status) == "detached" {
+			logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
+			continue
+		}
+
 		detachInput := &ec2.DetachNetworkInterfaceInput{
 			AttachmentId: ni.Attachment.AttachmentId,
 		}
