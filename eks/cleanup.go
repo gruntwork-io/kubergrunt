@@ -155,6 +155,16 @@ func deleteDependencies(ec2Svc *ec2.EC2, securityGroupID string) error {
 		_, err := ec2Svc.DeleteNetworkInterface(deleteNetworkInterfacesInput)
 
 		if err != nil {
+			// Note: Handle InvalidNetworkInterfaceID.NotFound error. We have a process, terraformVpcCniAwareDestroy, that
+			// automatically cleans up detached ENIs. When that process runs, this loop will not be able to find those ENIs
+			// anymore. But we're also thinking about removing that process in the future, because it might be obsolete now.
+			// The process lives in terraform-aws-eks. If we handle the cleanup well in kubergrunt, we don't need that.
+			// AWS might now be set to automatically delete detached ENIs, so it's doubly not needed, and we may even remove
+			// the steps here to delete network interfaces and wait for their deletion.
+
+			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
+				logger.Infof("Network interface %s is deleted.", aws.StringValue(ni.NetworkInterfaceId))
+			}
 			return errors.WithStackTrace(err)
 		}
 		logger.Infof("Requested to delete network interface %s for security group %s", aws.StringValue(ni.NetworkInterfaceId), securityGroupID)
