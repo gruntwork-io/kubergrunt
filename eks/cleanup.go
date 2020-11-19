@@ -87,7 +87,7 @@ func CleanupSecurityGroup(
 		_, err := ec2Svc.DeleteSecurityGroup(input)
 		if err != nil {
 			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidGroup.NotFound" {
-				logger.Infof("Security group %s already deleted.", securityGroupID)
+				logger.Infof("Security group %s already deleted.", groupID)
 				return nil
 			}
 			return errors.WithStackTrace(err)
