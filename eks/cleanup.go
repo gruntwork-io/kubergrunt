@@ -131,7 +131,7 @@ func deleteDependencies(ec2Svc *ec2.EC2, securityGroupID string) error {
 		}
 
 		detachInput := &ec2.DetachNetworkInterfaceInput{
-			AttachmentId: ni.Attachment.AttachmentId,
+			AttachmentId: aws.String(aws.StringValue(ni.Attachment.AttachmentId)),
 		}
 		_, err := ec2Svc.DetachNetworkInterface(detachInput)
 
@@ -139,6 +139,7 @@ func deleteDependencies(ec2Svc *ec2.EC2, securityGroupID string) error {
 		if err != nil {
 			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidAttachmentID.NotFound" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
+				continue
 			}
 			return errors.WithStackTrace(err)
 		}
