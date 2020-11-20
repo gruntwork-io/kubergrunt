@@ -162,10 +162,10 @@ func detachNetworkInterfaces(
 
 	for _, ni := range networkInterfaces.NetworkInterfaces {
 		// First check the network interface has an attachment. It might have gotten detached before we can even process it.
-		// If it doesn't have an attachment, continue to the next network interface.
+		// If it doesn't have an attachment, break to the next network interface.
 		if ni.Attachment == nil || aws.StringValue(ni.Attachment.Status) == "detached" {
 			logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
-			continue
+			break
 		}
 
 		detachInput := &ec2.DetachNetworkInterfaceInput{
@@ -173,11 +173,11 @@ func detachNetworkInterfaces(
 		}
 		_, err := ec2Svc.DetachNetworkInterface(detachInput)
 
-		// If we have an error, check that it's NotFound. This is a success! Continue to next iteration.
+		// If we have an error, check that it's NotFound. This is a success! Break to next iteration.
 		if err != nil {
 			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidAttachmentID.NotFound" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
-				continue
+				break
 			}
 			return errors.WithStackTrace(err)
 		}
