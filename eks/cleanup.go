@@ -257,7 +257,14 @@ nextNI:
 
 		for i := 0; i < maxRetries; i++ {
 			niResult, err := ec2Svc.DescribeNetworkInterfaceAttribute(describeNetworkInterfacesInput)
+
+			// If we have an error, check that it's NotFound. This is actually a success.
 			if err != nil {
+				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
+					logger.Infof("Network interface %s is deleted.", aws.StringValue(ni.NetworkInterfaceId))
+					break nextNI
+				}
+
 				logger.Errorf("Error polling network interface attribute: attachment for %s", aws.StringValue(ni.NetworkInterfaceId))
 				return errors.WithStackTrace(err)
 			}
