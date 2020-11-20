@@ -156,3 +156,15 @@ func (err NetworkInterfaceDetachedTimeoutError) Error() string {
 		err.networkInterfaceId,
 	)
 }
+
+// NetworkInterfaceDeletedTimeoutError is returned when we time out waiting for a network interface to be deleted.
+type NetworkInterfaceDeletedTimeoutError struct {
+	networkInterfaceId string
+}
+
+func (err NetworkInterfaceDeletedTimeoutError) Error() string {
+	return fmt.Sprintf(
+		"Timed out waiting for network interface %s to reach deleted state.",
+		err.networkInterfaceId,
+	)
+}
