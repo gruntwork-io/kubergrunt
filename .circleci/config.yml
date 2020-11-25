@@ -13,8 +13,6 @@ defaults: &defaults
     KUBECTL_VERSION: v1.17.12
     MINIKUBE_VERSION: v1.11.0
     KUBECONFIG: /home/circleci/.kube/config
-
-
 install_gruntwork_utils: &install_gruntwork_utils
   name: install gruntwork utils
   command: |
@@ -27,8 +25,6 @@ install_gruntwork_utils: &install_gruntwork_utils
       --terragrunt-version ${TERRAGRUNT_VERSION} \
       --packer-version ${PACKER_VERSION} \
       --go-version ${GOLANG_VERSION}
-
-
 version: 2
 jobs:
   kubergrunt_tests:
@@ -37,12 +33,10 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-
       - run:
           command: |
             cd /home/circleci
             setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}"
-
       - run:
           name: run kubergrunt tests
           command: |
@@ -56,16 +50,13 @@ jobs:
           path: /tmp/logs
       - store_test_results:
           path: /tmp/logs
-
   deploy:
     <<: *defaults
     steps:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-
       - run: go get github.com/mitchellh/gox
-
       # Build and upload binaries for kubergrunt
       - run:
           command: |
@@ -77,7 +68,6 @@ jobs:
             (cd ./bin && sha256sum * > SHA256SUMS)
             upload-github-release-assets ./bin/*
           no_output_timeout: 900s
-
 workflows:
   version: 2
   test-and-deploy:
@@ -86,7 +76,8 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-
+          context:
+            - Gruntwork Admin
       - deploy:
           requires:
             - kubergrunt_tests
@@ -95,3 +86,5 @@ workflows:
               only: /^v.*/
             branches:
               ignore: /.*/
+          context:
+            - Gruntwork Admin
