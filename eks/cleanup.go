@@ -221,7 +221,7 @@ nextNI:
 				// We suspect this is an issue with eventual consistency around AWS's resource state.
 				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidParameterValue" {
 					logger.Infof("Waiting for network interface %s to not be in-use (eventual consistency issue).", aws.StringValue(ni.NetworkInterfaceId))
-					logger.Infof("Attempt %d. Retrying after %s...", i, sleepBetweenRetries)
+					logger.Infof("Attempt %d of %d. Retrying after %s...", i, maxRetries, sleepBetweenRetries)
 					time.Sleep(sleepBetweenRetries)
 					break
 				}
@@ -293,7 +293,7 @@ nextNI:
 				return errors.WithStackTrace(NetworkInterfaceDetachedTimeoutError{aws.StringValue(ni.NetworkInterfaceId)})
 			}
 
-			logger.Infof("Attempt %d. Retrying after %s...", i, sleepBetweenRetries)
+			logger.Infof("Attempt %d of %d. Retrying after %s...", i, maxRetries, sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
 	}
@@ -347,7 +347,7 @@ nextNI:
 				return errors.WithStackTrace(NetworkInterfaceDeletedTimeoutError{aws.StringValue(ni.NetworkInterfaceId)})
 			}
 
-			logger.Infof("Attempt %d. Retrying after %s...", i, sleepBetweenRetries)
+			logger.Infof("Attempt %d of %d. Retrying after %s...", i, maxRetries, sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
 	}
