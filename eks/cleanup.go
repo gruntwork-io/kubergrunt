@@ -195,7 +195,6 @@ func deleteNetworkInterfaces(
 ) error {
 	logger := logging.GetProjectLogger()
 
-nextNI:
 	for _, ni := range networkInterfaces.NetworkInterfaces {
 		logger.Infof("Attempting to delete network interface %s", aws.StringValue(ni.NetworkInterfaceId))
 		deleteNetworkInterfacesInput := &ec2.DeleteNetworkInterfaceInput{
@@ -206,27 +205,31 @@ nextNI:
 			_, err := ec2Svc.DeleteNetworkInterface(deleteNetworkInterfacesInput)
 
 			if err != nil {
+				awsErr, isAwsErr := err.(awserr.Error)
+
+				switch {
 				// Note: Handle InvalidNetworkInterfaceID.NotFound error. We have a process, terraformVpcCniAwareDestroy, that
 				// automatically cleans up detached ENIs. When that process runs, this loop will not be able to find those ENIs
 				// anymore. But we're also thinking about removing that process in the future, because it might be obsolete now.
 				// The process lives in terraform-aws-eks. If we handle the cleanup well in kubergrunt, we don't need that.
 				// AWS might now be set to automatically delete detached ENIs, so it's doubly not needed, and we may even remove
 				// the steps here to delete network interfaces and wait for their deletion.
-				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
+				case isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound":
 					logger.Infof("Network interface %s is deleted.", aws.StringValue(ni.NetworkInterfaceId))
-					break nextNI
-				}
+					i = maxRetries
+					break // go to next NI
 
 				// Note: Handle InvalidParameterValue: Network interface [eni-id] is currently in use.
 				// We suspect this is an issue with eventual consistency around AWS's resource state.
-				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidParameterValue" {
+				case isAwsErr && awsErr.Code() == "InvalidParameterValue":
 					logger.Infof("Waiting for network interface %s to not be in-use (eventual consistency issue).", aws.StringValue(ni.NetworkInterfaceId))
-					logger.Infof("Attempt %d of %d. Retrying after %s...", i, maxRetries, sleepBetweenRetries)
+					logger.Infof("Attempt %d of %d. Retrying after %s...", i+1, maxRetries, sleepBetweenRetries)
 					time.Sleep(sleepBetweenRetries)
-					break
-				}
+					break // go to next retry
 
-				return errors.WithStackTrace(err)
+				default:
+					return errors.WithStackTrace(err)
+				}
 			}
 		}
 		logger.Infof("Requested to delete network interface %s for security group %s", aws.StringValue(ni.NetworkInterfaceId), securityGroupID)
@@ -261,6 +264,14 @@ func waitForNetworkInterfacesToBeDetached(
 			if err != nil {
 				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
 					logger.Infof("Network interface %s is deleted.", aws.StringValue(ni.NetworkInterfaceId))
+
+					// break out of all for loops
+					countOfNetworkInterfaces = countOfNetworkInterfaces - 1
+					if countOfNetworkInterfaces == 0 {
+						logger.Info("All network interfaces are detached.")
+						return nil
+					}
+
 					// break out of the retry for loop
 					logger.Info("Checking next network interface.")
 					break
@@ -270,7 +281,7 @@ func waitForNetworkInterfacesToBeDetached(
 				return errors.WithStackTrace(err)
 			}
 
-			// If we're detached, go onto the next, or return.
+			// If we're detached, go onto the next interface, or return.
 			if niResult.Attachment == nil || aws.StringValue(niResult.Attachment.Status) == "detached" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
 
@@ -291,7 +302,7 @@ func waitForNetworkInterfacesToBeDetached(
 			}
 
 			// If we retried the max number of times to delete. Since it failed to cleanup, we exit with error.
-			if i == maxRetries-1 {
+			if i+1 >= maxRetries {
 				return errors.WithStackTrace(NetworkInterfaceDetachedTimeoutError{aws.StringValue(ni.NetworkInterfaceId)})
 			}
 
