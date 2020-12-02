@@ -244,7 +244,6 @@ func waitForNetworkInterfacesToBeDetached(
 	logger := logging.GetProjectLogger()
 	countOfNetworkInterfaces := len(networkInterfaces)
 
-nextNI:
 	for _, ni := range networkInterfaces {
 		logger.Infof("Waiting for network interface %s to reach detached state.", aws.StringValue(ni.NetworkInterfaceId))
 		logger.Info("Checking network interface attachment status.")
@@ -262,13 +261,16 @@ nextNI:
 			if err != nil {
 				if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidNetworkInterfaceID.NotFound" {
 					logger.Infof("Network interface %s is deleted.", aws.StringValue(ni.NetworkInterfaceId))
-					break nextNI
+					// break out of the retry for loop
+					logger.Info("Checking next network interface.")
+					break
 				}
 
 				logger.Errorf("Error polling network interface attribute: attachment for %s", aws.StringValue(ni.NetworkInterfaceId))
 				return errors.WithStackTrace(err)
 			}
 
+			// If we're detached, go onto the next, or return.
 			if niResult.Attachment == nil || aws.StringValue(niResult.Attachment.Status) == "detached" {
 				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
 
@@ -281,19 +283,19 @@ nextNI:
 
 				// break out of the retry for loop
 				logger.Info("Checking next network interface.")
-				break nextNI
+				break
 			}
 
 			if niResult.Attachment != nil {
 				logger.Warnf("Network interface %s attachment status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
 			}
 
-			// We retried the maximum number of times to detach this network interface. Since it failed to cleanup, we should exit with error.
+			// If we retried the max number of times to delete. Since it failed to cleanup, we exit with error.
 			if i == maxRetries-1 {
 				return errors.WithStackTrace(NetworkInterfaceDetachedTimeoutError{aws.StringValue(ni.NetworkInterfaceId)})
 			}
 
-			logger.Infof("Attempt %d of %d. Retrying after %s...", i, maxRetries, sleepBetweenRetries)
+			logger.Infof("Attempt %d of %d. Retrying after %s...", i+1, maxRetries, sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
 	}
@@ -309,7 +311,6 @@ func waitForNetworkInterfacesToBeDeleted(
 	logger := logging.GetProjectLogger()
 	countOfNetworkInterfaces := len(networkInterfaces)
 
-nextNI:
 	for _, ni := range networkInterfaces {
 		logger.Infof("Waiting for network interface %s to be deleted.", aws.StringValue(ni.NetworkInterfaceId))
 		logger.Info("Checking for network interface not found.")
@@ -336,18 +337,18 @@ nextNI:
 
 					// break out of the retry for loop
 					logger.Info("Checking next network interface.")
-					break nextNI
+					break
 				}
 
 				return errors.WithStackTrace(err)
 			}
 
-			// We retried the maximum number of times to delete this network interface. Since it failed to cleanup, we should exit with error.
+			// If we retried the max number of times to delete. Since it failed to cleanup, we exit with error.
 			if i == maxRetries-1 {
 				return errors.WithStackTrace(NetworkInterfaceDeletedTimeoutError{aws.StringValue(ni.NetworkInterfaceId)})
 			}
 
-			logger.Infof("Attempt %d of %d. Retrying after %s...", i, maxRetries, sleepBetweenRetries)
+			logger.Infof("Attempt %d of %d. Retrying after %s...", i+1, maxRetries, sleepBetweenRetries)
 			time.Sleep(sleepBetweenRetries)
 		}
 	}
