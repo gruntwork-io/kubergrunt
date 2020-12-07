@@ -235,7 +235,7 @@ If max-retries is unspecified, this command will use a value that translates to 
 			cli.Command{
 				Name:        "cleanup-security-group",
 				Usage:       "Delete the AWS-managed security group created for the EKS cluster.",
-				Description: "When destroying the EKS cluster, the AWS provider leaves behind the security group created for the EKS cluster. This command makes sure to clean up that resource. It can be called before or after the EKS cluster itself is destroyed.",
+				Description: "When destroying the EKS cluster, the AWS provider leaves behind the security group created for the EKS cluster. This command makes sure to clean up that resource. It can be called before or after the EKS cluster is destroyed. It must be called with the AWS-managed security-group-id for the EKS cluster, but it also finds other security groups by tag associated with the EKS cluster.",
 				Action:      cleanupSecurityGroup,
 				Flags: []cli.Flag{
 					eksClusterArnFlag,
