@@ -58,6 +58,8 @@ The following commands are available as part of `kubergrunt`:
     * [oidc-thumbprint](#oidc-thumbprint)
     * [deploy](#deploy)
     * [sync-core-components](#sync-core-components)
+    * [cleanup-security-group](#cleanup-security-group)
+    * [schedule-coredns](#schedule-coredns)
 1. [k8s](#k8s)
     * [wait-for-ingress](#wait-for-ingress)
     * [kubectl](#kubectl)
@@ -265,6 +267,12 @@ Example:
 ```bash
 kubergrunt eks sync-core-components --eks-cluster-arn EKS_CLUSTER_ARN
 ```
+
+#### cleanup-security-group
+
+
+#### schedule-coredns
+
 
 ### k8s
 
