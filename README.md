@@ -58,6 +58,8 @@ The following commands are available as part of `kubergrunt`:
     * [oidc-thumbprint](#oidc-thumbprint)
     * [deploy](#deploy)
     * [sync-core-components](#sync-core-components)
+    * [cleanup-security-group](#cleanup-security-group)
+    * [schedule-coredns](#schedule-coredns)
 1. [k8s](#k8s)
     * [wait-for-ingress](#wait-for-ingress)
     * [kubectl](#kubectl)
@@ -264,6 +266,48 @@ Example:
 
 ```bash
 kubergrunt eks sync-core-components --eks-cluster-arn EKS_CLUSTER_ARN
+```
+
+#### cleanup-security-group
+This subcommand cleans up the leftover AWS-managed security groups that are associated with an EKS cluster you intend
+to destroy. It accepts
+- `--eks-cluster-arn`: the ARN of the EKS cluster
+- `--security-group-id`: a known security group ID associated with the EKS cluster
+- `--vpc-id`: the VPC ID where the cluster is located
+
+It also looks for other security groups associated with the EKS cluster, such as the security group created by the AWS
+Load Balancer Controller. To safely delete these resources, it detaches and deletes any associated AWS Elastic Network
+Interfaces.
+
+Example:
+
+```bash
+kubergrunt eks cleanup-security-group --eks-cluster-arn EKS_CLUSTER_ARN --security-group-id SECURITY_GROUP_ID \
+--vpc-id VPC_ID
+```
+
+#### schedule-coredns
+This subcommand can be used to toggle the CoreDNS service between scheduling on Fargate and EC2 worker types. During
+the creation of an EKS cluster that uses Fargate, `schedule-coredns fargate` will annotate the deployment so that
+CoreDNS can find and allow EKS to use Fargate nodes. To switch back to EC2, you can run `schedule-coredns ec2` to
+reset the annotations such that EC2 nodes can be found by CoreDNS.
+
+This command is useful when creating Fargate only EKS clusters. By default, EKS will schedule the `coredns` service
+assuming EC2 workers. You can use this command to force the service to run on Fargate.
+
+You can also use this command in `local-exec` provisioners on an `aws_eks_fargate_profile` resource so you can
+schedule the CoreDNS service after creating the profile, and revert back when destroying the profile.
+
+Currently `fargate` and `ec2` are the only subcommands that `schedule-coredns` accepts.
+
+Examples:
+
+```bash
+kubergrunt eks schedule-coredns fargate --eks-cluster-name EKS_CLUSTER_NAME --fargate-profile-arn FARGATE_PROFILE_ARN
+```
+
+```bash
+kubergrunt eks schedule-coredns ec2 --eks-cluster-name EKS_CLUSTER_NAME --fargate-profile-arn FARGATE_PROFILE_ARN
 ```
 
 ### k8s
