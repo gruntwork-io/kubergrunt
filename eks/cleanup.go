@@ -362,9 +362,6 @@ func lookupSecurityGroup(
 				Values: []*string{aws.String(vpcID)},
 			},
 			{
-				// TODO: does this one still get created?
-				//Name:   aws.String("tag:kubernetes.io/cluster-name"),
-				// This one is created for sure:
 				Name:   aws.String("tag:elbv2.k8s.aws/cluster"),
 				Values: []*string{aws.String(clusterID)},
 			},
