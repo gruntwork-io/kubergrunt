@@ -269,10 +269,37 @@ kubergrunt eks sync-core-components --eks-cluster-arn EKS_CLUSTER_ARN
 ```
 
 #### cleanup-security-group
+This subcommand cleans up the leftover AWS-managed security groups that are associated with an EKS cluster you intend
+to destroy. It accepts
+- `--eks-cluster-arn`: the ARN of the EKS cluster
+- `--security-group-id`: the AWS-managed security group ID
+- `--vpc-id`: the VPC ID where the cluster is located
 
+It also looks for other security groups associated with the EKS cluster, such as the AWS-managed security group that
+is created for a load balancer controller. To safely delete these resources, it detaches and deletes any associated
+elastic network interfaces.
+
+Example:
+
+```bash
+kubergrunt eks cleanup-security-group --eks-cluster-arn EKS_CLUSTER_ARN --security-group-id SECURITY_GROUP_ID \
+--vpc-id VPC_ID
+```
 
 #### schedule-coredns
+This subcommand allows for Fargate and EC2 changes when you create or destroy an EKS cluster. During the creation of
+an EKS cluster that uses Fargate, `schedule-coredns fargate` will annotate the deployment so that CoreDNS can find
+and allow EKS to use Fargate nodes. When destroying a Fargate-enabled EKS cluster, `schedule-coredns ec2` can be run
+to reset the annotations such that EC2 nodes can be found by CoreDNS. Currently `fargate` and `ec2` are the only sub-
+commands that `schedule-coredns` accepts.
 
+Examples:
+
+```bash
+kubergrunt eks schedule-coredns fargate --eks-cluster-name EKS_CLUSTER_NAME --fargate-profile-arn FARGATE_PROFILE_ARN
+# ...
+kubergrunt eks schedule-coredns ec2 --eks-cluster-name EKS_CLUSTER_NAME --fargate-profile-arn FARGATE_PROFILE_ARN
+```
 
 ### k8s
 
