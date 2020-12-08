@@ -144,3 +144,27 @@ type CoreComponentUnexpectedConfigurationErr struct {
 func (err CoreComponentUnexpectedConfigurationErr) Error() string {
 	return fmt.Sprintf("Core component %s is in unexpected configuration: %s", err.component, err.reason)
 }
+
+// NetworkInterfaceDetachedTimeoutError is returned when we time out waiting for a network interface to be detached.
+type NetworkInterfaceDetachedTimeoutError struct {
+	networkInterfaceId string
+}
+
+func (err NetworkInterfaceDetachedTimeoutError) Error() string {
+	return fmt.Sprintf(
+		"Timed out waiting for network interface %s to reach detached state.",
+		err.networkInterfaceId,
+	)
+}
+
+// NetworkInterfaceDeletedTimeoutError is returned when we time out waiting for a network interface to be deleted.
+type NetworkInterfaceDeletedTimeoutError struct {
+	networkInterfaceId string
+}
+
+func (err NetworkInterfaceDeletedTimeoutError) Error() string {
+	return fmt.Sprintf(
+		"Timed out waiting for network interface %s to reach deleted state.",
+		err.networkInterfaceId,
+	)
+}

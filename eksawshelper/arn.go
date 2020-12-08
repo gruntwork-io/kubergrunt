@@ -3,7 +3,9 @@ package eksawshelper
 import (
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
+	"github.com/aws/aws-sdk-go/service/eks"
 )
 
 // GetClusterNameFromArn extracts the EKS cluster name given the ARN for the cluster.
@@ -25,4 +27,24 @@ func GetRegionFromArn(eksClusterArnString string) (string, error) {
 		return "", err
 	}
 	return eksClusterArn.Region, nil
+}
+
+// GetClusterArnByNameAndRegion looks up the EKS Cluster ARN using the region and EKS Cluster Name.
+// For instances where we don't have the EKS Cluster ARN, such as within the Fargate Profile resource.
+func GetClusterArnByNameAndRegion(eksClusterName string, region string) (string, error) {
+	sess, err := NewAuthenticatedSession(region)
+	if err != nil {
+		return "", err
+	}
+
+	svc := eks.New(sess)
+	input := &eks.DescribeClusterInput{
+		Name: aws.String(eksClusterName),
+	}
+
+	output, err := svc.DescribeCluster(input)
+	if err != nil {
+		return "", err
+	}
+	return *output.Cluster.Arn, nil
 }
