@@ -46,7 +46,7 @@ func CleanupSecurityGroup(
 	ec2Svc := ec2.New(sess)
 	logger.Infof("Successfully authenticated with AWS")
 
-	// 1. Delete main AWS-managed EKS security group
+	// 1. Delete provided EKS security group
 	err = deleteDependencies(ec2Svc, securityGroupID)
 	if err != nil {
 		return errors.WithStackTrace(err)
@@ -64,9 +64,9 @@ func CleanupSecurityGroup(
 		}
 		return errors.WithStackTrace(err)
 	}
-	logger.Infof("Successfully deleted security group with name = %s", securityGroupID)
+	logger.Infof("Successfully deleted security group with name=%s", securityGroupID)
 
-	// 2, Delete ALB Ingress Controller's security group, if it exists
+	// 2, Delete Load Balancer Controller's security group, if it exists
 	sgResult, err := lookupSecurityGroup(ec2Svc, vpcID, clusterID)
 	if err != nil {
 		return errors.WithStackTrace(err)
