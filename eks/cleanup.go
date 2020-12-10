@@ -405,8 +405,5 @@ func requestDetach(
 	}
 	_, err := ec2Svc.DetachNetworkInterface(detachInput)
 
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-	return nil
+	return err
 }
