@@ -16,8 +16,8 @@ import (
 
 // Set wait variables for NetworkInterface detaching and deleting
 const (
-	waitSleepBetweenRetries time.Duration = 2 * time.Second
-	waitMaxRetries          int           = 60
+	waitSleepBetweenRetries time.Duration = 10 * time.Second
+	waitMaxRetries          int           = 30
 )
 
 // CleanupSecurityGroup deletes the AWS EKS managed security group, which otherwise doesn't get cleaned up when
