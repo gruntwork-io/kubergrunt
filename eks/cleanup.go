@@ -270,18 +270,25 @@ func waitForNetworkInterfacesToBeDetached(
 			niResult, err := ec2Svc.DescribeNetworkInterfaceAttribute(describeNetworkInterfacesInput)
 
 			switch {
-			// If there's no error, we have to keep trying.
+			// Yay, we're detached, process the next network interface.
+			case err == nil && isNIDetached(niResult):
+				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
+				return nil // exit retry loop with success
+
+			// Since we checked whether the NI was detached in the first case, no error in this switch means the NI is
+			// not detached, so we need to retry.
 			case err == nil:
 				if niResult.Attachment != nil {
 					logger.Warnf("Network interface %s attachment status: %s", aws.StringValue(ni.NetworkInterfaceId), aws.StringValue(niResult.Attachment.Status))
 				}
 				return errors.WithStackTrace(fmt.Errorf("Network Interface %s not detached.", aws.StringValue(ni.NetworkInterfaceId))) // continue retrying
 
-			// Yay, we're detached, process the next network interface.
-			case isNIDetachedErr(niResult, err) || isNINotFoundErr(err):
-				logger.Infof("Network interface %s is detached.", aws.StringValue(ni.NetworkInterfaceId))
+			// If the NI can not be found, then it is already deleted so halt the loop and move on to the next NI.
+			case isNINotFoundErr(err):
+				logger.Infof("Network interface %s is already deleted.", aws.StringValue(ni.NetworkInterfaceId))
 				return nil // exit retry loop with success
 
+			// All other errors are unretryable errors.
 			default:
 				logger.Errorf("Error polling attachment for network interface %s", aws.StringValue(ni.NetworkInterfaceId))
 				return retry.FatalError{Underlying: err} // halt retries with error
@@ -380,10 +387,8 @@ func isNIAttachmentNotFoundErr(err error) bool {
 	return isAwsErr && awsErr.Code() == "InvalidAttachmentID.NotFound"
 }
 
-func isNIDetachedErr(niResult *ec2.DescribeNetworkInterfaceAttributeOutput, err error) bool {
-	return err == nil &&
-		(niResult.Attachment == nil ||
-			aws.StringValue(niResult.Attachment.Status) == "detached")
+func isNIDetached(niResult *ec2.DescribeNetworkInterfaceAttributeOutput) bool {
+	return niResult.Attachment == nil || aws.StringValue(niResult.Attachment.Status) == "detached"
 }
 
 func isNINotFoundErr(err error) bool {
