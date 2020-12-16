@@ -283,7 +283,7 @@ func waitForNetworkInterfacesToBeDetached(
 				}
 				return errors.WithStackTrace(fmt.Errorf("Network Interface %s not detached.", aws.StringValue(ni.NetworkInterfaceId))) // continue retrying
 
-			// If the NI can not be found, then it is already deleted so halt the loop and move on to the next NI.
+			// If the NI cannot be found, then it is already deleted so halt the loop and move on to the next NI.
 			case isNINotFoundErr(err):
 				logger.Infof("Network interface %s is already deleted.", aws.StringValue(ni.NetworkInterfaceId))
 				return nil // exit retry loop with success
