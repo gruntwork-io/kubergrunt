@@ -81,10 +81,7 @@ func CleanupSecurityGroup(
 			return errors.WithStackTrace(err)
 		}
 
-		input := &ec2.DeleteSecurityGroupInput{
-			GroupId:   aws.String(groupID),
-			GroupName: aws.String(groupName),
-		}
+		input := &ec2.DeleteSecurityGroupInput{GroupId: aws.String(groupID)}
 		_, err := ec2Svc.DeleteSecurityGroup(input)
 		if err != nil {
 			if awsErr, isAwsErr := err.(awserr.Error); isAwsErr && awsErr.Code() == "InvalidGroup.NotFound" {
