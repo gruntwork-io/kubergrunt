@@ -129,6 +129,8 @@ workflows:
         filters:
           tags:
             only: /^v.*/
+        context:
+        - Gruntwork Admin
 
     - kubergrunt_tests:
         requires:
@@ -136,6 +138,8 @@ workflows:
         filters:
           tags:
             only: /^v.*/
+        context:
+        - Gruntwork Admin
 
     - deploy:
         requires:
@@ -145,3 +149,5 @@ workflows:
             only: /^v.*/
           branches:
             ignore: /.*/
+        context:
+        - Gruntwork Admin

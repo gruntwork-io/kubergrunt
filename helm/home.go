@@ -16,7 +16,7 @@ import (
 
 const (
 	StableRepositoryName = "stable"
-	StableRepositoryURL  = "https://kubernetes-charts.storage.googleapis.com"
+	StableRepositoryURL  = "https://charts.helm.sh/stable"
 )
 
 // GetDefaultHelmHome returns the default helm home directory, ~/.helm
