@@ -29,9 +29,10 @@ import (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.18", "1.17", "1.16", "1.15", "1.14"}
+	supportedVersions = []string{"1.19", "1.18", "1.17", "1.16", "1.15", "1.14"}
 
 	coreDNSVersionLookupTable = map[string]string{
+		"1.19": "1.8.0-eksbuild.1",
 		"1.18": "1.7.0-eksbuild.1",
 		"1.17": "1.6.6-eksbuild.1",
 		"1.16": "1.6.6-eksbuild.1",
@@ -40,6 +41,7 @@ var (
 	}
 
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.19": "1.19.6-eksbuild.1",
 		"1.18": "1.18.8-eksbuild.1",
 		"1.17": "1.17.9-eksbuild.1",
 		"1.16": "1.16.13-eksbuild.1",
@@ -48,6 +50,7 @@ var (
 	}
 
 	amazonVPCCNIVersionLookupTable = map[string]string{
+		"1.19": "1.7.5",
 		"1.18": "1.7.5",
 		"1.17": "1.7.5",
 		"1.16": "1.7.5",
