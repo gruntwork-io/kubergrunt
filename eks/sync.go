@@ -26,6 +26,7 @@ import (
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
+
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
 	supportedVersions = []string{"1.19", "1.18", "1.17", "1.16", "1.15", "1.14"}
