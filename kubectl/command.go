@@ -3,7 +3,7 @@ package kubectl
 import (
 	"os"
 
-	"github.com/gruntwork-io/gruntwork-cli/shell"
+	"github.com/gruntwork-io/go-commons/shell"
 )
 
 // RunKubectl will make a call to kubectl, setting the config and context to the ones specified in the provided options.

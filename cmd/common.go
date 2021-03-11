@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
-	"github.com/gruntwork-io/gruntwork-cli/errors"
+	"github.com/gruntwork-io/go-commons/entrypoint"
+	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
