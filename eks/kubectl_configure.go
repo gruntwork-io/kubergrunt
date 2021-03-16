@@ -2,7 +2,7 @@ package eks
 
 import (
 	"github.com/aws/aws-sdk-go/service/eks"
-	"github.com/gruntwork-io/gruntwork-cli/files"
+	"github.com/gruntwork-io/go-commons/files"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"

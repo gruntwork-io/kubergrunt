@@ -6,7 +6,7 @@ import (
 	"crypto/x509/pkix"
 	"time"
 
-	"github.com/gruntwork-io/gruntwork-cli/errors"
+	"github.com/gruntwork-io/go-commons/errors"
 )
 
 // TLSECDSACertificateKeyPair represents the certificate key pair generated using the ECDSA algorithm.

@@ -2,8 +2,9 @@ package retry
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/kubergrunt/logging"
 	"time"
+
+	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // DoWithRetryE runs the specified action. If it returns a FatalError, return that error immediately.

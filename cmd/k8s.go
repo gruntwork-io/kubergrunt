@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
+	"github.com/gruntwork-io/go-commons/entrypoint"
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/kubergrunt/kubectl"
