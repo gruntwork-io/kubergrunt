@@ -3,7 +3,7 @@ module github.com/gruntwork-io/kubergrunt
 go 1.14
 
 require (
-	github.com/aws/aws-sdk-go v1.34.27
+	github.com/aws/aws-sdk-go v1.38.14
 	github.com/blang/semver/v4 v4.0.0
 	github.com/gruntwork-io/go-commons v0.8.2
 	github.com/gruntwork-io/terratest v0.32.9
