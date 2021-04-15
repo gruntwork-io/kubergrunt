@@ -25,8 +25,8 @@ install_gruntwork_utils: &install_gruntwork_utils
       --terraform-version ${TERRAFORM_VERSION} \
       --terragrunt-version ${TERRAGRUNT_VERSION} \
       --packer-version ${PACKER_VERSION} \
-      --kubectl-version NONE \ # We install kubectl in the minikube step
-      --go-version ${GOLANG_VERSION}
+      --go-version ${GOLANG_VERSION} \
+      --kubectl-version NONE # We install kubectl in the minikube step
 version: 2
 jobs:
   kubergrunt_tests:
