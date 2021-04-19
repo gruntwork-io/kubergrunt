@@ -81,8 +81,6 @@ workflows:
           context:
             - Gruntwork Admin
       - deploy:
-          requires:
-            - kubergrunt_tests
           filters:
             tags:
               only: /^v.*/
