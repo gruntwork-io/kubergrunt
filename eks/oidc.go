@@ -99,6 +99,7 @@ func getThumbprint(jwksURL string) (string, error) {
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
+	defer resp.Body.Close()
 
 	peerCerts := resp.TLS.PeerCertificates
 	numCerts := len(peerCerts)
