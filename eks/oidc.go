@@ -2,7 +2,6 @@ package eks
 
 import (
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
@@ -96,15 +95,13 @@ func getThumbprint(jwksURL string) (string, error) {
 		hostname = net.JoinHostPort(hostname, "443")
 	}
 
-	tlsConfig := tls.Config{ServerName: parsedURL.Host}
-	conn, err := tls.Dial("tcp", hostname, &tlsConfig)
+	resp, err := http.Get("https://" + hostname)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
-	defer conn.Close()
+	defer resp.Body.Close()
 
-	state := conn.ConnectionState()
-	peerCerts := state.PeerCertificates
+	peerCerts := resp.TLS.PeerCertificates
 	numCerts := len(peerCerts)
 	if numCerts == 0 {
 		return "", errors.WithStackTrace(NoPeerCertificatesError{jwksURL})
