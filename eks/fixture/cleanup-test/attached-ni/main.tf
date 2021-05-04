@@ -15,7 +15,7 @@ terraform {
 
 resource "aws_instance" "test" {
   ami           = data.aws_ami.ubuntu.id
-  instance_type = "t2.micro"
+  instance_type = module.instance_types.recommended_instance_type
   subnet_id     = module.floating_eni.subnet_id
 
   tags = {
@@ -33,6 +33,13 @@ module "floating_eni" {
   source = "../unattached-ni"
   prefix = var.prefix
 }
+
+module "instance_types" {
+  source = "git::git@github.com:gruntwork-io/terraform-aws-utilities.git//modules/instance-type?ref=v0.4.0"
+
+  instance_types = ["t2.micro", "t3.micro"]
+}
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # LOOK UP THE LATEST UBUNTU AMI
