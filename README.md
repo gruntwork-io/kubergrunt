@@ -329,7 +329,7 @@ kubergrunt eks drain --asg-name my-asg --region us-east-2
 You can drain multiple ASGs by providing the `--name` option multiple times:
 
 ```bash
-kubergrunt eks drain --asg-name my-asg-a --name my-asg-b --name my-asg-b --region us-east-2
+kubergrunt eks drain --asg-name my-asg-a --name my-asg-b --name my-asg-c --region us-east-2
 ```
 
 

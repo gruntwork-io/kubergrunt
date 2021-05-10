@@ -243,7 +243,7 @@ To drain the Auto Scaling Group "my-asg" in the region "us-east-2":
 
 You can also drain multiple ASGs by providing the "--asg-name" option multiple times:
 
-  kubergrunt eks drain --asg-name my-asg-a --asg-name my-asg-b --asg-name my-asg-b --region us-east-2
+  kubergrunt eks drain --asg-name my-asg-a --asg-name my-asg-b --asg-name my-asg-c --region us-east-2
 `,
 				Action: drainASG,
 				Flags: []cli.Flag{
