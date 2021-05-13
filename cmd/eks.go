@@ -33,7 +33,7 @@ var (
 		Name:  "region",
 		Usage: "(Required) The AWS region code (e.g us-east-1) where the autoscaling group and EKS cluster is located.",
 	}
-	clusterAsgNameFlag = cli.StringFlag{
+	clusterAsgNameFlag = cli.StringSliceFlag{
 		Name:  "asg-name",
 		Usage: "(Required) The name of the autoscaling group that is a part of the EKS cluster.",
 	}
@@ -231,6 +231,35 @@ If max-retries is unspecified, this command will use a value that translates to 
 				},
 			},
 			cli.Command{
+				Name:  "drain",
+				Usage: "Drain all Pods from all instances in the provided Auto Scaling Groups.",
+				Description: `Drain Pods from the instances in the provided Auto Scaling Groups. This can be used to gracefully retire existing Auto Scaling Groups by ensuring the Pods are evicted in a manner that respects disruption budgets.
+
+You can read more about the drain operation in the official documentation: https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/.
+
+To drain the Auto Scaling Group "my-asg" in the region "us-east-2":
+
+  kubergrunt eks drain --asg-name my-asg --region us-east-2
+
+You can also drain multiple ASGs by providing the "--asg-name" option multiple times:
+
+  kubergrunt eks drain --asg-name my-asg-a --asg-name my-asg-b --asg-name my-asg-c --region us-east-2
+`,
+				Action: drainASG,
+				Flags: []cli.Flag{
+					clusterRegionFlag,
+					clusterAsgNameFlag,
+					eksKubectlContextNameFlag,
+					genericKubeconfigFlag,
+					genericKubectlServerFlag,
+					genericKubectlCAFlag,
+					genericKubectlTokenFlag,
+					genericKubectlEKSClusterArnFlag,
+					drainTimeoutFlag,
+					deleteLocalDataFlag,
+				},
+			},
+			cli.Command{
 				Name:        "cleanup-security-group",
 				Usage:       "Delete the AWS-managed security group created for the EKS cluster.",
 				Description: "When destroying the EKS cluster, the AWS provider leaves behind the security group created for the EKS cluster. This command makes sure to clean up that resource. It can be called before or after the EKS cluster is destroyed. It must be called with the AWS-managed security-group-id for the EKS cluster, but it also finds other security groups by tag associated with the EKS cluster.",
@@ -349,10 +378,14 @@ func rollOutDeployment(cliContext *cli.Context) error {
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
-	asgName, err := entrypoint.StringFlagRequiredE(cliContext, clusterAsgNameFlag.Name)
-	if err != nil {
-		return errors.WithStackTrace(err)
+
+	// TODO: handle multiple ASGs correctly
+	asgNames := cliContext.StringSlice(clusterAsgNameFlag.Name)
+	if len(asgNames) != 1 {
+		return ExactlyOneASGErr{flagName: clusterAsgNameFlag.Name}
 	}
+	asgName := asgNames[0]
+
 	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
 	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
 	waitMaxRetries := cliContext.Int(waitMaxRetriesFlag.Name)
@@ -366,6 +399,34 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		deleteLocalData,
 		waitMaxRetries,
 		waitSleepBetweenRetries,
+	)
+}
+
+// Command action for `kubergrunt eks drain`
+func drainASG(cliContext *cli.Context) error {
+	kubectlOptions, err := parseKubectlOptions(cliContext)
+	if err != nil {
+		return err
+	}
+
+	region, err := entrypoint.StringFlagRequiredE(cliContext, clusterRegionFlag.Name)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	asgNames := cliContext.StringSlice(clusterAsgNameFlag.Name)
+	if len(asgNames) == 0 {
+		return entrypoint.NewRequiredArgsError("You must provide at least one ASG Name with --asg-name.")
+	}
+
+	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
+	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
+	return eks.DrainASG(
+		region,
+		asgNames,
+		kubectlOptions,
+		drainTimeout,
+		deleteLocalData,
 	)
 }
 

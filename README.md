@@ -60,6 +60,7 @@ The following commands are available as part of `kubergrunt`:
     * [sync-core-components](#sync-core-components)
     * [cleanup-security-group](#cleanup-security-group)
     * [schedule-coredns](#schedule-coredns)
+    * [drain](#drain)
 1. [k8s](#k8s)
     * [wait-for-ingress](#wait-for-ingress)
     * [kubectl](#kubectl)
@@ -309,6 +310,28 @@ kubergrunt eks schedule-coredns fargate --eks-cluster-name EKS_CLUSTER_NAME --fa
 ```bash
 kubergrunt eks schedule-coredns ec2 --eks-cluster-name EKS_CLUSTER_NAME --fargate-profile-arn FARGATE_PROFILE_ARN
 ```
+
+#### drain
+
+This subcommand can be used to drain Pods from the instances in the provided Auto Scaling Groups. This can be used to
+gracefully retire existing Auto Scaling Groups by ensuring the Pods are evicted in a manner that respects disruption
+budgets.
+
+You can read more about the drain operation in [the official
+documentation](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/).
+
+To drain the Auto Scaling Group `my-asg` in the region `us-east-2`:
+
+```bash
+kubergrunt eks drain --asg-name my-asg --region us-east-2
+```
+
+You can drain multiple ASGs by providing the `--name` option multiple times:
+
+```bash
+kubergrunt eks drain --asg-name my-asg-a --name my-asg-b --name my-asg-c --region us-east-2
+```
+
 
 ### k8s
 
