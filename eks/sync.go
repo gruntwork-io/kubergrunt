@@ -64,6 +64,13 @@ const (
 	corednsConfigMapConfigKey = "Corefile"
 )
 
+// SkipComponentsConfig represents the components that should be skipped in the sync command.
+type SkipComponentsConfig struct {
+	KubeProxy bool
+	CoreDNS   bool
+	VPCCNI    bool
+}
+
 // SyncClusterComponents will perform the steps described in
 // https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
 // There are three core applications on an EKS cluster:
@@ -80,6 +87,7 @@ func SyncClusterComponents(
 	eksClusterArn string,
 	shouldWait bool,
 	waitTimeout string,
+	skipConfig SkipComponentsConfig,
 ) error {
 	logger := logging.GetProjectLogger()
 
@@ -97,10 +105,17 @@ func SyncClusterComponents(
 	kubeProxyVersion := kubeProxyVersionLookupTable[k8sVersion]
 	coreDNSVersion := coreDNSVersionLookupTable[k8sVersion]
 	amznVPCCNIVersion := amazonVPCCNIVersionLookupTable[k8sVersion]
+
 	logger.Info("Syncing Kubernetes Applications to:")
-	logger.Infof("\tkube-proxy:\t%s", kubeProxyVersion)
-	logger.Infof("\tcoredns:\t%s", coreDNSVersion)
-	logger.Infof("\tVPC CNI Plugin:\t%s", amznVPCCNIVersion)
+	if !skipConfig.KubeProxy {
+		logger.Infof("\tkube-proxy:\t%s", kubeProxyVersion)
+	}
+	if !skipConfig.CoreDNS {
+		logger.Infof("\tcoredns:\t%s", coreDNSVersion)
+	}
+	if !skipConfig.VPCCNI {
+		logger.Infof("\tVPC CNI Plugin:\t%s", amznVPCCNIVersion)
+	}
 
 	kubectlOptions := &kubectl.KubectlOptions{EKSClusterArn: eksClusterArn}
 	clientset, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
@@ -112,14 +127,29 @@ func SyncClusterComponents(
 	if err != nil {
 		return err
 	}
-	if err := upgradeKubeProxy(kubectlOptions, clientset, awsRegion, kubeProxyVersion, shouldWait, waitTimeout); err != nil {
-		return err
+
+	if skipConfig.KubeProxy {
+		logger.Info("Skipping kube-proxy sync.")
+	} else {
+		if err := upgradeKubeProxy(kubectlOptions, clientset, awsRegion, kubeProxyVersion, shouldWait, waitTimeout); err != nil {
+			return err
+		}
 	}
-	if err := upgradeCoreDNS(kubectlOptions, clientset, awsRegion, coreDNSVersion, shouldWait, waitTimeout); err != nil {
-		return err
+
+	if skipConfig.CoreDNS {
+		logger.Info("Skipping coredns sync.")
+	} else {
+		if err := upgradeCoreDNS(kubectlOptions, clientset, awsRegion, coreDNSVersion, shouldWait, waitTimeout); err != nil {
+			return err
+		}
 	}
-	if err := updateVPCCNI(kubectlOptions, awsRegion, amznVPCCNIVersion); err != nil {
-		return err
+
+	if skipConfig.VPCCNI {
+		logger.Info("Skipping aws-vpc-cni.")
+	} else {
+		if err := updateVPCCNI(kubectlOptions, awsRegion, amznVPCCNIVersion); err != nil {
+			return err
+		}
 	}
 
 	logger.Info("Successfully updated core components.")
