@@ -78,6 +78,20 @@ var (
 		Usage: "(Required) URL of the OIDC Issuer for which we want to retrieve CA certificate thumbprints for.",
 	}
 
+	// Flags for sync core components
+	syncSkipKubeProxyFlag = cli.BoolFlag{
+		Name:  "skip-kube-proxy",
+		Usage: "Whether or not to skip syncing kube-proxy service to EKS control plane version.",
+	}
+	syncSkipCoreDNSFlag = cli.BoolFlag{
+		Name:  "skip-coredns",
+		Usage: "Whether or not to skip syncing coredns service to EKS control plane version.",
+	}
+	syncSkipVPCCNIFlag = cli.BoolFlag{
+		Name:  "skip-aws-vpc-cni",
+		Usage: "Whether or not to skip syncing aws-vpc-cni service to EKS control plane version.",
+	}
+
 	// Flags for cleaning up security group
 	securityGroupIDFlag = cli.StringFlag{
 		Name:  "security-group-id",
@@ -194,6 +208,9 @@ The versions deployed are based on what is listed in the official guide provided
 					eksClusterArnFlag,
 					waitFlag,
 					waitTimeoutFlag,
+					syncSkipKubeProxyFlag,
+					syncSkipCoreDNSFlag,
+					syncSkipVPCCNIFlag,
 				},
 			},
 			cli.Command{
@@ -438,7 +455,10 @@ func syncClusterComponents(cliContext *cli.Context) error {
 	}
 	shouldWait := cliContext.Bool(waitFlag.Name)
 	waitTimeout := cliContext.String(waitTimeoutFlag.Name)
-	return eks.SyncClusterComponents(eksClusterArn, shouldWait, waitTimeout)
+	skipKubeProxy := cliContext.Bool(syncSkipKubeProxyFlag.Name)
+	skipCoreDNS := cliContext.Bool(syncSkipCoreDNSFlag.Name)
+	skipVPCCNI := cliContext.Bool(syncSkipVPCCNIFlag.Name)
+	return eks.SyncClusterComponents(eksClusterArn, shouldWait, waitTimeout, eks.SkipComponentsConfig{KubeProxy: skipKubeProxy, CoreDNS: skipCoreDNS, VPCCNI: skipVPCCNI})
 }
 
 // Command action for `kubergrunt eks cleanup-security-group`
