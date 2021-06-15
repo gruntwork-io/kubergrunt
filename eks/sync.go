@@ -256,7 +256,7 @@ func upgradeCoreDNS(
 	logger := logging.GetProjectLogger()
 
 	logger.Info("Confirming compatibility of coredns configuration with latest version.")
-	// Need to check config for backwards incompatibility if updating to version >= 1.7.0. The keyword upstream was
+	// Need to check config for backwards incompatibility if updating to version >= 1.7.0. The keyword `upstream` was
 	// removed in 1.7 series of coredns, but is used in earlier versions.
 	compareVal170, err := semverStringCompare(coreDNSVersion, "1.7.0-eksbuild.1")
 	if err != nil {
