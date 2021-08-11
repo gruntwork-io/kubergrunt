@@ -154,3 +154,17 @@ func (err ProvisionIngressEndpointTimeoutError) Error() string {
 		err.namespace,
 	)
 }
+
+// UnknownAWSLoadBalancerTypeErr is returned when we encounter a load balancer type that we don't expect/support.
+type UnknownAWSLoadBalancerTypeErr struct {
+	typeKey string
+	typeStr string
+}
+
+func (err UnknownAWSLoadBalancerTypeErr) Error() string {
+	return fmt.Sprintf(
+		"Unknown value for annotation %s (value: %s)",
+		err.typeKey,
+		err.typeStr,
+	)
+}

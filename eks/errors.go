@@ -168,3 +168,15 @@ func (err NetworkInterfaceDeletedTimeoutError) Error() string {
 		err.networkInterfaceId,
 	)
 }
+
+// CouldNotFindLoadBalancerErr is returned when the given ELB can not be found.
+type CouldNotFindLoadBalancerErr struct {
+	name string
+}
+
+func (err CouldNotFindLoadBalancerErr) Error() string {
+	return fmt.Sprintf(
+		"Could not find ELB with name %s.",
+		err.name,
+	)
+}

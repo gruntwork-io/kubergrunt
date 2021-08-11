@@ -12,6 +12,17 @@ import (
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
+const (
+	lbTypeAnnotationKey   = "service.beta.kubernetes.io/aws-load-balancer-type"
+	lbTargetAnnotationKey = "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"
+
+	lbTypeAnnotationNLB        = "nlb"
+	lbTypeAnnotationExternal   = "external"
+	lbTargetAnnotationIP       = "ip"
+	lbTargetAnnotationNLBIP    = "nlb-ip"
+	lbTargetAnnotationInstance = "instance"
+)
+
 // GetAllServices queries Kubernetes for information on all deployed Service resources in the current cluster that the
 // provided client can access.
 func GetAllServices(clientset *kubernetes.Clientset) ([]corev1.Service, error) {
@@ -37,11 +48,14 @@ func GetAllServices(clientset *kubernetes.Clientset) ([]corev1.Service, error) {
 	return services, nil
 }
 
-// GetLoadBalancerNames will query Kubernetes for all services, and then parse out the names of the underlying
-// external LoadBalancers.
-func GetLoadBalancerNames(kubectlOptions *KubectlOptions) ([]string, error) {
+// GetAWSLoadBalancers will query Kubernetes for all services, filter for LoadBalancer services, and then parse out the
+// following information:
+// - Type of LB (NLB or Classic LB)
+// - Instance target or IP target
+// TODO: support ALBs with Ingress as well
+func GetAWSLoadBalancers(kubectlOptions *KubectlOptions) ([]AWSLoadBalancer, error) {
 	logger := logging.GetProjectLogger()
-	logger.Infof("Getting all LoadBalancer names from services in kubernetes")
+	logger.Infof("Getting all LoadBalancers from services in kubernetes")
 
 	client, err := GetKubernetesClientFromOptions(kubectlOptions)
 	if err != nil {
@@ -54,16 +68,27 @@ func GetLoadBalancerNames(kubectlOptions *KubectlOptions) ([]string, error) {
 	loadBalancerServices := filterLoadBalancerServices(services)
 	logger.Infof("Found %d LoadBalancer services of %d services in kubernetes.", len(loadBalancerServices), len(services))
 
-	lbNames := []string{}
+	lbs := []AWSLoadBalancer{}
 	for _, service := range loadBalancerServices {
 		lbName, err := GetLoadBalancerNameFromService(service)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
-		lbNames = append(lbNames, lbName)
+		lbType, lbTargetType, err := GetLoadBalancerTypeFromService(service)
+		if err != nil {
+			return nil, err
+		}
+		lbs = append(
+			lbs,
+			AWSLoadBalancer{
+				Name:       lbName,
+				Type:       lbType,
+				TargetType: lbTargetType,
+			},
+		)
 	}
-	logger.Infof("Successfully extracted loadbalancer names")
-	return lbNames, nil
+	logger.Infof("Successfully extracted AWS Load Balancers")
+	return lbs, nil
 }
 
 // filterLoadBalancerServices will return services that are of type LoadBalancer from the provided list of services.
@@ -97,5 +122,47 @@ func GetLoadBalancerNameFromService(service corev1.Service) (string, error) {
 		return loadbalancerHostnameSubDomainParts[1], nil
 	} else {
 		return "", NewLoadBalancerNameFormatError(loadbalancerHostname)
+	}
+}
+
+// GetLoadBalancerTypeFromService will return the ELB type and target type of the given LoadBalancer Service. This uses
+// the following heuristic:
+// - A LoadBalancer Service with no type annotations will default to Classic Load Balancer (from the in-tree
+//   controller).
+// - If service.beta.kubernetes.io/aws-load-balancer-type is set to nlb or external, then the ELB will be NLB. (When
+//   external, we assume the LB controller handles it)
+// - For LB services handled by the LB controller, also check for
+//   service.beta.kubernetes.io/aws-load-balancer-nlb-target-type which determines the target type. Otherwise, it is
+//   always instance target type.
+func GetLoadBalancerTypeFromService(service corev1.Service) (ELBType, ELBTargetType, error) {
+	annotations := service.ObjectMeta.Annotations
+	lbTypeString, hasLBTypeAnnotation := annotations[lbTypeAnnotationKey]
+	if !hasLBTypeAnnotation {
+		// No annotation base case
+		return CLB, InstanceTarget, nil
+	}
+
+	if lbTypeString == lbTypeAnnotationNLB {
+		// in-tree controller based NLB provisioning only supports instance targets
+		return NLB, InstanceTarget, nil
+	} else if lbTypeString != lbTypeAnnotationExternal {
+		// Unsupported load balancer type
+		return UnknownELB, UnknownELBTarget, errors.WithStackTrace(UnknownAWSLoadBalancerTypeErr{typeKey: lbTypeAnnotationKey, typeStr: lbTypeString})
+	}
+
+	// lbTypeString is external at this point, which means we are using the AWS LB controller. This means we need to
+	// take into account the target type.
+	lbTargetTypeString, hasLBTargetAnnotation := annotations[lbTargetAnnotationKey]
+	if !hasLBTargetAnnotation {
+		// Default is instance target type
+		return NLB, InstanceTarget, nil
+	}
+	switch lbTargetTypeString {
+	case lbTargetAnnotationInstance:
+		return NLB, InstanceTarget, nil
+	case lbTargetAnnotationIP, lbTargetAnnotationNLBIP:
+		return NLB, IPTarget, nil
+	default:
+		return NLB, UnknownELBTarget, errors.WithStackTrace(UnknownAWSLoadBalancerTypeErr{typeKey: lbTargetAnnotationKey, typeStr: lbTargetTypeString})
 	}
 }

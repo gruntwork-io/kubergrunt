@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/gruntwork-io/go-commons/errors"
 
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
@@ -47,6 +48,7 @@ func RollOutDeployment(
 	asgSvc := autoscaling.New(sess)
 	ec2Svc := ec2.New(sess)
 	elbSvc := elb.New(sess)
+	elbv2Svc := elbv2.New(sess)
 	logger.Infof("Successfully authenticated with AWS")
 
 	// Retrieve the ASG object and gather required info we will need later
@@ -89,6 +91,7 @@ func RollOutDeployment(
 		asgSvc,
 		ec2Svc,
 		elbSvc,
+		elbv2Svc,
 		kubectlOptions,
 		eksAsgName,
 		originalCapacity*2,
