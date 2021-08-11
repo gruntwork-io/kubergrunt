@@ -55,64 +55,10 @@ type NodeDrainError struct {
 	NodeID string
 }
 
-// NodeDrainErrors is returned when there are errors draining nodes concurrently. Each node that has an error is added
-// to the list.
-type NodeDrainErrors struct {
-	errors []NodeDrainError
-}
-
-func (err NodeDrainErrors) Error() string {
-	base := "Multiple errors caught while draining a node:\n"
-	for _, subErr := range err.errors {
-		subErrMessage := fmt.Sprintf("Node %s: %s", subErr.NodeID, subErr.Error)
-		base = base + subErrMessage + "\n"
-	}
-	return base
-}
-
-func (err NodeDrainErrors) AddError(newErr NodeDrainError) {
-	err.errors = append(err.errors, newErr)
-}
-
-func (err NodeDrainErrors) IsEmpty() bool {
-	return len(err.errors) == 0
-}
-
-func NewNodeDrainErrors() NodeDrainErrors {
-	return NodeDrainErrors{[]NodeDrainError{}}
-}
-
 // NodeCordonError is returned when there is an error cordoning a node.
 type NodeCordonError struct {
 	Error  error
 	NodeID string
-}
-
-// NodeCordonErrors is returned when there are errors cordoning nodes concurrently. Each node that has an error is added
-// to the list.
-type NodeCordonErrors struct {
-	errors []NodeCordonError
-}
-
-func (err NodeCordonErrors) Error() string {
-	base := "Multiple errors caught while cordoning nodes:\n"
-	for _, subErr := range err.errors {
-		subErrMessage := fmt.Sprintf("Node %s: %s", subErr.NodeID, subErr.Error)
-		base = base + subErrMessage + "\n"
-	}
-	return base
-}
-
-func (err NodeCordonErrors) AddError(newErr NodeCordonError) {
-	err.errors = append(err.errors, newErr)
-}
-
-func (err NodeCordonErrors) IsEmpty() bool {
-	return len(err.errors) == 0
-}
-
-func NewNodeCordonErrors() NodeCordonErrors {
-	return NodeCordonErrors{[]NodeCordonError{}}
 }
 
 // LoadBalancerNotReadyError is returned when the LoadBalancer Service is unexpectedly not ready.

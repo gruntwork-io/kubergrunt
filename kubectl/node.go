@@ -7,6 +7,7 @@ import (
 
 	"github.com/gruntwork-io/go-commons/collections"
 	"github.com/gruntwork-io/go-commons/errors"
+	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -106,24 +107,24 @@ func filterNodesByID(nodes []corev1.Node, nodeIds []string) []corev1.Node {
 // for more information.
 func DrainNodes(kubectlOptions *KubectlOptions, nodeIds []string, timeout time.Duration, deleteLocalData bool) error {
 	// Concurrently trigger drain events for all requested nodes.
-	var wg sync.WaitGroup                      // So that we can wait for all the drain calls
-	errChannel := make(chan NodeDrainError, 1) // Collect all errors from each command
+	var wg sync.WaitGroup // So that we can wait for all the drain calls
+	errChans := []chan NodeDrainError{}
 	for _, nodeID := range nodeIds {
 		wg.Add(1)
+		errChannel := make(chan NodeDrainError, 1)
 		go drainNode(&wg, errChannel, kubectlOptions, nodeID, timeout, deleteLocalData)
+		errChans = append(errChans, errChannel)
 	}
-	go waitForAllDrains(&wg, errChannel)
+	wg.Wait()
 
-	drainErrors := NewNodeDrainErrors()
-	for err := range errChannel {
+	var drainErrs *multierror.Error
+	for _, errChan := range errChans {
+		err := <-errChan
 		if err.Error != nil {
-			drainErrors.AddError(err)
+			drainErrs = multierror.Append(drainErrs, err.Error)
 		}
 	}
-	if !drainErrors.IsEmpty() {
-		return errors.WithStackTrace(drainErrors)
-	}
-	return nil
+	return errors.WithStackTrace(drainErrs.ErrorOrNil())
 }
 
 func drainNode(
@@ -135,6 +136,7 @@ func drainNode(
 	deleteLocalData bool,
 ) {
 	defer wg.Done()
+	defer close(errChannel)
 
 	args := []string{"drain", nodeID, "--ignore-daemonsets", "--timeout", timeout.String()}
 
@@ -143,13 +145,7 @@ func drainNode(
 	}
 
 	err := RunKubectl(kubectlOptions, args...)
-
 	errChannel <- NodeDrainError{NodeID: nodeID, Error: err}
-}
-
-func waitForAllDrains(wg *sync.WaitGroup, errChannel chan<- NodeDrainError) {
-	wg.Wait()
-	close(errChannel)
 }
 
 // CordonNodes calls `kubectl cordon` on each node provided. Cordoning a node makes it unschedulable, preventing new
@@ -157,24 +153,24 @@ func waitForAllDrains(wg *sync.WaitGroup, errChannel chan<- NodeDrainError) {
 // Pods, use DrainNodes.
 func CordonNodes(kubectlOptions *KubectlOptions, nodeIds []string) error {
 	// Concurrently trigger cordon events for all requested nodes.
-	var wg sync.WaitGroup                       // So that we can wait for all the cordon calls
-	errChannel := make(chan NodeCordonError, 1) // Collect all errors from each command
+	var wg sync.WaitGroup // So that we can wait for all the cordon calls
+	errChans := []chan NodeCordonError{}
 	for _, nodeID := range nodeIds {
 		wg.Add(1)
+		errChannel := make(chan NodeCordonError, 1) // Collect all errors from each command
 		go cordonNode(&wg, errChannel, kubectlOptions, nodeID)
+		errChans = append(errChans, errChannel)
 	}
-	go waitForAllCordons(&wg, errChannel)
+	wg.Wait()
 
-	cordonErrors := NewNodeCordonErrors()
-	for err := range errChannel {
+	var cordonErrs *multierror.Error
+	for _, errChan := range errChans {
+		err := <-errChan
 		if err.Error != nil {
-			cordonErrors.AddError(err)
+			cordonErrs = multierror.Append(cordonErrs, err.Error)
 		}
 	}
-	if !cordonErrors.IsEmpty() {
-		return errors.WithStackTrace(cordonErrors)
-	}
-	return nil
+	return errors.WithStackTrace(cordonErrs.ErrorOrNil())
 }
 
 func cordonNode(
@@ -184,13 +180,13 @@ func cordonNode(
 	nodeID string,
 ) {
 	defer wg.Done()
+	defer close(errChannel)
 	err := RunKubectl(kubectlOptions, "cordon", nodeID)
 	errChannel <- NodeCordonError{NodeID: nodeID, Error: err}
 }
 
-func waitForAllCordons(wg *sync.WaitGroup, errChannel chan<- NodeCordonError) {
+func waitForAllCordons(wg *sync.WaitGroup) {
 	wg.Wait()
-	close(errChannel)
 }
 
 // GetNodes queries Kubernetes for information about the worker nodes registered to the cluster, given a
