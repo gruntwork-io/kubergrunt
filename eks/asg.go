@@ -7,9 +7,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/gruntwork-io/go-commons/collections"
 	"github.com/gruntwork-io/go-commons/errors"
+	"github.com/hashicorp/go-multierror"
 
+	"github.com/gruntwork-io/kubergrunt/commonerrors"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
@@ -38,6 +41,7 @@ func scaleUp(
 	asgSvc *autoscaling.AutoScaling,
 	ec2Svc *ec2.EC2,
 	elbSvc *elb.ELB,
+	elbv2Svc *elbv2.ELBV2,
 	kubectlOptions *kubectl.KubectlOptions,
 	asgName string,
 	desiredCapacity int64,
@@ -86,14 +90,14 @@ func scaleUp(
 		logger.Errorf("Undo by terminating all the new instances and trying again")
 		return err
 	}
-	elbNames, err := kubectl.GetLoadBalancerNames(kubectlOptions)
+	elbs, err := kubectl.GetAWSLoadBalancers(kubectlOptions)
 	if err != nil {
 		logger.Errorf("Error retrieving associated ELB names of the Kubernetes services.")
 		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
 		return err
 	}
-	err = waitForAnyInstancesRegisteredToELB(elbSvc, elbNames, newInstanceIds)
+	err = waitForAnyInstancesRegisteredToELB(elbSvc, elbv2Svc, elbs, newInstanceIds)
 	if err != nil {
 		logger.Errorf("Timed out waiting for the instances to register to the Service ELBs.")
 		// TODO: can we use stages to pick up from here?
@@ -242,10 +246,9 @@ func detachInstances(asgSvc *autoscaling.AutoScaling, asgName string, idList []s
 	return nil
 }
 
-// waitForAnyInstancesRegisteredToELB waits until any of the instances provided are registered to all the classic ELBs
-// provided. Classic ELB is what is used by the LoadBalancer Service resource in Kubernetes.
-// Here we wait for any instance to be registered, because we only need one instance to be registered to preserve
-// service uptime, due to the way Kubernetes works.
+// waitForAnyInstancesRegisteredToELB waits until any of the instances provided are registered to all the ELBs
+// provided. Here we wait for any instance to be registered, because we only need one instance to be registered to
+// preserve service uptime, due to the way Kubernetes works.
 // Pros:
 // - Shorter wait time.
 // - Can continue on to drain nodes succinctly, which is also time consuming.
@@ -255,36 +258,36 @@ func detachInstances(asgSvc *autoscaling.AutoScaling, asgName string, idList []s
 // - Not all instances are registered, so there is no "load balancing" initially. This may bring down the new server
 //   that is launched.
 // Ultimately, it was decided that the cons are not worth the extended wait time it will introduce to the command.
-// TODO: Update this when:
-// - we support ALB ingress controllers
-// - NLB for LoadBalancer Service resource comes out of alpha
-func waitForAnyInstancesRegisteredToELB(elbSvc *elb.ELB, elbNames []string, instanceIds []string) error {
+func waitForAnyInstancesRegisteredToELB(elbSvc *elb.ELB, elbv2Svc *elbv2.ELBV2, elbs []kubectl.AWSLoadBalancer, instanceIds []string) error {
 	logger := logging.GetProjectLogger()
 	logger.Infof("Verifying new nodes are registered to external load balancers.")
 
-	instances := []*elb.Instance{}
-	for _, instanceID := range instanceIds {
-		instances = append(instances, &elb.Instance{InstanceId: aws.String(instanceID)})
-	}
+	var multipleErrs *multierror.Error
+	for _, elb := range elbs {
+		if elb.TargetType == kubectl.IPTarget {
+			// We ignore ELBs of the IP type as those directly link to Pods and not instances.
+			continue
+		} else if elb.TargetType == kubectl.UnknownELBTarget {
+			// This should never happen, so we return a generic error that indicates this is an impossible condition and
+			// almost 100% a bug with kubergrunt.
+			multipleErrs = multierror.Append(commonerrors.ImpossibleErr("UNKNOWN_ELB_TARGET_TYPE_IN_WAIT"))
+			continue
+		}
 
-	multipleErrs := NewMultipleLookupErrors()
-	for _, elbName := range elbNames {
-		logger.Infof("Waiting for at least one instance to be in service for elb %s", elbName)
-		params := &elb.DescribeInstanceHealthInput{
-			LoadBalancerName: aws.String(elbName),
-			Instances:        instances,
+		var err error
+		switch elb.Type {
+		case kubectl.CLB:
+			err = waitForAnyInstancesRegisteredToCLB(logger, elbSvc, elb.Name, instanceIds)
+		case kubectl.NLB, kubectl.ALB:
+			err = waitForAnyInstancesRegisteredToALBOrNLB(logger, elbv2Svc, elb.Name, instanceIds)
+		default:
+			// This should never happen, so we return a generic error that indicates this is an impossible condition and
+			// almost 100% a bug with kubergrunt.
+			err = commonerrors.ImpossibleErr("UNKNOWN_ELB_TYPE_IN_WAIT")
 		}
-		err := elbSvc.WaitUntilAnyInstanceInService(params)
 		if err != nil {
-			logger.Infof("ERROR: error waiting for any instance to be in service for elb %s", elbName)
-			multipleErrs.AddError(err)
-		} else {
-			logger.Infof("At least one instance in service for elb %s", elbName)
+			multipleErrs = multierror.Append(multipleErrs, err)
 		}
 	}
-	if !multipleErrs.IsEmpty() {
-		return multipleErrs
-	}
-	logger.Infof("All ELBs have at least one instance in service")
-	return nil
+	return multipleErrs.ErrorOrNil()
 }
