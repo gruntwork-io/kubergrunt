@@ -2,6 +2,7 @@ package eks
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,6 +11,7 @@ import (
 	"github.com/gruntwork-io/go-commons/collections"
 	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/go-commons/retry"
+	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
 
 	"github.com/gruntwork-io/kubergrunt/commonerrors"
@@ -19,10 +21,47 @@ import (
 // Network Load Balancers. Refer to function docs for waitForAnyInstancesRegisteredToELB for more info.
 // NOTE: this assumes the ELB is using the instance target type.
 func waitForAnyInstancesRegisteredToALBOrNLB(logger *logrus.Entry, elbv2Svc *elbv2.ELBV2, lbName string, instanceIDsToWaitFor []string) error {
-	targetGroup, err := getELBTargetGroup(elbv2Svc, lbName)
+	targetGroups, err := getELBTargetGroups(elbv2Svc, lbName)
 	if err != nil {
 		return err
 	}
+
+	// Asynchronously wait for instances to be registered to each target group, collecting each goroutine error in
+	// channels.
+	wg := new(sync.WaitGroup)
+	wg.Add(len(targetGroups))
+	errChans := make(map[string]chan error, len(targetGroups))
+	for _, targetGroup := range targetGroups {
+		errChan := make(chan error, 1)
+		errChans[aws.StringValue(targetGroup.TargetGroupName)] = errChan
+		go asyncWaitForAnyInstancesRegisteredToTargetGroup(wg, errChan, logger, elbv2Svc, lbName, targetGroup, instanceIDsToWaitFor)
+	}
+	wg.Wait()
+
+	// Collect all the errors from the async wait calls into a single error struct.
+	var allErrs *multierror.Error
+	for targetGroupName, errChan := range errChans {
+		if err := <-errChan; err != nil {
+			allErrs = multierror.Append(allErrs, err)
+			logger.Errorf("Error waiting for instance to register to target group %s: %s", targetGroupName, err)
+		}
+	}
+	finalErr := allErrs.ErrorOrNil()
+	return errors.WithStackTrace(finalErr)
+}
+
+// asyncWaitForAnyInstancesRegisteredToTargetGroup waits for any instance to register to a single TargetGroup with
+// retry. This function is intended to be run in a goroutine.
+func asyncWaitForAnyInstancesRegisteredToTargetGroup(
+	wg *sync.WaitGroup,
+	errChan chan error,
+	logger *logrus.Entry,
+	elbv2Svc *elbv2.ELBV2,
+	lbName string,
+	targetGroup *elbv2.TargetGroup,
+	instanceIDsToWaitFor []string,
+) {
+	defer wg.Done()
 
 	// Retry up to 10 minutes with 15 second retry sleep
 	waitErr := retry.DoWithRetry(
@@ -54,9 +93,9 @@ func waitForAnyInstancesRegisteredToALBOrNLB(logger *logrus.Entry, elbv2Svc *elb
 		},
 	)
 	if fatalWaitErr, isFatalErr := waitErr.(retry.FatalError); isFatalErr {
-		return errors.WithStackTrace(fatalWaitErr.Underlying)
+		errChan <- fatalWaitErr.Underlying
 	}
-	return errors.WithStackTrace(waitErr)
+	errChan <- waitErr
 }
 
 // waitForAnyInstancesRegisteredToCLB implements the logic to wait for instance registration to Classic Load Balancers.
@@ -81,10 +120,10 @@ func waitForAnyInstancesRegisteredToCLB(logger *logrus.Entry, elbSvc *elb.ELB, l
 	return nil
 }
 
-// getELBTargetGroup looks up the associated TargetGroup of the given ELB. Note that this assumes:
-// - lbName refers to a v2 ELB (ALB or NLB)
-// - There is exactly one TargetGroup associated with the ELB (this is enforced by the Kubernetes controllers)
-func getELBTargetGroup(elbv2Svc *elbv2.ELBV2, lbName string) (*elbv2.TargetGroup, error) {
+// getELBTargetGroups looks up the associated TargetGroup of the given ELB. Note that this assumes lbName refers to a v2
+// ELB (ALB or NLB).
+// NOTE: You can have multiple target groups on a given ELB if the service or ingress has multiple ports to listen on.
+func getELBTargetGroups(elbv2Svc *elbv2.ELBV2, lbName string) ([]*elbv2.TargetGroup, error) {
 	resp, err := elbv2Svc.DescribeLoadBalancers(&elbv2.DescribeLoadBalancersInput{Names: aws.StringSlice([]string{lbName})})
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
@@ -105,10 +144,9 @@ func getELBTargetGroup(elbv2Svc *elbv2.ELBV2, lbName string) (*elbv2.TargetGroup
 		return nil, errors.WithStackTrace(err)
 	}
 
-	if len(targetGroupsResp.TargetGroups) != 1 {
-		// This is an impossible condition because the load balancer controllers always only creates a single target
-		// group for the ELBs it provisions.
+	if len(targetGroupsResp.TargetGroups) == 0 {
+		// This is an impossible condition because the load balancer controllers always creates at least 1 target group.
 		return nil, errors.WithStackTrace(commonerrors.ImpossibleErr("ELB_HAS_UNEXPECTED_NUMBER_OF_TARGET_GROUPS"))
 	}
-	return targetGroupsResp.TargetGroups[0], nil
+	return targetGroupsResp.TargetGroups, nil
 }
