@@ -34,7 +34,7 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
-		"1.21": "1.8.3-eksbuild.1",
+		"1.21": "1.8.4-eksbuild.1",
 		"1.20": "1.8.3-eksbuild.1",
 		"1.19": "1.8.0-eksbuild.1",
 		"1.18": "1.7.0-eksbuild.1",
