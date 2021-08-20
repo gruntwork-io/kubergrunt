@@ -46,6 +46,13 @@ The main package is in `cmd`. To build the binary, you can run:
 go build -o bin/kubergrunt ./cmd
 ```
 
+If you need to set a version on the binary (so that `kubergrunt --version` works), you use `ldflags` to set the version
+string on the compiled binary:
+
+```
+go build -o kubergrunt -ldflags "-X main.VERSION=v0.7.6 -extldflags '-static'" ./cmd
+```
+
 
 ## Commands
 
