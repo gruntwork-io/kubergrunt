@@ -22,10 +22,20 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/gruntwork-io/kubergrunt/commonerrors"
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/jsonpatch"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
 	"github.com/gruntwork-io/kubergrunt/logging"
+)
+
+const (
+	containerAccountID = "602401143452"
+	kubeProxyRepoPath  = "eks/kube-proxy"
+	coreDNSRepoPath    = "eks/coredns"
+
+	// Largest eksbuild tag we will try looking for.
+	maxEKSBuild = 10
 )
 
 var (
@@ -34,22 +44,22 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
-		"1.21": "1.8.4-eksbuild.1",
-		"1.20": "1.8.3-eksbuild.1",
-		"1.19": "1.8.0-eksbuild.1",
-		"1.18": "1.7.0-eksbuild.1",
-		"1.17": "1.6.6-eksbuild.1",
-		"1.16": "1.6.6-eksbuild.1",
+		"1.21": "1.8.4-eksbuild",
+		"1.20": "1.8.3-eksbuild",
+		"1.19": "1.8.0-eksbuild",
+		"1.18": "1.7.0-eksbuild",
+		"1.17": "1.6.6-eksbuild",
+		"1.16": "1.6.6-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
-		"1.21": "1.21.2-eksbuild.2",
-		"1.20": "1.20.4-eksbuild.2",
-		"1.19": "1.19.6-eksbuild.2",
-		"1.18": "1.18.8-eksbuild.2",
-		"1.17": "1.17.9-eksbuild.2",
-		"1.16": "1.16.13-eksbuild.2",
+		"1.21": "1.21.2-eksbuild",
+		"1.20": "1.20.4-eksbuild",
+		"1.19": "1.19.6-eksbuild",
+		"1.18": "1.18.8-eksbuild",
+		"1.17": "1.17.9-eksbuild",
+		"1.16": "1.16.13-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
@@ -80,6 +90,12 @@ type SkipComponentsConfig struct {
 	KubeProxy bool
 	CoreDNS   bool
 	VPCCNI    bool
+}
+
+type componentVersions struct {
+	kubeProxy string
+	coreDNS   string
+	vpcCNI    string
 }
 
 // SyncClusterComponents will perform the steps described in
@@ -113,8 +129,27 @@ func SyncClusterComponents(
 		return errors.WithStackTrace(UnsupportedEKSVersion{k8sVersion})
 	}
 
-	kubeProxyVersion := kubeProxyVersionLookupTable[k8sVersion]
-	coreDNSVersion := coreDNSVersionLookupTable[k8sVersion]
+	awsRegion, err := eksawshelper.GetRegionFromArn(eksClusterArn)
+	if err != nil {
+		return err
+	}
+
+	dockerToken, err := eksawshelper.GetDockerLoginToken(awsRegion)
+	if err != nil {
+		return err
+	}
+
+	repoDomain := getRepoDomain(awsRegion)
+	kubeProxyVersion, err := findLatestEKSBuild(dockerToken, repoDomain, kubeProxyRepoPath, kubeProxyVersionLookupTable[k8sVersion])
+	if err != nil {
+		return err
+	}
+
+	coreDNSVersion, err := findLatestEKSBuild(dockerToken, repoDomain, coreDNSRepoPath, coreDNSVersionLookupTable[k8sVersion])
+	if err != nil {
+		return err
+	}
+
 	amznVPCCNIVersion := amazonVPCCNIVersionLookupTable[k8sVersion]
 
 	logger.Info("Syncing Kubernetes Applications to:")
@@ -130,11 +165,6 @@ func SyncClusterComponents(
 
 	kubectlOptions := &kubectl.KubectlOptions{EKSClusterArn: eksClusterArn}
 	clientset, err := kubectl.GetKubernetesClientFromOptions(kubectlOptions)
-	if err != nil {
-		return err
-	}
-
-	awsRegion, err := eksawshelper.GetRegionFromArn(eksClusterArn)
 	if err != nil {
 		return err
 	}
@@ -179,7 +209,7 @@ func upgradeKubeProxy(
 ) error {
 	logger := logging.GetProjectLogger()
 
-	targetImage := fmt.Sprintf("602401143452.dkr.ecr.%s.amazonaws.com/eks/kube-proxy:v%s", awsRegion, kubeProxyVersion)
+	targetImage := fmt.Sprintf("%s/%s:v%s", getRepoDomain(awsRegion), kubeProxyRepoPath, kubeProxyVersion)
 	currentImage, err := getCurrentDeployedKubeProxyImage(clientset)
 	if err != nil {
 		return err
@@ -292,7 +322,7 @@ func upgradeCoreDNS(
 		logger.Info("ClusterRole permissions for coredns is up to date. Skipping adjusting ClusterRole permissions.")
 	}
 
-	targetImage := fmt.Sprintf("602401143452.dkr.ecr.%s.amazonaws.com/eks/coredns:v%s", awsRegion, coreDNSVersion)
+	targetImage := fmt.Sprintf("%s/%s:v%s", getRepoDomain(awsRegion), coreDNSRepoPath, coreDNSVersion)
 	currentImage, err := getCurrentDeployedCoreDNSImage(clientset)
 	if err != nil {
 		return err
@@ -580,4 +610,41 @@ func removeUpstreamKeywordFromCorednsConfigMap(clientset *kubernetes.Clientset, 
 	configMapAPI := clientset.CoreV1().ConfigMaps(corednsConfigMap.ObjectMeta.Namespace)
 	_, err = configMapAPI.Update(context.Background(), corednsConfigMap, metav1.UpdateOptions{})
 	return errors.WithStackTrace(err)
+}
+
+// findLatestEKSBuild will continuously query the ECR repo to look for the latest eksbuild version. We do this by
+// incrementally checking one tag at a time until we reach a 404, or the maximum trials.
+func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, error) {
+	logger := logging.GetProjectLogger()
+	logger.Debugf("Looking up latest eksbuild for repo %s/%s", repoDomain, repoPath)
+
+	var existingTag string
+	for i := 0; i < maxEKSBuild; i++ {
+		version := fmt.Sprintf("%s.%d", tagBase, i+1)
+		query := "v" + version
+		logger.Debugf("Trying %s", query)
+		tagExists, err := eksawshelper.TagExistsInRepo(token, repoDomain, repoPath, query)
+		if err != nil {
+			return "", err
+		}
+		if tagExists {
+			logger.Debugf("Found %s", query)
+			// Update the latest tag marker
+			existingTag = version
+		} else {
+			logger.Debugf("Not found %s", query)
+			logger.Debugf("Returning %s", existingTag)
+			// At this point, the last existing tag we encountered is the latest, so we return it.
+			return existingTag, nil
+		}
+	}
+
+	// MAINTAINER'S NOTE: If we ever reach here, this is 100% a bug in kubergrunt. Investigation is needed to resolve
+	// this, as it could be either the wrong version is being queried, or the maxEKSBuild count is too small.
+	return "", commonerrors.ImpossibleErr("TOO_MANY_EKS_BUILD_TAGS")
+}
+
+// getRepoDomain is a conveniency function to construct the ECR docker repo URL domain.
+func getRepoDomain(region string) string {
+	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", containerAccountID, region)
 }
