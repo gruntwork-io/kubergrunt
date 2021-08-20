@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/stretchr/testify/assert"
@@ -177,6 +178,34 @@ func TestRemoveUpstreamKeywordFromCorednsConfigMap(t *testing.T) {
 	testConfigMapUpdated, err := configmapAPI.Get(context.Background(), corednsConfigMapName, metav1.GetOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, expectedSampleConfigData, testConfigMapUpdated.Data[corednsConfigMapConfigKey])
+}
+
+func TestFindLatestEKSBuild(t *testing.T) {
+	t.Parallel()
+
+	testCase := []struct {
+		k8sVersion      string
+		region          string
+		expectedVersion string
+	}{
+		{"1.20", "us-east-1", "1.20.4-eksbuild.2"},
+		{"1.16", "us-east-1", "1.16.13-eksbuild.1"},
+	}
+
+	for _, tc := range testCase {
+		tc := tc
+		t.Run(tc.k8sVersion, func(t *testing.T) {
+			t.Parallel()
+
+			repoDomain := getRepoDomain(tc.region)
+			dockerToken, err := eksawshelper.GetDockerLoginToken(tc.region)
+			require.NoError(t, err)
+
+			kubeProxyVersion, err := findLatestEKSBuild(dockerToken, repoDomain, kubeProxyRepoPath, kubeProxyVersionLookupTable[tc.k8sVersion])
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedVersion, kubeProxyVersion)
+		})
+	}
 }
 
 const sampleConfigData = `.:53 {
