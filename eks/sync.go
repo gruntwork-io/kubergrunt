@@ -64,12 +64,12 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.21": "1.8.0",
-		"1.20": "1.8.0",
-		"1.19": "1.8.0",
-		"1.18": "1.8.0",
-		"1.17": "1.8.0",
-		"1.16": "1.8.0",
+		"1.21": "1.9.0",
+		"1.20": "1.9.0",
+		"1.19": "1.9.0",
+		"1.18": "1.9.0",
+		"1.17": "1.9.0",
+		"1.16": "1.9.0",
 	}
 )
 
