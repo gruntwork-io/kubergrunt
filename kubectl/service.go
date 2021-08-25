@@ -111,17 +111,22 @@ func GetLoadBalancerNameFromService(service corev1.Service) (string, error) {
 	loadbalancerHostname := loadbalancerInfo[0].Hostname
 
 	// TODO: When expanding to GCP, update this logic
+	return getAWSLoadBalancerNameFromHostname(loadbalancerHostname)
+}
 
-	// For ELB, the subdomain will be one of NAME-TIME or internal-NAME-TIME
-	loadbalancerHostnameSubDomain := strings.Split(loadbalancerHostname, ".")[0]
+// getAWSLoadBalancerNameFromHostname will return the AWS LoadBalancer name given the assigned hostname. For ELB (both
+// v1 and v2), the subdomain will be one of NAME-TIME or internal-NAME-TIME. Note that we need to use strings.Join here
+// to account for LB names that contain '-'.
+func getAWSLoadBalancerNameFromHostname(hostname string) (string, error) {
+	loadbalancerHostnameSubDomain := strings.Split(hostname, ".")[0]
 	loadbalancerHostnameSubDomainParts := strings.Split(loadbalancerHostnameSubDomain, "-")
 	numParts := len(loadbalancerHostnameSubDomainParts)
-	if numParts == 2 {
-		return loadbalancerHostnameSubDomainParts[0], nil
-	} else if numParts == 3 {
-		return loadbalancerHostnameSubDomainParts[1], nil
+	if numParts < 2 {
+		return "", NewLoadBalancerNameFormatError(hostname)
+	} else if loadbalancerHostnameSubDomainParts[0] == "internal" {
+		return strings.Join(loadbalancerHostnameSubDomainParts[1:numParts-1], "-"), nil
 	} else {
-		return "", NewLoadBalancerNameFormatError(loadbalancerHostname)
+		return strings.Join(loadbalancerHostnameSubDomainParts[:numParts-1], "-"), nil
 	}
 }
 
