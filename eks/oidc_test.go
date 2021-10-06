@@ -55,8 +55,8 @@ func TestGetJwksURL(t *testing.T) {
 
 func TestGetThumbprint(t *testing.T) {
 	const jwksURL = "https://www.googleapis.com/oauth2/v3/certs"
-	const expected = "dfe2070c79e7ff36a925ffa327ffe3deecf8f9c2"
+	const expected = "08745487e891c19e3078c1f2a07e452950ef36f6"
 	thumbprint, err := getThumbprint(jwksURL)
 	assert.NoError(t, err)
-	assert.Equal(t, thumbprint, expected)
+	assert.Equal(t, expected, thumbprint)
 }
