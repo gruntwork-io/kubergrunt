@@ -42,9 +42,9 @@ var (
 		Value: 15 * time.Minute,
 		Usage: "The length of time as duration (e.g 10m = 10 minutes) to wait for draining nodes before giving up, zero means infinite. Defaults to 15 minutes.",
 	}
-	deleteLocalDataFlag = cli.BoolFlag{
-		Name:  "delete-local-data",
-		Usage: "Continue even if there are pods using emptyDir (local data that will be deleted when the node is drained).",
+	noDeleteLocalDataFlag = cli.BoolFlag{
+		Name:  "no-delete-local-data",
+		Usage: "Disable deleting Pods with emptyDir (local data on the node). Note that these Pods must be manually drained from the nodes for the rollout to complete.",
 	}
 	waitMaxRetriesFlag = cli.IntFlag{
 		Name:  "max-retries",
@@ -242,7 +242,7 @@ If max-retries is unspecified, this command will use a value that translates to 
 					genericKubectlTokenFlag,
 					genericKubectlEKSClusterArnFlag,
 					drainTimeoutFlag,
-					deleteLocalDataFlag,
+					noDeleteLocalDataFlag,
 					waitMaxRetriesFlag,
 					waitSleepBetweenRetriesFlag,
 				},
@@ -273,7 +273,7 @@ You can also drain multiple ASGs by providing the "--asg-name" option multiple t
 					genericKubectlTokenFlag,
 					genericKubectlEKSClusterArnFlag,
 					drainTimeoutFlag,
-					deleteLocalDataFlag,
+					noDeleteLocalDataFlag,
 				},
 			},
 			cli.Command{
@@ -404,7 +404,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 	asgName := asgNames[0]
 
 	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
-	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
+	noDeleteLocalData := cliContext.Bool(noDeleteLocalDataFlag.Name)
 	waitMaxRetries := cliContext.Int(waitMaxRetriesFlag.Name)
 	waitSleepBetweenRetries := cliContext.Duration(waitSleepBetweenRetriesFlag.Name)
 
@@ -413,7 +413,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		asgName,
 		kubectlOptions,
 		drainTimeout,
-		deleteLocalData,
+		noDeleteLocalData == false,
 		waitMaxRetries,
 		waitSleepBetweenRetries,
 	)

@@ -106,6 +106,8 @@ func filterNodesByID(nodes []corev1.Node, nodeIds []string) []corev1.Node {
 // https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/#use-kubectl-drain-to-remove-a-node-from-service
 // for more information.
 func DrainNodes(kubectlOptions *KubectlOptions, nodeIds []string, timeout time.Duration, deleteLocalData bool) error {
+	// TODO: how to know if we should use `--delete-local-data`
+
 	// Concurrently trigger drain events for all requested nodes.
 	var wg sync.WaitGroup // So that we can wait for all the drain calls
 	errChans := []chan NodeDrainError{}
