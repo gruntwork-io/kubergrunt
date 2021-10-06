@@ -37,11 +37,11 @@ func DrainASG(
 	// Retrieve instance IDs for each ASG requested.
 	allInstanceIDs := []string{}
 	for _, asgName := range asgNames {
-		_, currentInstanceIDs, err := getAsgInfo(asgSvc, asgName)
+		asgInfo, err := getAsgInfo(asgSvc, asgName)
 		if err != nil {
 			return err
 		}
-		allInstanceIDs = append(allInstanceIDs, currentInstanceIDs...)
+		allInstanceIDs = append(allInstanceIDs, asgInfo.currentInstanceIDs...)
 	}
 	logger.Infof("Found %d instances across all requested ASGs.", len(allInstanceIDs))
 

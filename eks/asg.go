@@ -144,6 +144,25 @@ func setAsgCapacity(svc *autoscaling.AutoScaling, asgName string, desiredCapacit
 	return nil
 }
 
+// setAsgMaxSize will set the max size on the auto scaling group. Note that updating the max size does not typically
+// change the cluster size.
+func setAsgMaxSize(svc *autoscaling.AutoScaling, asgName string, maxSize int64) error {
+	logger := logging.GetProjectLogger()
+	logger.Infof("Updating ASG %s max size to %d.", asgName, maxSize)
+
+	input := autoscaling.UpdateAutoScalingGroupInput{
+		AutoScalingGroupName: aws.String(asgName),
+		MaxSize:              aws.Int64(maxSize),
+	}
+	_, err := svc.UpdateAutoScalingGroup(&input)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	logger.Infof("Requested ASG %s max size to be %d.", asgName, maxSize)
+	return nil
+}
+
 // waitForCapacity waits for the desired capacity to be reached
 func waitForCapacity(
 	svc *autoscaling.AutoScaling,
