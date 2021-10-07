@@ -92,12 +92,17 @@ func RollOutDeployment(
 	// Make sure there is enough max size capacity to scale up
 	maxCapacityForUpdate := asgInfo.originalCapacity * 2
 	if asgInfo.maxSize < maxCapacityForUpdate {
+		// Make sure we attempt to restore the original ASG max size at the end of the function, regardless of error.
 		defer func() {
 			err := setAsgMaxSize(asgSvc, eksAsgName, asgInfo.maxSize)
+			// Only return error from this routine if we are not already bubbling an error back from previous calls in
+			// the function.
 			if err != nil && returnErr == nil {
 				returnErr = err
 			}
 		}()
+
+		// Update the ASG max size to have enough capacity to handle the update.
 		err := setAsgMaxSize(asgSvc, eksAsgName, maxCapacityForUpdate)
 		if err != nil {
 			return err
