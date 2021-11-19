@@ -30,9 +30,8 @@ import (
 )
 
 const (
-	containerAccountID = "602401143452"
-	kubeProxyRepoPath  = "eks/kube-proxy"
-	coreDNSRepoPath    = "eks/coredns"
+	kubeProxyRepoPath = "eks/kube-proxy"
+	coreDNSRepoPath   = "eks/coredns"
 
 	// Largest eksbuild tag we will try looking for.
 	maxEKSBuild = 10
@@ -70,6 +69,19 @@ var (
 		"1.18": "1.9.0",
 		"1.17": "1.9.0",
 		"1.16": "1.9.0",
+	}
+
+	defaultContainerImageAccount = "602401143452"
+	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html
+	containerImageAccountLookupTable = map[string]string{
+		"af-south-1":     "877085696533",
+		"ap-east-1":      "800184023465",
+		"cn-north-1":     "918309763551",
+		"cn-northwest-1": "961992271922",
+		"eu-south-1":     "590381155156",
+		"me-south-1":     "558608220178",
+		"us-gov-east-1":  "151742754352",
+		"us-gov-west-1":  "013241004608",
 	}
 )
 
@@ -646,5 +658,9 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 
 // getRepoDomain is a conveniency function to construct the ECR docker repo URL domain.
 func getRepoDomain(region string) string {
+	containerAccountID := defaultContainerImageAccount
+	if id, ok := containerImageAccountLookupTable[region]; ok {
+		containerAccountID = id
+	}
 	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", containerAccountID, region)
 }
