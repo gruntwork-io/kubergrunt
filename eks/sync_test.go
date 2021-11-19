@@ -2,6 +2,7 @@ package eks
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,6 +17,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestGetEKSContainerImageURL(t *testing.T) {
+	t.Parallel()
+
+	region := "us-west-2"
+	expected := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", defaultContainerImageAccount, region)
+	actual := getRepoDomain(region)
+	assert.Equal(t, expected, actual)
+
+	region = "ap-east-1"
+	expected = fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", containerImageAccountLookupTable[region], region)
+	actual = getRepoDomain(region)
+	assert.Equal(t, expected, actual)
+}
 
 func TestGetBaseURLForVPCCNIManifest(t *testing.T) {
 	t.Parallel()
