@@ -24,6 +24,10 @@ var (
 		Name:  "wait",
 		Usage: "Whether or not to wait for the command to succeed.",
 	}
+	ignoreRecoveryFileFlag = cli.BoolFlag{
+		Name:  "ignore-recovery-file",
+		Usage: "Ignore existing recovery file and start deploy process from the beginning.",
+	}
 	eksKubectlContextNameFlag = cli.StringFlag{
 		Name:  KubectlContextNameFlagName,
 		Usage: "The name to use for the config context that is set up to authenticate with the EKS cluster. Defaults to the cluster ARN.",
@@ -230,6 +234,8 @@ Note that to minimize service disruption from this command, your services should
 This command includes retry loops for certain stages (e.g waiting for the ASG to scale up). This retry loop is configurable with the options --max-retries and --sleep-between-retries. The command will try up to --max-retries times, sleeping for the duration specified by --sleep-between-retries inbetween each failed attempt.
 
 If max-retries is unspecified, this command will use a value that translates to a total wait time of 5 minutes per wave of ASG, where each wave is 10 instances. For example, if the number of instances in the ASG is 15 instances, this translates to 2 waves, which leads to a total wait time of 10 minutes. To achieve a 10 minute wait time with the default sleep between retries (15 seconds), the max retries needs to be set to 40.
+
+As the deploy command contains multiple stages, this command also generates a recovery file (.kubergrunt.state) containing the current deploy state in the working directory. The state file is used to resume the deploy operation from the point of failure, and is automatically deleted upon completion of the command. You can optionally ignore the state file with --ignore-recovery-file flag, which will generate a new recovery file.
 `,
 				Action: rollOutDeployment,
 				Flags: []cli.Flag{
@@ -245,6 +251,7 @@ If max-retries is unspecified, this command will use a value that translates to 
 					deleteLocalDataFlag,
 					waitMaxRetriesFlag,
 					waitSleepBetweenRetriesFlag,
+					ignoreRecoveryFileFlag,
 				},
 			},
 			cli.Command{
@@ -405,6 +412,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 
 	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
 	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
+	ignoreRecoveryFile := cliContext.Bool(ignoreRecoveryFileFlag.Name)
 	waitMaxRetries := cliContext.Int(waitMaxRetriesFlag.Name)
 	waitSleepBetweenRetries := cliContext.Duration(waitSleepBetweenRetriesFlag.Name)
 
@@ -416,6 +424,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		deleteLocalData,
 		waitMaxRetries,
 		waitSleepBetweenRetries,
+		ignoreRecoveryFile,
 	)
 }
 
