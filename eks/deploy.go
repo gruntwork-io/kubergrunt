@@ -98,7 +98,7 @@ func RollOutDeployment(
 		}
 
 		state.GatherASGInfoDone = true
-		state.ASG.MaxSize = tmpAsgInfo.maxSize
+		state.ASG.OriginalMaxCapacity = tmpAsgInfo.maxSize
 		state.ASG.Name = eksAsgName
 		state.ASG.OriginalCapacity = tmpAsgInfo.originalCapacity
 		state.ASG.OriginalInstances = tmpAsgInfo.currentInstanceIDs
@@ -108,7 +108,7 @@ func RollOutDeployment(
 	// Make sure there is enough max size capacity to scale up
 	if !state.SetMaxCapacityDone {
 		maxCapacityForUpdate := state.ASG.OriginalCapacity * 2
-		if state.ASG.MaxSize < maxCapacityForUpdate {
+		if state.ASG.OriginalMaxCapacity < maxCapacityForUpdate {
 			err := setAsgMaxSize(asgSvc, eksAsgName, maxCapacityForUpdate)
 			if err != nil {
 				return err
@@ -197,9 +197,9 @@ func RollOutDeployment(
 	}
 
 	if !state.RestoreCapacityDone {
-		err := setAsgMaxSize(asgSvc, eksAsgName, state.ASG.MaxSize)
+		err := setAsgMaxSize(asgSvc, eksAsgName, state.ASG.OriginalMaxCapacity)
 		if err != nil {
-			logger.Errorf("Error while restoring ASG %s max size to %v.", state.ASG.Name, state.ASG.MaxSize)
+			logger.Errorf("Error while restoring ASG %s max size to %v.", state.ASG.Name, state.ASG.OriginalMaxCapacity)
 			logger.Errorf("Either resume with the recovery file or adjust ASG max size manually to complete the rollout.")
 			return err
 		}

@@ -42,7 +42,7 @@ func TestParseExistingDeployState(t *testing.T) {
 	assert.False(t, state.SetMaxCapacityDone)
 	assert.Equal(t, "my-test-asg", state.ASG.Name)
 	assert.Equal(t, int64(2), state.ASG.OriginalCapacity)
-	assert.Equal(t, int64(4), state.ASG.MaxSize)
+	assert.Equal(t, int64(4), state.ASG.OriginalMaxCapacity)
 	assert.Equal(t, 2, len(state.ASG.OriginalInstances))
 	assert.Equal(t, 1, len(state.ASG.NewInstances))
 }
@@ -70,9 +70,9 @@ func generateTempStateFile(t *testing.T) string {
 		GatherASGInfoDone: true,
 		Path:              tmpfile.Name(),
 		ASG: ASG{
-			Name:             "my-test-asg",
-			OriginalCapacity: 2,
-			MaxSize:          4,
+			Name:                "my-test-asg",
+			OriginalCapacity:    2,
+			OriginalMaxCapacity: 4,
 			OriginalInstances: []string{
 				"instance-1",
 				"instance-2",

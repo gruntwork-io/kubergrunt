@@ -28,7 +28,7 @@ type ASG struct {
 	Name                 string
 	OriginalCapacity     int64
 	MaxCapacityForUpdate int64
-	MaxSize              int64
+	OriginalMaxCapacity  int64
 	OriginalInstances    []string
 	NewInstances         []string
 }
