@@ -256,6 +256,15 @@ Currently `kubergrunt` does not implement any checks for these resources to be i
 plan to bake in checks into the deployment command to verify that all services have a disruption budget set, and warn
 the user of any services that do not have a check.
 
+**`eks deploy` recovery file**
+
+Due to the nature of rolling update, the `deploy` subcommand performs multiple sequential actions that 
+depend on success of the previous operations. To mitigate intermittent failures, the `deploy` subcommand creates a
+recovery file in the working directory for storing current deploy state. The recovery file is updated after 
+each stage and if the `deploy` subcommand fails for some reason, execution resumes from the last successful state.
+The existing recovery file can also be ignored with the `--ignore-recovery-file` flag. In this case the recovery 
+file will be re-initialized.
+
 #### sync-core-components
 
 This subcommand will sync the core components of an EKS cluster to match the deployed Kubernetes version by following
