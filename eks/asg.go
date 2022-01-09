@@ -70,8 +70,7 @@ func scaleUp(
 	return newInstanceIds, nil
 }
 
-// scaleUp will scale the ASG up and wait until all the nodes are available. Specifically:
-// - Set the desired capacity on the ASG
+// waitAndVerifyNewInstances will scale the ASG up and wait until all the nodes are available. Specifically:
 // - Wait for the capacity in the ASG to meet the desired capacity (instances are launched)
 // - Wait for the new instances to be ready in Kubernetes
 // - Wait for the new instances to be registered with external load balancers
