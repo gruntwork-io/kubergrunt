@@ -41,7 +41,7 @@ func DrainASG(
 		if err != nil {
 			return err
 		}
-		allInstanceIDs = append(allInstanceIDs, asgInfo.currentInstanceIDs...)
+		allInstanceIDs = append(allInstanceIDs, asgInfo.OriginalInstances...)
 	}
 	logger.Infof("Found %d instances across all requested ASGs.", len(allInstanceIDs))
 

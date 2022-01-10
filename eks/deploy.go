@@ -15,12 +15,6 @@ import (
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
-type asgInfo struct {
-	originalCapacity   int64
-	maxSize            int64
-	currentInstanceIDs []string
-}
-
 // RollOutDeployment will perform a zero downtime roll out of the current launch configuration associated with the
 // provided ASG in the provided EKS cluster. This is accomplished by:
 // 1. Double the desired capacity of the Auto Scaling Group that powers the EKS Cluster. This will launch new EKS
