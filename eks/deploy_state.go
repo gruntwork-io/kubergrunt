@@ -16,8 +16,11 @@ import (
 	"time"
 )
 
+// Store the state to current directory by default
 const defaultStateFile = "./.kubergrunt.state"
 
+// DeployState is a basic state machine representing current state of eks deploy subcommand.
+// The entire deploy flow is split into multiple sub-stages and state is persisted after each stage.
 type DeployState struct {
 	GatherASGInfoDone      bool
 	SetMaxCapacityDone     bool
@@ -38,6 +41,7 @@ type DeployState struct {
 	logger *logrus.Entry
 }
 
+// ASG represents the Auto Scaling Group currently being worked on.
 type ASG struct {
 	Name                 string
 	OriginalCapacity     int64
@@ -47,6 +51,8 @@ type ASG struct {
 	NewInstances         []string
 }
 
+// initDeployState initializes DeployState struct by either reading existing state file from disk,
+//or if one doesn't exist, create a new one. Does not persist the state to disk.
 func initDeployState(file string, ignoreExistingFile bool, maxRetries int, sleepBetweenRetries time.Duration) (*DeployState, error) {
 	logger := logging.GetProjectLogger()
 	var deployState *DeployState
@@ -77,6 +83,7 @@ func initDeployState(file string, ignoreExistingFile bool, maxRetries int, sleep
 	return deployState, nil
 }
 
+// persist saves the DeployState struct to disk
 func (state *DeployState) persist() error {
 	file := state.Path
 	state.logger.Debugf("storing state file %s", file)
@@ -94,6 +101,7 @@ func (state *DeployState) persist() error {
 	return nil
 }
 
+// delete deletes the DeployState struct from disk
 func (state *DeployState) delete() error {
 	file := state.Path
 	state.logger.Debugf("Deleting state file %s", file)
@@ -107,6 +115,7 @@ func (state *DeployState) delete() error {
 	return nil
 }
 
+// newDeployState creates an empty DeployState struct
 func newDeployState(path string) *DeployState {
 	return &DeployState{
 		Path: path,
@@ -114,6 +123,9 @@ func newDeployState(path string) *DeployState {
 	}
 }
 
+// gatherASGInfo gathers information about the Auto Scaling group currently being worked on. It ensures
+// that the ASG is fully operational with all requested instances running and saves the original configuration
+// (incl. max size, original capacity, instance IDs, etc.) that will be used in subsequent stages
 func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgNames []string) error {
 	// If we're in the initial state, gather ASG info and wait for capacity
 	if !state.GatherASGInfoDone {
@@ -133,6 +145,7 @@ func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgN
 				state.sleepBetweenRetries,
 				tmpAsgInfo.originalCapacity,
 			)
+			state.maxRetries = maxRetries
 		}
 
 		// Make sure ASG is in steady state
@@ -151,11 +164,12 @@ func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgN
 		}
 
 		state.GatherASGInfoDone = true
-		asgDetails := ASG{}
-		asgDetails.OriginalMaxCapacity = tmpAsgInfo.maxSize
-		asgDetails.Name = eksAsgName
-		asgDetails.OriginalCapacity = tmpAsgInfo.originalCapacity
-		asgDetails.OriginalInstances = tmpAsgInfo.currentInstanceIDs
+		asgDetails := ASG{
+			Name:                eksAsgName,
+			OriginalCapacity:    tmpAsgInfo.originalCapacity,
+			OriginalMaxCapacity: tmpAsgInfo.originalCapacity,
+			OriginalInstances:   tmpAsgInfo.currentInstanceIDs,
+		}
 		state.ASGs = append(state.ASGs, asgDetails)
 		return state.persist()
 	}
@@ -163,6 +177,7 @@ func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgN
 	return nil
 }
 
+// setMaxCapacity will set the max size of the auto scaling group.
 func (state *DeployState) setMaxCapacity(asgSvc *autoscaling.AutoScaling) error {
 	if !state.SetMaxCapacityDone {
 		asg := state.ASGs[0]
@@ -181,6 +196,7 @@ func (state *DeployState) setMaxCapacity(asgSvc *autoscaling.AutoScaling) error 
 	return nil
 }
 
+// scaleUp will scale up the ASG and wait until all the nodes are available.
 func (state *DeployState) scaleUp(asgSvc *autoscaling.AutoScaling) error {
 	if !state.ScaleUpDone {
 		asg := state.ASGs[0]
@@ -201,6 +217,10 @@ func (state *DeployState) scaleUp(asgSvc *autoscaling.AutoScaling) error {
 	return nil
 }
 
+// waitForNodes will wait until all the new nodes are available. Specifically:
+// - Wait for the capacity in the ASG to meet the desired capacity (instances are launched)
+// - Wait for the new instances to be ready in Kubernetes
+// - Wait for the new instances to be registered with external load balancers
 func (state *DeployState) waitForNodes(ec2Svc *ec2.EC2, elbSvc *elb.ELB, elbv2Svc *elbv2.ELBV2, kubectlOptions *kubectl.KubectlOptions) error {
 	if !state.WaitForNodesDone {
 		asg := state.ASGs[0]
@@ -217,6 +237,7 @@ func (state *DeployState) waitForNodes(ec2Svc *ec2.EC2, elbSvc *elb.ELB, elbv2Sv
 	return nil
 }
 
+// cordonNodes will cordon all the original nodes in the ASG so that Kubernetes won't schedule new Pods on them.
 func (state *DeployState) cordonNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.KubectlOptions) error {
 	if !state.CordonNodesDone {
 		asg := state.ASGs[0]
@@ -235,6 +256,7 @@ func (state *DeployState) cordonNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.K
 	return nil
 }
 
+// drainNodes drains all the original nodes in Kubernetes.
 func (state *DeployState) drainNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.KubectlOptions, drainTimeout time.Duration, deleteLocalData bool) error {
 	if !state.DrainNodesDone {
 		asg := state.ASGs[0]
@@ -253,6 +275,7 @@ func (state *DeployState) drainNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.Ku
 	return nil
 }
 
+// detachInstances detaches the original instances from the ASG and auto decrements the ASG desired capacity
 func (state *DeployState) detachInstances(asgSvc *autoscaling.AutoScaling) error {
 	if !state.DetachInstancesDone {
 		asg := state.ASGs[0]
@@ -270,6 +293,7 @@ func (state *DeployState) detachInstances(asgSvc *autoscaling.AutoScaling) error
 	return nil
 }
 
+// terminateInstances terminates the original instances in the ASG.
 func (state *DeployState) terminateInstances(ec2Svc *ec2.EC2) error {
 	if !state.TerminateInstancesDone {
 		asg := state.ASGs[0]
@@ -288,6 +312,7 @@ func (state *DeployState) terminateInstances(ec2Svc *ec2.EC2) error {
 	return nil
 }
 
+// restoreCapacity restores the max size of the ASG to its original value.
 func (state *DeployState) restoreCapacity(asgSvc *autoscaling.AutoScaling) error {
 	if !state.RestoreCapacityDone {
 		asg := state.ASGs[0]

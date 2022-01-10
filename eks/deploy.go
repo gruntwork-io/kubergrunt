@@ -31,7 +31,7 @@ type asgInfo struct {
 //    rescheduled on the new EKS workers.
 // 5. Wait for all the pods to migrate off of the old EKS workers.
 // 6. Set the desired capacity down to the original value and remove the old EKS workers from the ASG.
-// TODO feature request: Break up into stages/checkpoints, and store state along the way so that command can pick up
+// The process is broken up into stages/checkpoints, state is stored along the way so that command can pick up
 // from a stage if something bad happens.
 func RollOutDeployment(
 	region string,
