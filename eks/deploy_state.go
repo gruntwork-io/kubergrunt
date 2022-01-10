@@ -226,6 +226,7 @@ func (state *DeployState) waitForNodes(ec2Svc *ec2.EC2, elbSvc *elb.ELB, elbv2Sv
 		state.logger.Errorf("Either resume with the recovery file or terminate the new instances.")
 		return err
 	}
+	state.logger.Infof("Successfully confirmed new nodes were launched with new launch config on ASG %s", asg.Name)
 	state.WaitForNodesDone = true
 	return state.persist()
 }
