@@ -112,7 +112,8 @@ func RollOutDeployment(
 
 	err = state.delete()
 	if err != nil {
-		logger.Errorf("Error deleting state file %s: %s", stateFile, err.Error())
+		logger.Warnf("Error deleting state file %s: %s", stateFile, err.Error())
+		logger.Warn("Remove the file manually")
 	}
 	logger.Infof("Successfully finished roll out for EKS cluster worker group %s in %s", eksAsgName, region)
 	return nil
