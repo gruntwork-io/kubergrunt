@@ -176,7 +176,7 @@ func (state *DeployState) setMaxCapacity(asgSvc *autoscaling.AutoScaling) error 
 		state.logger.Debug("Max capacity already set - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	maxCapacityForUpdate := asg.OriginalCapacity * 2
 	if asg.OriginalMaxCapacity < maxCapacityForUpdate {
 		err := setAsgMaxSize(asgSvc, asg.Name, maxCapacityForUpdate)
@@ -195,7 +195,7 @@ func (state *DeployState) scaleUp(asgSvc *autoscaling.AutoScaling) error {
 		state.logger.Debug("Scale up already done - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	state.logger.Info("Starting with the following list of instances in ASG:")
 	state.logger.Infof("%s", strings.Join(asg.OriginalInstances, ","))
 
@@ -219,7 +219,7 @@ func (state *DeployState) waitForNodes(ec2Svc *ec2.EC2, elbSvc *elb.ELB, elbv2Sv
 		state.logger.Debug("Wait for nodes already done - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	err := waitAndVerifyNewInstances(ec2Svc, elbSvc, elbv2Svc, asg.NewInstances, kubectlOptions, state.maxRetries, state.sleepBetweenRetries)
 	if err != nil {
 		state.logger.Errorf("Error while waiting for new nodes to be ready.")
@@ -237,7 +237,7 @@ func (state *DeployState) cordonNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.K
 		state.logger.Debug("Nodes already cordoned - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	state.logger.Infof("Cordoning old instances in cluster ASG %s to prevent Pod scheduling", asg.Name)
 	err := cordonNodesInAsg(ec2Svc, kubectlOptions, asg.OriginalInstances)
 	if err != nil {
@@ -256,7 +256,7 @@ func (state *DeployState) drainNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.Ku
 		state.logger.Debug("Nodes already drained - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	state.logger.Infof("Draining Pods on old instances in cluster ASG %s", asg.Name)
 	err := drainNodesInAsg(ec2Svc, kubectlOptions, asg.OriginalInstances, drainTimeout, deleteLocalData)
 	if err != nil {
@@ -275,7 +275,7 @@ func (state *DeployState) detachInstances(asgSvc *autoscaling.AutoScaling) error
 		state.logger.Debug("Instances already detached - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	state.logger.Infof("Removing old nodes from ASG %s: %s", asg.Name, strings.Join(asg.OriginalInstances, ","))
 	err := detachInstances(asgSvc, asg.Name, asg.OriginalInstances)
 	if err != nil {
@@ -293,7 +293,7 @@ func (state *DeployState) terminateInstances(ec2Svc *ec2.EC2) error {
 		state.logger.Debug("Instances already terminated - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	state.logger.Infof("Terminating old nodes: %s", strings.Join(asg.OriginalInstances, ","))
 	err := terminateInstances(ec2Svc, asg.OriginalInstances)
 	if err != nil {
@@ -312,7 +312,7 @@ func (state *DeployState) restoreCapacity(asgSvc *autoscaling.AutoScaling) error
 		state.logger.Debug("Capacity already restored - skipping")
 		return nil
 	}
-	asg := state.ASGs[0]
+	asg := &state.ASGs[0]
 	err := setAsgMaxSize(asgSvc, asg.Name, asg.OriginalMaxCapacity)
 	if err != nil {
 		state.logger.Errorf("Error while restoring ASG %s max size to %v.", asg.Name, asg.OriginalMaxCapacity)
