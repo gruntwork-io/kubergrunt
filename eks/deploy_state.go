@@ -128,6 +128,8 @@ func newDeployState(path string) *DeployState {
 // (incl. max size, original capacity, instance IDs, etc.) that will be used in subsequent stages
 func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgNames []string) error {
 	if state.GatherASGInfoDone {
+		// Even when we've collected the ASG info, we have to ensure max retries is set
+		state.maxRetries = ensureMaxRetries(state.maxRetries, state.sleepBetweenRetries, state.ASGs[0].OriginalCapacity)
 		state.logger.Debug("ASG Info already gathered - skipping")
 		return nil
 	}
@@ -139,16 +141,7 @@ func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgN
 	}
 
 	// Calculate default max retries
-	if state.maxRetries == 0 {
-		maxRetries := getDefaultMaxRetries(asgInfo.OriginalCapacity, state.sleepBetweenRetries)
-		state.logger.Infof(
-			"No max retries set. Defaulted to %d based on sleep between retries duration of %s and scale up count %d.",
-			maxRetries,
-			state.sleepBetweenRetries,
-			asgInfo.OriginalCapacity,
-		)
-		state.maxRetries = maxRetries
-	}
+	state.maxRetries = ensureMaxRetries(state.maxRetries, state.sleepBetweenRetries, asgInfo.OriginalCapacity)
 
 	// Make sure ASG is in steady state
 	if asgInfo.OriginalCapacity != int64(len(asgInfo.OriginalInstances)) {
@@ -168,6 +161,25 @@ func (state *DeployState) gatherASGInfo(asgSvc *autoscaling.AutoScaling, eksAsgN
 	state.GatherASGInfoDone = true
 	state.ASGs = append(state.ASGs, asgInfo)
 	return state.persist()
+}
+
+// ensureMaxRetries ensures we always have a proper value for maxRetries, either set by the end user
+// or calculated based on the original capacity
+func ensureMaxRetries(maxRetries int, sleepBetweenRetries time.Duration, originalCapacity int64) int {
+	logger := logging.GetProjectLogger()
+	// Calculate default max retries
+	if maxRetries == 0 {
+		defaultMaxRetries := getDefaultMaxRetries(originalCapacity, sleepBetweenRetries)
+		logger.Infof(
+			"No max retries set. Defaulted to %d based on sleep between retries duration of %s and scale up count %d.",
+			defaultMaxRetries,
+			sleepBetweenRetries,
+			originalCapacity,
+		)
+		return defaultMaxRetries
+	} else {
+		return maxRetries
+	}
 }
 
 // setMaxCapacity will set the max size of the auto scaling group.
