@@ -22,7 +22,6 @@ func TestParseNonExistingDeployState(t *testing.T) {
 	assert.Equal(t, fileName, state.Path)
 	assert.Equal(t, 3, state.maxRetries)
 	assert.Equal(t, 30*time.Second, state.sleepBetweenRetries)
-	assert.Equal(t, fileName, state.Path)
 
 	assert.False(t, state.SetMaxCapacityDone)
 	assert.False(t, state.TerminateInstancesDone)
