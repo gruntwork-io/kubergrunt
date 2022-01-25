@@ -2,7 +2,6 @@ package eks
 
 import (
 	"math"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/autoscaling"
@@ -16,12 +15,6 @@ import (
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
-type asgInfo struct {
-	originalCapacity   int64
-	maxSize            int64
-	currentInstanceIDs []string
-}
-
 // RollOutDeployment will perform a zero downtime roll out of the current launch configuration associated with the
 // provided ASG in the provided EKS cluster. This is accomplished by:
 // 1. Double the desired capacity of the Auto Scaling Group that powers the EKS Cluster. This will launch new EKS
@@ -32,7 +25,7 @@ type asgInfo struct {
 //    rescheduled on the new EKS workers.
 // 5. Wait for all the pods to migrate off of the old EKS workers.
 // 6. Set the desired capacity down to the original value and remove the old EKS workers from the ASG.
-// TODO feature request: Break up into stages/checkpoints, and store state along the way so that command can pick up
+// The process is broken up into stages/checkpoints, state is stored along the way so that command can pick up
 // from a stage if something bad happens.
 func RollOutDeployment(
 	region string,
@@ -42,6 +35,7 @@ func RollOutDeployment(
 	deleteLocalData bool,
 	maxRetries int,
 	sleepBetweenRetries time.Duration,
+	ignoreRecoveryFile bool,
 ) (returnErr error) {
 	logger := logging.GetProjectLogger()
 	logger.Infof("Beginning roll out for EKS cluster worker group %s in %s", eksAsgName, region)
@@ -57,134 +51,66 @@ func RollOutDeployment(
 	elbv2Svc := elbv2.New(sess)
 	logger.Infof("Successfully authenticated with AWS")
 
-	// Retrieve the ASG object and gather required info we will need later
-	asgInfo, err := getAsgInfo(asgSvc, eksAsgName)
+	stateFile := defaultStateFile
+
+	// Retrieve state if one exists or construct a new one
+	state, err := initDeployState(stateFile, ignoreRecoveryFile, maxRetries, sleepBetweenRetries)
 	if err != nil {
 		return err
 	}
 
-	// Calculate default max retries
-	if maxRetries == 0 {
-		maxRetries = getDefaultMaxRetries(asgInfo.originalCapacity, sleepBetweenRetries)
-		logger.Infof(
-			"No max retries set. Defaulted to %d based on sleep between retries duration of %s and scale up count %d.",
-			maxRetries,
-			sleepBetweenRetries,
-			asgInfo.originalCapacity,
-		)
-	}
-
-	// Make sure ASG is in steady state
-	if asgInfo.originalCapacity != int64(len(asgInfo.currentInstanceIDs)) {
-		logger.Infof("Ensuring ASG is in steady state (current capacity = desired capacity)")
-		err = waitForCapacity(asgSvc, eksAsgName, maxRetries, sleepBetweenRetries)
-		if err != nil {
-			logger.Error("Error waiting for ASG to reach steady state. Try again after the ASG is in a steady state.")
-			return err
-		}
-		logger.Infof("Verified ASG is in steady state (current capacity = desired capacity)")
-		asgInfo, err = getAsgInfo(asgSvc, eksAsgName)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Make sure there is enough max size capacity to scale up
-	maxCapacityForUpdate := asgInfo.originalCapacity * 2
-	if asgInfo.maxSize < maxCapacityForUpdate {
-		// Make sure we attempt to restore the original ASG max size at the end of the function, regardless of error.
-		defer func() {
-			err := setAsgMaxSize(asgSvc, eksAsgName, asgInfo.maxSize)
-			// Only return error from this routine if we are not already bubbling an error back from previous calls in
-			// the function.
-			if err != nil && returnErr == nil {
-				returnErr = err
-			}
-		}()
-
-		// Update the ASG max size to have enough capacity to handle the update.
-		err := setAsgMaxSize(asgSvc, eksAsgName, maxCapacityForUpdate)
-		if err != nil {
-			return err
-		}
-	}
-
-	logger.Infof("Starting with the following list of instances in ASG:")
-	logger.Infof("%s", strings.Join(asgInfo.currentInstanceIDs, ","))
-
-	logger.Infof("Launching new nodes with new launch config on ASG %s", eksAsgName)
-	err = scaleUp(
-		asgSvc,
-		ec2Svc,
-		elbSvc,
-		elbv2Svc,
-		kubectlOptions,
-		eksAsgName,
-		maxCapacityForUpdate,
-		asgInfo.currentInstanceIDs,
-		maxRetries,
-		sleepBetweenRetries,
-	)
+	err = state.gatherASGInfo(asgSvc, []string{eksAsgName})
 	if err != nil {
 		return err
 	}
-	logger.Infof("Successfully launched new nodes with new launch config on ASG %s", eksAsgName)
 
-	logger.Infof("Cordoning old instances in cluster ASG %s to prevent Pod scheduling", eksAsgName)
-	err = cordonNodesInAsg(ec2Svc, kubectlOptions, asgInfo.currentInstanceIDs)
+	err = state.setMaxCapacity(asgSvc)
 	if err != nil {
-		logger.Errorf("Error while cordoning nodes.")
-		logger.Errorf("Continue to cordon nodes that failed manually, and then terminate the underlying instances to complete the rollout.")
 		return err
 	}
-	logger.Infof("Successfully cordoned old instances in cluster ASG %s", eksAsgName)
 
-	logger.Infof("Draining Pods on old instances in cluster ASG %s", eksAsgName)
-	err = drainNodesInAsg(ec2Svc, kubectlOptions, asgInfo.currentInstanceIDs, drainTimeout, deleteLocalData)
+	err = state.scaleUp(asgSvc)
 	if err != nil {
-		logger.Errorf("Error while draining nodes.")
-		logger.Errorf("Continue to drain nodes that failed manually, and then terminate the underlying instances to complete the rollout.")
 		return err
 	}
-	logger.Infof("Successfully drained all scheduled Pods on old instances in cluster ASG %s", eksAsgName)
 
-	logger.Infof("Removing old nodes from ASG %s", eksAsgName)
-	err = detachInstances(asgSvc, eksAsgName, asgInfo.currentInstanceIDs)
+	err = state.waitForNodes(ec2Svc, elbSvc, elbv2Svc, kubectlOptions)
 	if err != nil {
-		logger.Errorf("Error while detaching the old instances.")
-		logger.Errorf("Continue to detach the old instances and then terminate the underlying instances to complete the rollout.")
 		return err
 	}
-	err = terminateInstances(ec2Svc, asgInfo.currentInstanceIDs)
+
+	err = state.cordonNodes(ec2Svc, kubectlOptions)
 	if err != nil {
-		logger.Errorf("Error while terminating the old instances.")
-		logger.Errorf("Continue to terminate the underlying instances to complete the rollout.")
 		return err
 	}
-	logger.Infof("Successfully removed old nodes from ASG %s", eksAsgName)
 
+	err = state.drainNodes(ec2Svc, kubectlOptions, drainTimeout, deleteLocalData)
+	if err != nil {
+		return err
+	}
+
+	err = state.detachInstances(asgSvc)
+	if err != nil {
+		return err
+	}
+
+	err = state.terminateInstances(ec2Svc)
+	if err != nil {
+		return err
+	}
+
+	err = state.restoreCapacity(asgSvc)
+	if err != nil {
+		return err
+	}
+
+	err = state.delete()
+	if err != nil {
+		logger.Warnf("Error deleting state file %s: %s", stateFile, err.Error())
+		logger.Warn("Remove the file manually")
+	}
 	logger.Infof("Successfully finished roll out for EKS cluster worker group %s in %s", eksAsgName, region)
 	return nil
-}
-
-// Retrieves current state of the ASG and returns the original Capacity and the IDs of the instances currently
-// associated with it.
-func getAsgInfo(asgSvc *autoscaling.AutoScaling, asgName string) (asgInfo, error) {
-	logger := logging.GetProjectLogger()
-	logger.Infof("Retrieving current ASG info")
-	asg, err := GetAsgByName(asgSvc, asgName)
-	if err != nil {
-		return asgInfo{}, err
-	}
-	originalCapacity := *asg.DesiredCapacity
-	maxSize := *asg.MaxSize
-	currentInstances := asg.Instances
-	currentInstanceIDs := idsFromAsgInstances(currentInstances)
-	logger.Infof("Successfully retrieved current ASG info.")
-	logger.Infof("\tCurrent desired capacity: %d", originalCapacity)
-	logger.Infof("\tCurrent max size: %d", maxSize)
-	logger.Infof("\tCurrent capacity: %d", len(currentInstances))
-	return asgInfo{originalCapacity: originalCapacity, maxSize: maxSize, currentInstanceIDs: currentInstanceIDs}, nil
 }
 
 // Calculates the default max retries based on a heuristic of 5 minutes per wave. This assumes that the ASG scales up in
