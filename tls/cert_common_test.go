@@ -60,7 +60,7 @@ func TestCreateCertificateCreatesWithConfiguredMetadata(t *testing.T) {
 
 	// openssl text output will encode the distinguished name in the following format
 	distinguishedNameString := fmt.Sprintf(
-		"C=%s, ST=%s, L=%s, O=%s, OU=%s, CN=%s",
+		"C = %s, ST = %s, L = %s, O = %s, OU = %s, CN = %s",
 		distinguishedName.Country[0],
 		distinguishedName.Province[0],
 		distinguishedName.Locality[0],
