@@ -3,16 +3,16 @@ defaults: &defaults
     enabled: true
     image: ubuntu-2004:202111-02
   environment:
-    GRUNTWORK_INSTALLER_VERSION: v0.0.35
-    TERRATEST_LOG_PARSER_VERSION: v0.37.12
-    MODULE_CI_VERSION: v0.33.1
-    TERRAFORM_VERSION: 0.14.9
+    GRUNTWORK_INSTALLER_VERSION: v0.0.38
+    TERRATEST_LOG_PARSER_VERSION: v0.40.6
+    MODULE_CI_VERSION: v0.47.1
+    TERRAFORM_VERSION: 1.1.7
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
     GOLANG_VERSION: 1.16
     GO111MODULE: auto
     KUBECTL_VERSION: v1.17.12
-    MINIKUBE_VERSION: v1.11.0
+    MINIKUBE_VERSION: v1.22.0
     KUBECONFIG: /home/circleci/.kube/config
 install_gruntwork_utils: &install_gruntwork_utils
   name: install gruntwork utils
@@ -22,6 +22,7 @@ install_gruntwork_utils: &install_gruntwork_utils
     gruntwork-install --module-name "kubernetes-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
     gruntwork-install --binary-name "terratest_log_parser" --repo "https://github.com/gruntwork-io/terratest" --tag "${TERRATEST_LOG_PARSER_VERSION}"
     configure-environment-for-gruntwork-module \
+      --tfenv-version NONE \
       --terraform-version ${TERRAFORM_VERSION} \
       --terragrunt-version ${TERRAGRUNT_VERSION} \
       --packer-version ${PACKER_VERSION} \
