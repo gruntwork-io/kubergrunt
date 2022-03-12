@@ -28,7 +28,10 @@ func TestGetIngressEReturnsCorrectIngressInCorrectNamespace(t *testing.T) {
 
 	uniqueID := strings.ToLower(random.UniqueId())
 	ttKubectlOptions := k8s.NewKubectlOptions("", "", uniqueID)
-	configData := fmt.Sprintf(EXAMPLE_INGRESS_DEPLOYMENT_YAML_TEMPLATE, uniqueID, uniqueID, uniqueID, uniqueID)
+	configData := fmt.Sprintf(
+		exampleIngressDeploymentYAMLTemplate,
+		uniqueID, uniqueID, uniqueID, uniqueID, uniqueID,
+	)
 	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
 	k8s.KubectlApplyFromString(t, ttKubectlOptions, configData)
 
@@ -47,7 +50,10 @@ func TestWaitUntilIngressAvailableReturnsSuccessfully(t *testing.T) {
 
 	uniqueID := strings.ToLower(random.UniqueId())
 	ttKubectlOptions := k8s.NewKubectlOptions("", "", uniqueID)
-	configData := fmt.Sprintf(EXAMPLE_INGRESS_DEPLOYMENT_YAML_TEMPLATE, uniqueID, uniqueID, uniqueID, uniqueID)
+	configData := fmt.Sprintf(
+		exampleIngressDeploymentYAMLTemplate,
+		uniqueID, uniqueID, uniqueID, uniqueID, uniqueID,
+	)
 	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
 	k8s.KubectlApplyFromString(t, ttKubectlOptions, configData)
 
@@ -59,7 +65,7 @@ func TestWaitUntilIngressAvailableReturnsSuccessfully(t *testing.T) {
 	require.NoError(t, err)
 }
 
-const EXAMPLE_INGRESS_DEPLOYMENT_YAML_TEMPLATE = `---
+const exampleIngressDeploymentYAMLTemplate = `---
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -109,7 +115,7 @@ spec:
   rules:
   - http:
       paths:
-      - path: /app
+      - path: /app%s
         backend:
           serviceName: nginx-service
           servicePort: 80
