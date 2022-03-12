@@ -1,7 +1,7 @@
 defaults: &defaults
   machine:
     enabled: true
-    image: "ubuntu-1604:201903-01"
+    image: ubuntu-2004:202111-02
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.35
     TERRATEST_LOG_PARSER_VERSION: v0.37.12
