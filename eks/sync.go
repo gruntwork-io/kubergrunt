@@ -497,14 +497,7 @@ func getCorednsClusterRole(clientset *kubernetes.Clientset) (*rbacv1.ClusterRole
 // getBaseURLForVPCCNIManifest returns the base github URL where the manifest for the VPC CNI is located given the
 // requested version.
 func getBaseURLForVPCCNIManifest(vpcCNIVersion string) (string, error) {
-	// Extract the major and minor version of the VPC CNI version as it is needed to construct the URL for the
-	// deployment config.
-	parsedVPCCNIVersion, err := semver.Make(vpcCNIVersion)
-	if err != nil {
-		return "", err
-	}
-	majorMinorVPCCNIVersion := fmt.Sprintf("%d.%d", parsedVPCCNIVersion.Major, parsedVPCCNIVersion.Minor)
-	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/v%s/", vpcCNIVersion, majorMinorVPCCNIVersion)
+	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/master/", vpcCNIVersion)
 	return baseURL, nil
 }
 
