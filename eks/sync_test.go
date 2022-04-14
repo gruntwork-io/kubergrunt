@@ -204,7 +204,7 @@ func TestFindLatestEKSBuild(t *testing.T) {
 		expectedVersion string
 	}{
 		{"1.20", "us-east-1", "1.20.4-eksbuild.2"},
-		{"1.19", "us-east-1", "1.19.6-eksbuild.1"},
+		{"1.22", "us-east-1", "1.22.6-eksbuild.1"},
 	}
 
 	for _, tc := range testCase {
