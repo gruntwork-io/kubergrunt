@@ -39,36 +39,30 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.21", "1.20", "1.19", "1.18", "1.17", "1.16"}
+	supportedVersions = []string{"1.22", "1.21", "1.20", "1.19"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.22": "1.8.7-eksbuild",
 		"1.21": "1.8.4-eksbuild",
 		"1.20": "1.8.3-eksbuild",
 		"1.19": "1.8.0-eksbuild",
-		"1.18": "1.7.0-eksbuild",
-		"1.17": "1.6.6-eksbuild",
-		"1.16": "1.6.6-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.22": "1.22.6-eksbuild",
 		"1.21": "1.21.2-eksbuild",
 		"1.20": "1.20.4-eksbuild",
 		"1.19": "1.19.6-eksbuild",
-		"1.18": "1.18.8-eksbuild",
-		"1.17": "1.17.9-eksbuild",
-		"1.16": "1.16.13-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.21": "1.9.0",
-		"1.20": "1.9.0",
-		"1.19": "1.9.0",
-		"1.18": "1.9.0",
-		"1.17": "1.9.0",
-		"1.16": "1.9.0",
+		"1.22": "1.10.2",
+		"1.21": "1.10.2",
+		"1.20": "1.10.2",
+		"1.19": "1.10.2",
 	}
 
 	defaultContainerImageAccount = "602401143452"
@@ -503,14 +497,7 @@ func getCorednsClusterRole(clientset *kubernetes.Clientset) (*rbacv1.ClusterRole
 // getBaseURLForVPCCNIManifest returns the base github URL where the manifest for the VPC CNI is located given the
 // requested version.
 func getBaseURLForVPCCNIManifest(vpcCNIVersion string) (string, error) {
-	// Extract the major and minor version of the VPC CNI version as it is needed to construct the URL for the
-	// deployment config.
-	parsedVPCCNIVersion, err := semver.Make(vpcCNIVersion)
-	if err != nil {
-		return "", err
-	}
-	majorMinorVPCCNIVersion := fmt.Sprintf("%d.%d", parsedVPCCNIVersion.Major, parsedVPCCNIVersion.Minor)
-	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/v%s/", vpcCNIVersion, majorMinorVPCCNIVersion)
+	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/master/", vpcCNIVersion)
 	return baseURL, nil
 }
 

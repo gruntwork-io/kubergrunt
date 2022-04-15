@@ -32,14 +32,6 @@ func TestGetEKSContainerImageURL(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestGetBaseURLForVPCCNIManifest(t *testing.T) {
-	t.Parallel()
-	expected := "https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v1.7.5/config/v1.7/"
-	actual, err := getBaseURLForVPCCNIManifest("1.7.5")
-	require.NoError(t, err)
-	assert.Equal(t, expected, actual)
-}
-
 func TestDownloadVPCCNIManifestAndUpdateRegion(t *testing.T) {
 	t.Parallel()
 
@@ -204,7 +196,7 @@ func TestFindLatestEKSBuild(t *testing.T) {
 		expectedVersion string
 	}{
 		{"1.20", "us-east-1", "1.20.4-eksbuild.2"},
-		{"1.16", "us-east-1", "1.16.13-eksbuild.1"},
+		{"1.22", "us-east-1", "1.22.6-eksbuild.1"},
 	}
 
 	for _, tc := range testCase {
