@@ -49,7 +49,7 @@ resource "aws_network_interface" "allow_tls" {
 }
 
 locals {
-  first_subnet = sort(tolist(data.aws_subnet_ids.default.ids))[0]
+  first_subnet = sort(tolist(data.aws_subnets.default.ids))[0]
 }
 
 
@@ -61,6 +61,9 @@ data "aws_vpc" "default" {
   default = true
 }
 
-data "aws_subnet_ids" "default" {
-  vpc_id = data.aws_vpc.default.id
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
 }
