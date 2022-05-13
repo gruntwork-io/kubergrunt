@@ -105,14 +105,14 @@ func filterNodesByID(nodes []corev1.Node, nodeIds []string) []corev1.Node {
 // See
 // https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/#use-kubectl-drain-to-remove-a-node-from-service
 // for more information.
-func DrainNodes(kubectlOptions *KubectlOptions, nodeIds []string, timeout time.Duration, deleteLocalData bool) error {
+func DrainNodes(kubectlOptions *KubectlOptions, nodeIds []string, timeout time.Duration, deleteEmptyDirData bool) error {
 	// Concurrently trigger drain events for all requested nodes.
 	var wg sync.WaitGroup // So that we can wait for all the drain calls
 	errChans := []chan NodeDrainError{}
 	for _, nodeID := range nodeIds {
 		wg.Add(1)
 		errChannel := make(chan NodeDrainError, 1)
-		go drainNode(&wg, errChannel, kubectlOptions, nodeID, timeout, deleteLocalData)
+		go drainNode(&wg, errChannel, kubectlOptions, nodeID, timeout, deleteEmptyDirData)
 		errChans = append(errChans, errChannel)
 	}
 	wg.Wait()
@@ -133,15 +133,15 @@ func drainNode(
 	kubectlOptions *KubectlOptions,
 	nodeID string,
 	timeout time.Duration,
-	deleteLocalData bool,
+	deleteEmptyDirData bool,
 ) {
 	defer wg.Done()
 	defer close(errChannel)
 
 	args := []string{"drain", nodeID, "--ignore-daemonsets", "--timeout", timeout.String()}
 
-	if deleteLocalData {
-		args = append(args, "--delete-local-data")
+	if deleteEmptyDirData {
+		args = append(args, "--delete-emptydir-data")
 	}
 
 	err := RunKubectl(kubectlOptions, args...)

@@ -263,14 +263,14 @@ func (state *DeployState) cordonNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.K
 }
 
 // drainNodes drains all the original nodes in Kubernetes.
-func (state *DeployState) drainNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.KubectlOptions, drainTimeout time.Duration, deleteLocalData bool) error {
+func (state *DeployState) drainNodes(ec2Svc *ec2.EC2, kubectlOptions *kubectl.KubectlOptions, drainTimeout time.Duration, deleteEmptyDirData bool) error {
 	if state.DrainNodesDone {
 		state.logger.Debug("Nodes already drained - skipping")
 		return nil
 	}
 	asg := &state.ASGs[0]
 	state.logger.Infof("Draining Pods on old instances in cluster ASG %s", asg.Name)
-	err := drainNodesInAsg(ec2Svc, kubectlOptions, asg.OriginalInstances, drainTimeout, deleteLocalData)
+	err := drainNodesInAsg(ec2Svc, kubectlOptions, asg.OriginalInstances, drainTimeout, deleteEmptyDirData)
 	if err != nil {
 		state.logger.Errorf("Error while draining nodes.")
 		state.logger.Errorf("Either resume with the recovery file or continue to drain nodes that failed manually, and then terminate the underlying instances to complete the rollout.")

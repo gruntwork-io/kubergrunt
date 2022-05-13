@@ -17,7 +17,7 @@ func DrainASG(
 	asgNames []string,
 	kubectlOptions *kubectl.KubectlOptions,
 	drainTimeout time.Duration,
-	deleteLocalData bool,
+	deleteEmptyDirData bool,
 ) error {
 	logger := logging.GetProjectLogger()
 	logger.Infof("All instances in the following worker groups will be drained:")
@@ -54,7 +54,7 @@ func DrainASG(
 
 	// Now drain the pods from all the instances.
 	logger.Info("Draining Pods scheduled on instances in requested ASGs.")
-	if err := drainNodesInAsg(ec2Svc, kubectlOptions, allInstanceIDs, drainTimeout, deleteLocalData); err != nil {
+	if err := drainNodesInAsg(ec2Svc, kubectlOptions, allInstanceIDs, drainTimeout, deleteEmptyDirData); err != nil {
 		return err
 	}
 	logger.Info("Successfully drained pods from all instances in requested ASGs.")
