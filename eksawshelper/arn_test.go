@@ -17,6 +17,7 @@ func TestGetClusterNameFromArn(t *testing.T) {
 		{"arn:aws:eks:us-east-2:111111111111:cluster/eks-cluster/srlBd2", "eks-cluster/srlBd2"},
 	}
 	for _, testcase := range testCases {
+		testcase := testcase
 		t.Run(testcase.out, func(t *testing.T) {
 			t.Parallel()
 
@@ -36,6 +37,7 @@ func TestGetClusterNameFromArnErrorCases(t *testing.T) {
 		"aws:eks:us-east-2:111111111111:cluster/eks-cluster/srlBd2",
 	}
 	for _, testcase := range testCases {
+		testcase := testcase
 		t.Run(testcase, func(t *testing.T) {
 			t.Parallel()
 
@@ -58,6 +60,7 @@ func TestGetRegionFromArn(t *testing.T) {
 		{"arn:aws:eks::111111111111:cluster/eks-cluster/srlBd2", ""},
 	}
 	for _, testcase := range testCases {
+		testcase := testcase
 		t.Run(testcase.out, func(t *testing.T) {
 			t.Parallel()
 
@@ -77,6 +80,7 @@ func TestGetRegionFromArnErrorCases(t *testing.T) {
 		"aws:eks:us-east-2:111111111111:cluster/eks-cluster/srlBd2",
 	}
 	for _, testcase := range testCases {
+		testcase := testcase
 		t.Run(testcase, func(t *testing.T) {
 			t.Parallel()
 
