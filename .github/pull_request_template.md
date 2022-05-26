@@ -1,48 +1,25 @@
-<!--
-  Have any questions? Check out the contributing docs at https://docs.gruntwork.io/guides/contributing/, or
-  ask in this Pull Request and a Gruntwork core maintainer will be happy to help :)
-  Note: Remember to add '[WIP]' to the beginning of the title if this PR is still a work-in-progress.
--->
+<!-- Prepend '[WIP]' to the title if this PR is still a work-in-progress. Remove it when it is ready for review! -->
 
 ## Description
 
-<!-- Write a brief description of the changes introduced by this PR -->
+Fixes #000.
 
-### Documentation
-
-<!--
-  If this is a feature PR, then where is it documented?
-
-  - If docs exist:
-    - Update any references, if relevant.
-  - If no docs exist:
-    - Create a stub for documentation including bullet points for how to use the feature, code snippets (including from happy path tests), etc.
--->
-
-<!-- Important: Did you make any backwards incompatible changes? If yes, then you must write a migration guide! -->
+<!-- Description of the changes introduced by this PR. -->
 
 ## TODOs
 
-- [ ] Ensure the branch is named correctly with the issue number. e.g: `feature/new-vpc-endpoints-955` or `bug/missing-count-param-434`.
+Read the [Gruntwork contribution guidelines](https://gruntwork.notion.site/Gruntwork-Coding-Methodology-02fdcd6e4b004e818553684760bf691e).
+
 - [ ] Update the docs.
-- [ ] Keep the changes backwards compatible where possible.
-- [ ] Run the pre-commit checks successfully.
-- [ ] Run the relevant tests successfully.
-- [ ] Ensure any 3rd party code adheres with our license policy: https://www.notion.so/gruntwork/Gruntwork-licenses-and-open-source-usage-policy-f7dece1f780341c7b69c1763f22b1378
-- [ ] _Maintainers Only._ If necessary, release a new version of this repo.
-- [ ] _Maintainers Only._ If there were backwards incompatible changes, include a migration guide in the release notes.
-- [ ] _Maintainers Only._ Add to the next version of the monthly newsletter (see https://www.notion.so/gruntwork/Monthly-Newsletter-9198cbe7f8914d4abce23dca7b435f43).
+- [ ] Run the relevant tests successfully, including pre-commit checks.
+- [ ] Ensure any 3rd party code adheres with our [license policy](https://www.notion.so/gruntwork/Gruntwork-licenses-and-open-source-usage-policy-f7dece1f780341c7b69c1763f22b1378) or delete this line if its not applicable.
+- [ ] Include release notes. If this PR is backward incompatible, include a migration guide.
 
+## Release Notes (draft)
 
-## Related Issues
+<!-- One-line description of the PR that can be included in the final release notes. -->
+Added / Removed / Updated [X].
 
-<!--
-  Link to the issue that is fixed by this PR (if there is one)
-  e.g. Fixes #1234
+### Migration Guide
 
-  Link to an issue that is partially addressed by this PR (if there are any)
-  e.g. Addresses #1234
-
-  Link to related issues (if there are any)
-  e.g. Related to #1234
--->
+<!-- Important: If you made any backward incompatible changes, then you must write a migration guide! -->
