@@ -39,6 +39,9 @@ jobs:
       - run:
           command: |
             cd /home/circleci
+
+            sudo apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y conntrack
             setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}"
       - run:
           name: run kubergrunt tests
