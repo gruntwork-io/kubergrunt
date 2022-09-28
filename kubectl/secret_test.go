@@ -180,7 +180,7 @@ func TestListSecretsShowsSecretInNamespace(t *testing.T) {
 	require.Equal(t, len(secrets), 2)
 	found := false
 	for _, secret := range secrets {
-		if secret.Name == fmt.Sprintf("%s-master-password", namespace) {
+		if secret.Name == fmt.Sprintf("%s-root-password", namespace) {
 			found = true
 		}
 	}
@@ -196,7 +196,7 @@ func TestGetSecretGetsSecretByName(t *testing.T) {
 	configData := createSecret(t, ttKubectlOptions, namespace)
 	defer k8s.KubectlDeleteFromString(t, ttKubectlOptions, configData)
 
-	secretName := fmt.Sprintf("%s-master-password", namespace)
+	secretName := fmt.Sprintf("%s-root-password", namespace)
 	secret, err := GetSecret(kubectlOptions, namespace, secretName)
 	require.NoError(t, err)
 	assert.Equal(t, secret.Name, secretName)
@@ -250,7 +250,7 @@ func TestDeleteSecret(t *testing.T) {
 	configData := createSecret(t, ttKubectlOptions, namespace)
 	// We use the E version, because this is expected to error out since the secret is removed.
 	defer k8s.KubectlDeleteFromStringE(t, ttKubectlOptions, configData)
-	secretName := fmt.Sprintf("%s-master-password", namespace)
+	secretName := fmt.Sprintf("%s-root-password", namespace)
 
 	// Make sure the secret was created
 	ttKubectlOptions.Namespace = namespace
@@ -289,6 +289,6 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: %s-master-password
+  name: %s-root-password
   namespace: %s
 `
