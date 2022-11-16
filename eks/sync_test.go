@@ -187,58 +187,39 @@ func TestRemoveUpstreamKeywordFromCorednsConfigMap(t *testing.T) {
 	assert.Equal(t, expectedSampleConfigData, testConfigMapUpdated.Data[corednsConfigMapConfigKey])
 }
 
-func TestFindLatestEKSBuild(t *testing.T) {
+func TestFindLatestEKSBuilds(t *testing.T) {
 	t.Parallel()
 
 	testCase := []struct {
+		lookupTable     map[string]string
+		repoPath        string
 		k8sVersion      string
 		region          string
 		expectedVersion string
 	}{
-		{"1.20", "us-east-1", "1.20.15-eksbuild.2"},
-		{"1.22", "us-east-1", "1.22.11-eksbuild.2"},
-		{"1.23", "us-east-1", "1.23.7-minimal-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.24", "us-east-1", "1.8.7-eksbuild.3"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.23", "us-east-1", "1.8.7-eksbuild.3"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.22", "us-east-1", "1.8.7"},
+		{amazonVPCCNIVersionLookupTable, vpcCniRepoPath, "1.24", "us-east-1", "1.11.4-eksbuild.2"},
+		{amazonVPCCNIVersionLookupTable, vpcCniRepoPath, "1.23", "us-east-1", "1.11.4-eksbuild.2"},
+		{amazonVPCCNIVersionLookupTable, vpcCniRepoPath, "1.22", "us-east-1", "1.11.4-eksbuild.2"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.24", "us-east-1", "1.24.7-minimal-eksbuild.2"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.23", "us-east-1", "1.23.8-minimal-eksbuild.2"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.22", "us-east-1", "1.22.11-minimal-eksbuild.2"},
 	}
 
 	for _, tc := range testCase {
 		tc := tc
-		t.Run(tc.k8sVersion, func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s-%s", tc.repoPath, tc.k8sVersion), func(t *testing.T) {
 			t.Parallel()
 
 			repoDomain := getRepoDomain(tc.region)
 			dockerToken, err := eksawshelper.GetDockerLoginToken(tc.region)
 			require.NoError(t, err)
 
-			kubeProxyVersion, err := findLatestEKSBuild(dockerToken, repoDomain, kubeProxyRepoPath, kubeProxyVersionLookupTable[tc.k8sVersion])
+			appVersion, err := findLatestEKSBuild(dockerToken, repoDomain, tc.repoPath, tc.lookupTable[tc.k8sVersion])
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedVersion, kubeProxyVersion)
-		})
-	}
-}
-
-func TestFindLatestEKSBuildPetri(t *testing.T) {
-	t.Parallel()
-
-	testCase := []struct {
-		k8sVersion      string
-		region          string
-		expectedVersion string
-	}{
-		{"1.23", "us-east-1", "1.8.7-eksbuild.3"},
-	}
-
-	for _, tc := range testCase {
-		tc := tc
-		t.Run(tc.k8sVersion, func(t *testing.T) {
-			t.Parallel()
-
-			repoDomain := getRepoDomain(tc.region)
-			dockerToken, err := eksawshelper.GetDockerLoginToken(tc.region)
-			require.NoError(t, err)
-
-			coreDNSVersion, err := findLatestEKSBuild(dockerToken, repoDomain, coreDNSRepoPath, coreDNSVersionLookupTable[tc.k8sVersion])
-			require.NoError(t, err)
-			assert.Equal(t, tc.expectedVersion, coreDNSVersion)
+			assert.Equal(t, tc.expectedVersion, appVersion)
 		})
 	}
 }

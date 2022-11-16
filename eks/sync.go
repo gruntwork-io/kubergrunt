@@ -32,6 +32,7 @@ import (
 const (
 	kubeProxyRepoPath = "eks/kube-proxy"
 	coreDNSRepoPath   = "eks/coredns"
+	vpcCniRepoPath    = "amazon-k8s-cni"
 
 	// Largest eksbuild tag we will try looking for.
 	maxEKSBuild = 10
@@ -39,30 +40,30 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.23", "1.22", "1.21", "1.20"}
+	supportedVersions = []string{"1.24", "1.23", "1.22", "1.21"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.24": "1.8.7-eksbuild",
 		"1.23": "1.8.7-eksbuild",
-		"1.22": "1.8.7-eksbuild",
-		"1.21": "1.8.4-eksbuild",
-		"1.20": "1.8.3-eksbuild",
+		"1.22": "1.8.7",
+		"1.21": "1.8.4",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
-		"1.23": "1.23.7-minimal-eksbuild",
-		"1.22": "1.22.11-eksbuild",
-		"1.21": "1.21.14-eksbuild",
-		"1.20": "1.20.15-eksbuild",
+		"1.24": "1.24.7-minimal-eksbuild",
+		"1.23": "1.23.8-minimal-eksbuild",
+		"1.22": "1.22.11-minimal-eksbuild",
+		"1.21": "1.21.14-minimal-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.23": "1.11.3",
-		"1.22": "1.11.3",
-		"1.21": "1.11.3",
-		"1.20": "1.11.3",
+		"1.24": "1.11.4-eksbuild",
+		"1.23": "1.11.4-eksbuild",
+		"1.22": "1.11.4-eksbuild",
+		"1.21": "1.11.4-eksbuild",
 	}
 
 	defaultContainerImageAccount = "602401143452"
@@ -156,7 +157,10 @@ func SyncClusterComponents(
 		return err
 	}
 
-	amznVPCCNIVersion := amazonVPCCNIVersionLookupTable[k8sVersion]
+	amznVPCCNIVersion, err := findLatestEKSBuild(dockerToken, repoDomain, vpcCniRepoPath, amazonVPCCNIVersionLookupTable[k8sVersion])
+	if err != nil {
+		return err
+	}
 
 	logger.Info("Syncing Kubernetes Applications to:")
 	if !skipConfig.KubeProxy {
@@ -616,6 +620,11 @@ func removeUpstreamKeywordFromCorednsConfigMap(clientset *kubernetes.Clientset, 
 func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, error) {
 	logger := logging.GetProjectLogger()
 	logger.Debugf("Looking up latest eksbuild for repo %s/%s", repoDomain, repoPath)
+
+	if !strings.Contains(tagBase, "eksbuild") {
+		logger.Debugf("Not an eksbuild for repo %s/%s, returning %s", repoDomain, repoPath, tagBase)
+		return tagBase, nil
+	}
 
 	var existingTag string
 	for i := 0; i < maxEKSBuild; i++ {
