@@ -216,6 +216,33 @@ func TestFindLatestEKSBuild(t *testing.T) {
 	}
 }
 
+func TestFindLatestEKSBuildPetri(t *testing.T) {
+	t.Parallel()
+
+	testCase := []struct {
+		k8sVersion      string
+		region          string
+		expectedVersion string
+	}{
+		{"1.23", "us-east-1", "1.8.7-eksbuild.3"},
+	}
+
+	for _, tc := range testCase {
+		tc := tc
+		t.Run(tc.k8sVersion, func(t *testing.T) {
+			t.Parallel()
+
+			repoDomain := getRepoDomain(tc.region)
+			dockerToken, err := eksawshelper.GetDockerLoginToken(tc.region)
+			require.NoError(t, err)
+
+			coreDNSVersion, err := findLatestEKSBuild(dockerToken, repoDomain, coreDNSRepoPath, coreDNSVersionLookupTable[tc.k8sVersion])
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedVersion, coreDNSVersion)
+		})
+	}
+}
+
 const sampleConfigData = `.:53 {
     errors
     health
