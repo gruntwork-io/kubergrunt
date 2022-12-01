@@ -32,7 +32,6 @@ import (
 const (
 	kubeProxyRepoPath = "eks/kube-proxy"
 	coreDNSRepoPath   = "eks/coredns"
-	vpcCniRepoPath    = "amazon-k8s-cni"
 
 	// Largest eksbuild tag we will try looking for.
 	maxEKSBuild = 10
@@ -60,10 +59,10 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.24": "1.11.4-eksbuild",
-		"1.23": "1.11.4-eksbuild",
-		"1.22": "1.11.4-eksbuild",
-		"1.21": "1.11.4-eksbuild",
+		"1.24": "1.11.4",
+		"1.23": "1.11.4",
+		"1.22": "1.11.4",
+		"1.21": "1.11.4",
 	}
 
 	defaultContainerImageAccount = "602401143452"
@@ -157,10 +156,7 @@ func SyncClusterComponents(
 		return err
 	}
 
-	amznVPCCNIVersion, err := findLatestEKSBuild(dockerToken, repoDomain, vpcCniRepoPath, amazonVPCCNIVersionLookupTable[k8sVersion])
-	if err != nil {
-		return err
-	}
+	amznVPCCNIVersion := amazonVPCCNIVersionLookupTable[k8sVersion]
 
 	logger.Info("Syncing Kubernetes Applications to:")
 	if !skipConfig.KubeProxy {
