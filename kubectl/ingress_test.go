@@ -119,7 +119,7 @@ spec:
 		pathType: Prefix
         backend:
           service:
-			name: nginx-service
-          	port: 
-			  number: 80
+            name: nginx-service
+            port: 
+              number: 80
 `
