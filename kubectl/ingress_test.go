@@ -116,7 +116,10 @@ spec:
   - http:
       paths:
       - path: /app%s
+		pathType: Prefix
         backend:
-          serviceName: nginx-service
-          servicePort: 80
+          service:
+			name: nginx-service
+          	port: 
+			  number: 80
 `
