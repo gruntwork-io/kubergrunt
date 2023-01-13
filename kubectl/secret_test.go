@@ -176,8 +176,9 @@ func TestListSecretsShowsSecretInNamespace(t *testing.T) {
 
 	secrets, err := ListSecrets(kubectlOptions, namespace, metav1.ListOptions{})
 	require.NoError(t, err)
-	// There is a default service account created in the namespace with a secret token, so there are two
-	require.Equal(t, len(secrets), 2)
+	// Previously there was a default service account created in the namespace with a secret token, so there were two secrets
+	// Since 1.24 default SA token secrets are no longer automatically created
+	require.Equal(t, len(secrets), 1)
 	found := false
 	for _, secret := range secrets {
 		if secret.Name == fmt.Sprintf("%s-root-password", namespace) {

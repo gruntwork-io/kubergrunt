@@ -107,7 +107,7 @@ spec:
   type: NodePort
 ---
 kind: Ingress
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 metadata:
   name: nginx-service-ingress
   namespace: %s
