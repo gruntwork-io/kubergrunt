@@ -116,7 +116,7 @@ spec:
   - http:
       paths:
       - path: /app%s
-		pathType: Prefix
+        pathType: Prefix
         backend:
           service:
             name: nginx-service
