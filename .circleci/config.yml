@@ -5,14 +5,15 @@ defaults: &defaults
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.38
     TERRATEST_LOG_PARSER_VERSION: v0.40.6
-    MODULE_CI_VERSION: v0.47.1
-    TERRAFORM_VERSION: 1.1.7
+    MODULE_CI_VERSION: v0.51.0
+    TERRAFORM_VERSION: 1.2.7
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
-    GOLANG_VERSION: 1.17
+    GOLANG_VERSION: 1.18
     GO111MODULE: auto
-    KUBECTL_VERSION: v1.17.12
-    MINIKUBE_VERSION: v1.22.0
+    KUBECTL_VERSION: v1.24.8
+    MINIKUBE_VERSION: v1.28.0
+    CRI_DOCKERD_VERSION: 0.3.0
     KUBECONFIG: /home/circleci/.kube/config
 install_gruntwork_utils: &install_gruntwork_utils
   name: install gruntwork utils
@@ -39,7 +40,9 @@ jobs:
       - run:
           command: |
             cd /home/circleci
-            setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}"
+            sudo apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y conntrack wget
+            setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}" --cri-dockerd-version "${CRI_DOCKERD_VERSION}"
       - run:
           name: run kubergrunt tests
           command: |
