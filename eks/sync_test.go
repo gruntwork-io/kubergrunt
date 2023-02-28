@@ -197,11 +197,11 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		region          string
 		expectedVersion string
 	}{
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.25", "us-east-1", "v1.9.3-eksbuild.2"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.24", "us-east-1", "1.8.7-eksbuild.3"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.23", "us-east-1", "1.8.7-eksbuild.3"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.25", "us-east-1", "1.9.3-eksbuild.2"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.24", "us-east-1", "1.8.7-eksbuild.4"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.23", "us-east-1", "1.8.7-eksbuild.4"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.22", "us-east-1", "1.8.7"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.25", "us-east-1", "v1.25.6-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.25", "us-east-1", "1.25.6-minimal-eksbuild.1"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.24", "us-east-1", "1.24.7-minimal-eksbuild.2"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.23", "us-east-1", "1.23.8-minimal-eksbuild.2"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.22", "us-east-1", "1.22.11-minimal-eksbuild.2"},
