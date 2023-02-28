@@ -39,30 +39,30 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.24", "1.23", "1.22", "1.21"}
+	supportedVersions = []string{"1.25", "1.24", "1.23", "1.22"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.25": "1.9.3-eksbuild",
 		"1.24": "1.8.7-eksbuild",
 		"1.23": "1.8.7-eksbuild",
 		"1.22": "1.8.7",
-		"1.21": "1.8.4",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.25": "1.25.6-minimal-eksbuild",
 		"1.24": "1.24.7-minimal-eksbuild",
 		"1.23": "1.23.8-minimal-eksbuild",
 		"1.22": "1.22.11-minimal-eksbuild",
-		"1.21": "1.21.14-minimal-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
+		"1.25": "1.12.2",
 		"1.24": "1.11.4",
 		"1.23": "1.11.4",
 		"1.22": "1.11.4",
-		"1.21": "1.11.4",
 	}
 
 	defaultContainerImageAccount = "602401143452"
@@ -108,9 +108,9 @@ type componentVersions struct {
 // https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
 // There are three core applications on an EKS cluster:
 //
-//    - kube-proxy
-//    - coredns
-//    - VPC CNI Plugin
+//   - kube-proxy
+//   - coredns
+//   - VPC CNI Plugin
 //
 // Each of these is managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use
 // the k8s API and kubectl command under the hood to patch the manifests to deploy the expected version based on what
