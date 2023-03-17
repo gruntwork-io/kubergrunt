@@ -52,7 +52,8 @@ string on the compiled binary:
 ```
 go build -o kubergrunt -ldflags "-X main.VERSION=v0.7.6 -extldflags '-static'" ./cmd
 ```
-
+### Kubergrunt and Kubernetes/EKS version compatibility
+Please see [compatibility chart](https://github.com/gruntwork-io/knowledge-base/discussions/684)
 
 ## Commands
 
