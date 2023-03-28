@@ -83,7 +83,8 @@ workflows:
             tags:
               only: /^v.*/
           context:
-            - Gruntwork Admin
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
       - deploy:
           filters:
             tags:
@@ -91,4 +92,5 @@ workflows:
             branches:
               ignore: /.*/
           context:
-            - Gruntwork Admin
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
