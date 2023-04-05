@@ -46,8 +46,8 @@ var (
 		Value: 15 * time.Minute,
 		Usage: "The length of time as duration (e.g 10m = 10 minutes) to wait for draining nodes before giving up, zero means infinite. Defaults to 15 minutes.",
 	}
-	deleteLocalDataFlag = cli.BoolFlag{
-		Name:  "delete-local-data",
+	deleteEmptyDirDataFlag = cli.BoolFlag{
+		Name:  "delete-emptydir-data",
 		Usage: "Continue even if there are pods using emptyDir (local data that will be deleted when the node is drained).",
 	}
 	waitMaxRetriesFlag = cli.IntFlag{
@@ -248,7 +248,7 @@ As the deploy command contains multiple stages, this command also generates a re
 					genericKubectlTokenFlag,
 					genericKubectlEKSClusterArnFlag,
 					drainTimeoutFlag,
-					deleteLocalDataFlag,
+					deleteEmptyDirDataFlag,
 					waitMaxRetriesFlag,
 					waitSleepBetweenRetriesFlag,
 					ignoreRecoveryFileFlag,
@@ -280,7 +280,7 @@ You can also drain multiple ASGs by providing the "--asg-name" option multiple t
 					genericKubectlTokenFlag,
 					genericKubectlEKSClusterArnFlag,
 					drainTimeoutFlag,
-					deleteLocalDataFlag,
+					deleteEmptyDirDataFlag,
 				},
 			},
 			cli.Command{
@@ -411,7 +411,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 	asgName := asgNames[0]
 
 	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
-	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
+	deleteEmptyDirData := cliContext.Bool(deleteEmptyDirDataFlag.Name)
 	ignoreRecoveryFile := cliContext.Bool(ignoreRecoveryFileFlag.Name)
 	waitMaxRetries := cliContext.Int(waitMaxRetriesFlag.Name)
 	waitSleepBetweenRetries := cliContext.Duration(waitSleepBetweenRetriesFlag.Name)
@@ -421,7 +421,7 @@ func rollOutDeployment(cliContext *cli.Context) error {
 		asgName,
 		kubectlOptions,
 		drainTimeout,
-		deleteLocalData,
+		deleteEmptyDirData,
 		waitMaxRetries,
 		waitSleepBetweenRetries,
 		ignoreRecoveryFile,
@@ -446,13 +446,13 @@ func drainASG(cliContext *cli.Context) error {
 	}
 
 	drainTimeout := cliContext.Duration(drainTimeoutFlag.Name)
-	deleteLocalData := cliContext.Bool(deleteLocalDataFlag.Name)
+	deleteEmptyDirData := cliContext.Bool(deleteEmptyDirDataFlag.Name)
 	return eks.DrainASG(
 		region,
 		asgNames,
 		kubectlOptions,
 		drainTimeout,
-		deleteLocalData,
+		deleteEmptyDirData,
 	)
 }
 
