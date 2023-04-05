@@ -32,7 +32,7 @@ func RollOutDeployment(
 	eksAsgName string,
 	kubectlOptions *kubectl.KubectlOptions,
 	drainTimeout time.Duration,
-	deleteLocalData bool,
+	deleteEmptyDirData bool,
 	maxRetries int,
 	sleepBetweenRetries time.Duration,
 	ignoreRecoveryFile bool,
@@ -84,7 +84,7 @@ func RollOutDeployment(
 		return err
 	}
 
-	err = state.drainNodes(ec2Svc, kubectlOptions, drainTimeout, deleteLocalData)
+	err = state.drainNodes(ec2Svc, kubectlOptions, drainTimeout, deleteEmptyDirData)
 	if err != nil {
 		return err
 	}
