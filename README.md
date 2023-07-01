@@ -39,7 +39,7 @@ choco install kubergrunt
 ```
 
 ### AWS CLI authentication
-For authenticating with AWS CLI before you can run kubergrunt/eksctl commands, please see our [authentication guide](https://blog.gruntwork.io/a-comprehensive-guide-to-authenticating-to-aws-on-the-command-line-63656a686799)
+You need to authenticate with the AWS CLI before you can run kubergrunt/eksctl commands, please see our [authentication guide](https://blog.gruntwork.io/a-comprehensive-guide-to-authenticating-to-aws-on-the-command-line-63656a686799)
 
 ## Building from source
 
