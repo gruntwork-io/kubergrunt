@@ -38,6 +38,9 @@ Chocolatey (Windows):
 choco install kubergrunt
 ```
 
+### AWS CLI authentication
+You need to authenticate with the AWS CLI before you can run kubergrunt/eksctl commands, please see our [authentication guide](https://blog.gruntwork.io/a-comprehensive-guide-to-authenticating-to-aws-on-the-command-line-63656a686799)
+
 ## Building from source
 
 The main package is in `cmd`. To build the binary, you can run:
