@@ -32,51 +32,67 @@ func GetAsgByName(svc *autoscaling.AutoScaling, asgName string) (*autoscaling.Gr
 	return groups[0], nil
 }
 
-// scaleUp will scale the ASG up and wait until all the nodes are available. Specifically:
-// - Set the desired capacity on the ASG
-// - Wait for the capacity in the ASG to meet the desired capacity (instances are launched)
-// - Wait for the new instances to be ready in Kubernetes
-// - Wait for the new instances to be registered with external load balancers
+// scaleUp will scale the ASG up, wait until all the nodes are available and return new instance IDs.
 func scaleUp(
 	asgSvc *autoscaling.AutoScaling,
-	ec2Svc *ec2.EC2,
-	elbSvc *elb.ELB,
-	elbv2Svc *elbv2.ELBV2,
-	kubectlOptions *kubectl.KubectlOptions,
 	asgName string,
+	originalInstanceIds []string,
 	desiredCapacity int64,
-	oldInstanceIds []string,
 	maxRetries int,
 	sleepBetweenRetries time.Duration,
-) error {
+) ([]string, error) {
 	logger := logging.GetProjectLogger()
+
 	err := setAsgCapacity(asgSvc, asgName, desiredCapacity)
 	if err != nil {
 		logger.Errorf("Failed to set ASG capacity to %d", desiredCapacity)
 		logger.Errorf("If the capacity is set in AWS, undo by lowering back to the original capacity. If the capacity is not yet set, triage the error message below and try again.")
-		return err
+		return nil, err
 	}
+
+	// All of the following are read operations and do not affect the state, so it's safe to run these
+	// each time we execute
 	err = waitForCapacity(asgSvc, asgName, maxRetries, sleepBetweenRetries)
 	if err != nil {
 		logger.Errorf("Timed out waiting for ASG to reach steady state.")
-		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
-		return err
+		return nil, err
 	}
-	newInstanceIds, err := getLaunchedInstanceIds(asgSvc, asgName, oldInstanceIds)
+
+	newInstanceIds, err := getLaunchedInstanceIds(asgSvc, asgName, originalInstanceIds)
 	if err != nil {
 		logger.Errorf("Error retrieving information about the ASG")
 		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
-		return err
+		return nil, err
 	}
-	instances, err := instanceDetailsFromIds(ec2Svc, newInstanceIds)
+
+	return newInstanceIds, nil
+}
+
+// waitAndVerifyNewInstances will scale the ASG up and wait until all the nodes are available. Specifically:
+// - Wait for the capacity in the ASG to meet the desired capacity (instances are launched)
+// - Wait for the new instances to be ready in Kubernetes
+// - Wait for the new instances to be registered with external load balancers
+func waitAndVerifyNewInstances(
+	ec2Svc *ec2.EC2,
+	elbSvc *elb.ELB,
+	elbv2Svc *elbv2.ELBV2,
+	instanceIds []string,
+	kubectlOptions *kubectl.KubectlOptions,
+	maxRetries int,
+	sleepBetweenRetries time.Duration,
+) error {
+	logger := logging.GetProjectLogger()
+
+	instances, err := instanceDetailsFromIds(ec2Svc, instanceIds)
 	if err != nil {
 		logger.Errorf("Error retrieving detailed about the instances")
 		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
 		return err
 	}
+
 	eksKubeNodeNames := kubeNodeNamesFromInstances(instances)
 	err = kubectl.WaitForNodesReady(
 		kubectlOptions,
@@ -86,21 +102,18 @@ func scaleUp(
 	)
 	if err != nil {
 		logger.Errorf("Timed out waiting for the instances to reach ready state in Kubernetes.")
-		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
 		return err
 	}
 	elbs, err := kubectl.GetAWSLoadBalancers(kubectlOptions)
 	if err != nil {
 		logger.Errorf("Error retrieving associated ELB names of the Kubernetes services.")
-		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
 		return err
 	}
-	err = waitForAnyInstancesRegisteredToELB(elbSvc, elbv2Svc, elbs, newInstanceIds)
+	err = waitForAnyInstancesRegisteredToELB(elbSvc, elbv2Svc, elbs, instanceIds)
 	if err != nil {
 		logger.Errorf("Timed out waiting for the instances to register to the Service ELBs.")
-		// TODO: can we use stages to pick up from here?
 		logger.Errorf("Undo by terminating all the new instances and trying again")
 		return err
 	}
@@ -216,7 +229,7 @@ func drainNodesInAsg(
 	kubectlOptions *kubectl.KubectlOptions,
 	asgInstanceIds []string,
 	drainTimeout time.Duration,
-	deleteLocalData bool,
+	deleteEmptyDirData bool,
 ) error {
 	instances, err := instanceDetailsFromIds(ec2Svc, asgInstanceIds)
 	if err != nil {
@@ -224,7 +237,7 @@ func drainNodesInAsg(
 	}
 	eksKubeNodeNames := kubeNodeNamesFromInstances(instances)
 
-	return kubectl.DrainNodes(kubectlOptions, eksKubeNodeNames, drainTimeout, deleteLocalData)
+	return kubectl.DrainNodes(kubectlOptions, eksKubeNodeNames, drainTimeout, deleteEmptyDirData)
 }
 
 // Make the call to cordon all the provided nodes in Kubernetes so that they won't be used to schedule new Pods.

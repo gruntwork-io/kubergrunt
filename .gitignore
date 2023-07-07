@@ -40,3 +40,6 @@ __pycache__
 
 # Go binary directory
 bin
+
+# goenv
+.go-version

@@ -41,7 +41,7 @@ func main() {
 	app := entrypoint.NewApp()
 	entrypoint.HelpTextLineWidth = 120
 
-	// Override the CLI FlagEnvHinter so it only returns the Usage text of the Flag and doesn't apend the envVar text. Original func https://github.com/urfave/cli/blob/master/flag.go#L652
+	// Override the CLI FlagEnvHinter so it only returns the Usage text of the Flag and doesn't apend the envVar text. Original func https://github.com/urfave/cli/blob/3df9a3c/flag.go#L60
 	cli.FlagEnvHinter = func(envVar, str string) string {
 		return str
 	}

@@ -5,24 +5,24 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/go-commons/errors"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gruntwork-io/kubergrunt/logging"
 )
 
 // GetIngress returns a Kubernetes Ingress resource in the provided namespace with the given name.
-func GetIngress(options *KubectlOptions, namespace string, ingressName string) (*extensionsv1beta1.Ingress, error) {
+func GetIngress(options *KubectlOptions, namespace string, ingressName string) (*networkingv1.Ingress, error) {
 	client, err := GetKubernetesClientFromOptions(options)
 	if err != nil {
 		return nil, err
 	}
 
-	return client.ExtensionsV1beta1().Ingresses(namespace).Get(context.Background(), ingressName, metav1.GetOptions{})
+	return client.NetworkingV1().Ingresses(namespace).Get(context.Background(), ingressName, metav1.GetOptions{})
 }
 
 // IsIngressAvailable returns true if the Ingress endpoint is provisioned and available.
-func IsIngressAvailable(ingress *extensionsv1beta1.Ingress) bool {
+func IsIngressAvailable(ingress *networkingv1.Ingress) bool {
 	// Ingress is ready if it has at least one endpoint
 	endpoints := ingress.Status.LoadBalancer.Ingress
 	return len(endpoints) > 0
@@ -30,7 +30,7 @@ func IsIngressAvailable(ingress *extensionsv1beta1.Ingress) bool {
 
 // GetIngressEndpoints returns all the available ingress endpoints (preferring hostnames, and if unavailable, returning
 // IPs). Note that if no endpoints are available, returns empty list.
-func GetIngressEndpoints(ingress *extensionsv1beta1.Ingress) []string {
+func GetIngressEndpoints(ingress *networkingv1.Ingress) []string {
 	endpointStatuses := ingress.Status.LoadBalancer.Ingress
 	endpoints := []string{}
 	for _, endpointStatus := range endpointStatuses {

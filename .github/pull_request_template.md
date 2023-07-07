@@ -6,7 +6,7 @@ Note: Remember to add '[WIP]' to the beginning of the title if this PR is still 
 
 ## Description
 
-<!-- Write a brief description of the changes introduced by this PR -->
+Fixes #000.
 
 ### Documentation
 
@@ -19,9 +19,11 @@ Note: Remember to add '[WIP]' to the beginning of the title if this PR is still 
     - Create a stub for documentation including bullet points for how to use the feature, code snippets (including from happy path tests), etc.
 -->
 
-<!-- Important: Did you make any backward incompatible changes? If yes, then you must write a migration guide! -->
 
 ## TODOs
+Read the [Gruntwork contribution guidelines](https://gruntwork.notion.site/Gruntwork-Coding-Methodology-02fdcd6e4b004e818553684760bf691e).
+<!-- Description of the changes introduced by this PR. -->
+
 
 Please ensure all of these TODOs are completed before asking for a review.
 
@@ -32,8 +34,7 @@ Please ensure all of these TODOs are completed before asking for a review.
 - [ ] Run the relevant tests successfully.
 - [ ] Ensure any 3rd party code adheres with our [license policy](https://www.notion.so/gruntwork/Gruntwork-licenses-and-open-source-usage-policy-f7dece1f780341c7b69c1763f22b1378) or delete this line if its not applicable.
 
-
-## Related Issues
+## Release Notes (draft)
 
 <!--
   Link to related issues, and issues fixed or partially addressed by this PR.
@@ -41,3 +42,10 @@ Please ensure all of these TODOs are completed before asking for a review.
   e.g. Addresses #1234
   e.g. Related to #1234
 -->
+
+<!-- One-line description of the PR that can be included in the final release notes. -->
+Added / Removed / Updated [X].
+
+### Migration Guide
+
+<!-- Important: If you made any backward incompatible changes, then you must write a migration guide! -->

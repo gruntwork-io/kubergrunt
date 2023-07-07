@@ -30,9 +30,8 @@ import (
 )
 
 const (
-	containerAccountID = "602401143452"
-	kubeProxyRepoPath  = "eks/kube-proxy"
-	coreDNSRepoPath    = "eks/coredns"
+	kubeProxyRepoPath = "eks/kube-proxy"
+	coreDNSRepoPath   = "eks/coredns"
 
 	// Largest eksbuild tag we will try looking for.
 	maxEKSBuild = 10
@@ -40,36 +39,46 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.21", "1.20", "1.19", "1.18", "1.17", "1.16"}
+	supportedVersions = []string{"1.26", "1.25", "1.24", "1.23", "1.22"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
-		"1.21": "1.8.4-eksbuild",
-		"1.20": "1.8.3-eksbuild",
-		"1.19": "1.8.0-eksbuild",
-		"1.18": "1.7.0-eksbuild",
-		"1.17": "1.6.6-eksbuild",
-		"1.16": "1.6.6-eksbuild",
+		"1.26": "1.9.3-eksbuild",
+		"1.25": "1.9.3-eksbuild",
+		"1.24": "1.8.7-eksbuild",
+		"1.23": "1.8.7-eksbuild",
+		"1.22": "1.8.7",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
-		"1.21": "1.21.2-eksbuild",
-		"1.20": "1.20.4-eksbuild",
-		"1.19": "1.19.6-eksbuild",
-		"1.18": "1.18.8-eksbuild",
-		"1.17": "1.17.9-eksbuild",
-		"1.16": "1.16.13-eksbuild",
+		"1.26": "1.26.2-minimal-eksbuild",
+		"1.25": "1.25.6-minimal-eksbuild",
+		"1.24": "1.24.7-minimal-eksbuild",
+		"1.23": "1.23.8-minimal-eksbuild",
+		"1.22": "1.22.11-minimal-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.21": "1.9.0",
-		"1.20": "1.9.0",
-		"1.19": "1.9.0",
-		"1.18": "1.9.0",
-		"1.17": "1.9.0",
-		"1.16": "1.9.0",
+		"1.26": "1.12.6",
+		"1.25": "1.12.2",
+		"1.24": "1.11.4",
+		"1.23": "1.11.4",
+		"1.22": "1.11.4",
+	}
+
+	defaultContainerImageAccount = "602401143452"
+	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html
+	containerImageAccountLookupTable = map[string]string{
+		"af-south-1":     "877085696533",
+		"ap-east-1":      "800184023465",
+		"cn-north-1":     "918309763551",
+		"cn-northwest-1": "961992271922",
+		"eu-south-1":     "590381155156",
+		"me-south-1":     "558608220178",
+		"us-gov-east-1":  "151742754352",
+		"us-gov-west-1":  "013241004608",
 	}
 )
 
@@ -102,9 +111,9 @@ type componentVersions struct {
 // https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
 // There are three core applications on an EKS cluster:
 //
-//    - kube-proxy
-//    - coredns
-//    - VPC CNI Plugin
+//   - kube-proxy
+//   - coredns
+//   - VPC CNI Plugin
 //
 // Each of these is managed in Kubernetes as DaemonSet, Deployment, and DaemonSet respectively. This command will use
 // the k8s API and kubectl command under the hood to patch the manifests to deploy the expected version based on what
@@ -491,14 +500,7 @@ func getCorednsClusterRole(clientset *kubernetes.Clientset) (*rbacv1.ClusterRole
 // getBaseURLForVPCCNIManifest returns the base github URL where the manifest for the VPC CNI is located given the
 // requested version.
 func getBaseURLForVPCCNIManifest(vpcCNIVersion string) (string, error) {
-	// Extract the major and minor version of the VPC CNI version as it is needed to construct the URL for the
-	// deployment config.
-	parsedVPCCNIVersion, err := semver.Make(vpcCNIVersion)
-	if err != nil {
-		return "", err
-	}
-	majorMinorVPCCNIVersion := fmt.Sprintf("%d.%d", parsedVPCCNIVersion.Major, parsedVPCCNIVersion.Minor)
-	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/v%s/", vpcCNIVersion, majorMinorVPCCNIVersion)
+	baseURL := fmt.Sprintf("https://raw.githubusercontent.com/aws/amazon-vpc-cni-k8s/v%s/config/master/", vpcCNIVersion)
 	return baseURL, nil
 }
 
@@ -618,6 +620,11 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 	logger := logging.GetProjectLogger()
 	logger.Debugf("Looking up latest eksbuild for repo %s/%s", repoDomain, repoPath)
 
+	if !strings.Contains(tagBase, "eksbuild") {
+		logger.Debugf("Not an eksbuild for repo %s/%s, returning %s", repoDomain, repoPath, tagBase)
+		return tagBase, nil
+	}
+
 	var existingTag string
 	for i := 0; i < maxEKSBuild; i++ {
 		version := fmt.Sprintf("%s.%d", tagBase, i+1)
@@ -646,5 +653,9 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 
 // getRepoDomain is a conveniency function to construct the ECR docker repo URL domain.
 func getRepoDomain(region string) string {
+	containerAccountID := defaultContainerImageAccount
+	if id, ok := containerImageAccountLookupTable[region]; ok {
+		containerAccountID = id
+	}
 	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", containerAccountID, region)
 }

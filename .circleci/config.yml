@@ -1,27 +1,29 @@
 defaults: &defaults
   machine:
     enabled: true
-    image: "ubuntu-1604:201903-01"
+    image: ubuntu-2004:202111-02
   environment:
-    GRUNTWORK_INSTALLER_VERSION: v0.0.35
-    TERRATEST_LOG_PARSER_VERSION: v0.37.12
-    MODULE_CI_VERSION: v0.33.1
-    TERRAFORM_VERSION: 0.14.9
+    GRUNTWORK_INSTALLER_VERSION: v0.0.38
+    TERRATEST_LOG_PARSER_VERSION: v0.40.6
+    MODULE_CI_VERSION: v0.51.0
+    TERRAFORM_VERSION: 1.2.7
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
-    GOLANG_VERSION: 1.16
+    GOLANG_VERSION: 1.18
     GO111MODULE: auto
-    KUBECTL_VERSION: v1.17.12
-    MINIKUBE_VERSION: v1.11.0
+    KUBECTL_VERSION: v1.24.8
+    MINIKUBE_VERSION: v1.28.0
+    CRI_DOCKERD_VERSION: 0.3.0
     KUBECONFIG: /home/circleci/.kube/config
 install_gruntwork_utils: &install_gruntwork_utils
   name: install gruntwork utils
   command: |
-    curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+    curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/main/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
     gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
     gruntwork-install --module-name "kubernetes-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
     gruntwork-install --binary-name "terratest_log_parser" --repo "https://github.com/gruntwork-io/terratest" --tag "${TERRATEST_LOG_PARSER_VERSION}"
     configure-environment-for-gruntwork-module \
+      --tfenv-version NONE \
       --terraform-version ${TERRAFORM_VERSION} \
       --terragrunt-version ${TERRAGRUNT_VERSION} \
       --packer-version ${PACKER_VERSION} \
@@ -38,7 +40,9 @@ jobs:
       - run:
           command: |
             cd /home/circleci
-            setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}"
+            sudo apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y conntrack wget
+            setup-minikube --minikube-version "${MINIKUBE_VERSION}" --k8s-version "${KUBECTL_VERSION}" --cri-dockerd-version "${CRI_DOCKERD_VERSION}"
       - run:
           name: run kubergrunt tests
           command: |
@@ -79,7 +83,8 @@ workflows:
             tags:
               only: /^v.*/
           context:
-            - Gruntwork Admin
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
       - deploy:
           filters:
             tags:
@@ -87,4 +92,5 @@ workflows:
             branches:
               ignore: /.*/
           context:
-            - Gruntwork Admin
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
