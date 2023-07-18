@@ -22,10 +22,10 @@ corresponding release in the [Releases Page](/../../releases). You can download 
 platform from the releases page.
 
 Alternatively, you can install `kubergrunt` using the [Gruntwork
-Installer](https://github.com/gruntwork-io/gruntwork-installer). For example, to install version `v0.11.13`:
+Installer](https://github.com/gruntwork-io/gruntwork-installer). For example, to install version `v0.5.13`:
 
 ```bash
-gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.11.13"
+gruntwork-install --binary-name "kubergrunt" --repo "https://github.com/gruntwork-io/kubergrunt" --tag "v0.5.13"
 ```
 
 ### 3rd party package managers
