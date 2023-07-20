@@ -39,33 +39,33 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.26", "1.25", "1.24", "1.23", "1.22"}
+	supportedVersions = []string{"1.27", "1.26", "1.25", "1.24", "1.23"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.27": "1.10.1-eksbuild",
 		"1.26": "1.9.3-eksbuild",
 		"1.25": "1.9.3-eksbuild",
 		"1.24": "1.8.7-eksbuild",
 		"1.23": "1.8.7-eksbuild",
-		"1.22": "1.8.7",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.27": "1.27.1-minimal-eksbuild",
 		"1.26": "1.26.2-minimal-eksbuild",
 		"1.25": "1.25.6-minimal-eksbuild",
 		"1.24": "1.24.7-minimal-eksbuild",
 		"1.23": "1.23.8-minimal-eksbuild",
-		"1.22": "1.22.11-minimal-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
+		"1.27": "1.13.2",
 		"1.26": "1.12.6",
 		"1.25": "1.12.2",
 		"1.24": "1.11.4",
 		"1.23": "1.11.4",
-		"1.22": "1.11.4",
 	}
 
 	defaultContainerImageAccount = "602401143452"
