@@ -1,7 +1,4 @@
-defaults: &defaults
-  machine:
-    enabled: true
-    image: ubuntu-2004:202111-02
+env: &env
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.38
     TERRATEST_LOG_PARSER_VERSION: v0.40.6
@@ -15,6 +12,11 @@ defaults: &defaults
     MINIKUBE_VERSION: v1.28.0
     CRI_DOCKERD_VERSION: 0.3.0
     KUBECONFIG: /home/circleci/.kube/config
+defaults: &defaults
+  machine:
+    enabled: true
+    image: ubuntu-2004:202111-02
+  <<: *env
 install_gruntwork_utils: &install_gruntwork_utils
   name: install gruntwork utils
   command: |
@@ -29,7 +31,9 @@ install_gruntwork_utils: &install_gruntwork_utils
       --packer-version ${PACKER_VERSION} \
       --go-version ${GOLANG_VERSION} \
       --kubectl-version NONE # We install kubectl in the minikube step
-version: 2
+orbs:
+  go: circleci/go@1.7.3
+version: 2.1
 jobs:
   kubergrunt_tests:
     <<: *defaults
@@ -56,24 +60,53 @@ jobs:
           path: /tmp/logs
       - store_test_results:
           path: /tmp/logs
-  deploy:
+  build:
+    resource_class: large
     <<: *defaults
     steps:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-      - run: go get github.com/mitchellh/gox
-      # Build and upload binaries for kubergrunt
+      - run: build-go-binaries --app-name kubergrunt --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG -extldflags '-static'"
+      - persist_to_workspace:
+          root: .
+          paths: bin
+  deploy:
+    <<: *env
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.x86.medium.gen2
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - go/install:
+          version: "1.20.5"
       - run:
+          name: Install sign-binary-helpers
           command: |
-            build-go-binaries \
-              --app-name kubergrunt \
-              --src-path ./cmd \
-              --dest-path ./bin \
-              --ld-flags "-X main.VERSION=$CIRCLE_TAG -extldflags '-static'"
-            (cd ./bin && sha256sum * > SHA256SUMS)
-            upload-github-release-assets ./bin/*
-          no_output_timeout: 1800s
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+            gruntwork-install --module-name "sign-binary-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+      - run:
+          name: Compile and sign the binaries
+          command: |
+            sign-binary --install-macos-sign-dependencies --os mac .gon_amd64.hcl
+            sign-binary --os mac .gon_arm64.hcl
+            echo "Done signing the binary"
+
+            # Replace the files in bin. These are the same file names generated from .gon_amd64.hcl and .gon_arm64.hcl
+            unzip kubergrunt_darwin_amd64.zip
+            mv kubergrunt_darwin_amd64 bin/
+
+            unzip kubergrunt_darwin_arm64.zip
+            mv kubergrunt_darwin_arm64 bin/
+      - run:
+          name: Run SHA256SUM
+          command: |
+            brew install coreutils
+            cd bin && sha256sum * > SHA256SUMS
+      - run: upload-github-release-assets bin/*
 workflows:
   version: 2
   test-and-deploy:
@@ -85,7 +118,7 @@ workflows:
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
-      - deploy:
+      - build:
           filters:
             tags:
               only: /^v.*/
@@ -94,3 +127,15 @@ workflows:
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
+      - deploy:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+          context:
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
+            - APPLE__OSX__code-signing
