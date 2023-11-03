@@ -206,7 +206,7 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.27", "us-east-1", "1.27.6-minimal-eksbuild.2"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.26", "us-east-1", "1.26.9-minimal-eksbuild.2"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.25", "us-east-1", "1.25.14-minimal-eksbuild.2"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.24", "us-east-1", "1.24.17-minimal-eksbuild.2"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.24", "us-east-1", "1.24.17-minimal-eksbuild.3"},
 	}
 
 	for _, tc := range testCase {
