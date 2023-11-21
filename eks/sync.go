@@ -34,7 +34,7 @@ const (
 	coreDNSRepoPath   = "eks/coredns"
 
 	// Largest eksbuild tag we will try looking for.
-	maxEKSBuild = 10
+	maxEKSBuild = 20
 )
 
 var (
