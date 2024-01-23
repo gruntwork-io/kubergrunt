@@ -34,3 +34,31 @@ func RunKubectl(options *KubectlOptions, args ...string) error {
 	_, err := shell.RunShellCommandAndGetAndStreamOutput(shellOptions, "kubectl", cmdArgs...)
 	return err
 }
+
+func RunKubectlWithOutput(options *KubectlOptions, args ...string) (string, error) {
+	shellOptions := shell.NewShellOptions()
+	cmdArgs := []string{}
+	scheme := options.AuthScheme()
+	switch scheme {
+	case ConfigBased:
+		if options.ContextName != "" {
+			cmdArgs = append(cmdArgs, "--context", options.ContextName)
+		}
+		if options.ConfigPath != "" {
+			cmdArgs = append(cmdArgs, "--kubeconfig", options.ConfigPath)
+		}
+	default:
+		tmpfile, err := options.TempConfigFromAuthInfo()
+		if tmpfile != "" {
+			// Make sure to delete the tmp file at the end
+			defer os.Remove(tmpfile)
+		}
+		if err != nil {
+			return "ERROR", err
+		}
+		cmdArgs = append(cmdArgs, "--kubeconfig", tmpfile)
+	}
+	cmdArgs = append(cmdArgs, args...)
+	out, err := shell.RunShellCommandAndGetAndStreamOutput(shellOptions, "kubectl", cmdArgs...)
+	return out, err
+}
