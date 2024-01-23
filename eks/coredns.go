@@ -1,6 +1,8 @@
 package eks
 
 import (
+	"strings"
+
 	"github.com/gruntwork-io/go-commons/errors"
 
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
@@ -43,17 +45,32 @@ func ScheduleCoredns(
 	case Fargate:
 		logger.Info("Doing fargate annotation")
 
-		err = kubectl.RunKubectl(
+		// CoreDNS may or may not have the compute-type annotation by default. Check for existence.
+		out, err := kubectl.RunKubectlWithOutput(
 			kubectlOptions,
-			"patch", "deployment", "coredns",
+			"get", "deployment", "coredns",
 			"-n", "kube-system",
-			"--type", "json",
-			"--patch", `[{"op": "remove","path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"}]`,
+			"-o", `jsonpath='{.spec.template.metadata}'`,
 		)
-
 		if err != nil {
 			return errors.WithStackTrace(err)
 		}
+
+		// Only attempt to patch coredns deployment if the compute-type annotation is present. Else skip.
+		if strings.Contains(out, "compute-type") {
+			err = kubectl.RunKubectl(
+				kubectlOptions,
+				"patch", "deployment", "coredns",
+				"-n", "kube-system",
+				"--type", "json",
+				"--patch", `[{"op": "remove","path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"}]`,
+			)
+
+			if err != nil {
+				return errors.WithStackTrace(err)
+			}
+		}
+
 	case EC2:
 		logger.Info("Doing ec2 annotation")
 
