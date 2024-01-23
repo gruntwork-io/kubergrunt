@@ -50,7 +50,7 @@ func ScheduleCoredns(
 			kubectlOptions,
 			"get", "deployment", "coredns",
 			"-n", "kube-system",
-			"-o", `-jsonpath='{.spec.template.metadata}'`,
+			"-o", `jsonpath='{.spec.template.metadata}'`,
 		)
 		if err != nil {
 			return errors.WithStackTrace(err)
