@@ -56,7 +56,8 @@ func ScheduleCoredns(
 			return errors.WithStackTrace(err)
 		}
 
-		// Only attempt to patch coredns deployment if the compute-type annotation is present. Else skip.
+		// Only attempt to patch coredns deployment if the compute-type annotation is present.
+		// Else trigger a update by executing a rollout. This is necessary for coredns to schedule.
 		if strings.Contains(out, "compute-type") {
 			err = kubectl.RunKubectl(
 				kubectlOptions,
@@ -64,6 +65,15 @@ func ScheduleCoredns(
 				"-n", "kube-system",
 				"--type", "json",
 				"--patch", `[{"op": "remove","path": "/spec/template/metadata/annotations/eks.amazonaws.com~1compute-type"}]`,
+			)
+
+			if err != nil {
+				return errors.WithStackTrace(err)
+			}
+		} else {
+			err = kubectl.RunKubectl(
+				kubectlOptions,
+				"rollout", "restart", "coredns", "-n", "kube-system",
 			)
 
 			if err != nil {
