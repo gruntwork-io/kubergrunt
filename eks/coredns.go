@@ -73,7 +73,7 @@ func ScheduleCoredns(
 		} else {
 			err = kubectl.RunKubectl(
 				kubectlOptions,
-				"rollout", "restart", "coredns", "-n", "kube-system",
+				"rollout", "restart", "deployment", "coredns", "-n", "kube-system",
 			)
 
 			if err != nil {
