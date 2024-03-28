@@ -43,11 +43,11 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
-		"1.29": "v1.11.1-eksbuild",
-		"1.28": "v1.10.1-eksbuild",
-		"1.27": "v1.10.1-eksbuild",
-		"1.26": "v1.9.3-eksbuild",
-		"1.25": "v1.9.3-eksbuild",
+		"1.29": "1.11.1-eksbuild",
+		"1.28": "1.10.1-eksbuild",
+		"1.27": "1.10.1-eksbuild",
+		"1.26": "1.9.3-eksbuild",
+		"1.25": "1.9.3-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
