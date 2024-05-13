@@ -2,7 +2,7 @@ env: &env
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.38
     TERRATEST_LOG_PARSER_VERSION: v0.40.6
-    MODULE_CI_VERSION: v0.53.3
+    MODULE_CI_VERSION: v0.56.0
     TERRAFORM_VERSION: 1.2.7
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
@@ -25,7 +25,7 @@ install_gruntwork_utils: &install_gruntwork_utils
     gruntwork-install --module-name "kubernetes-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
     gruntwork-install --binary-name "terratest_log_parser" --repo "https://github.com/gruntwork-io/terratest" --tag "${TERRATEST_LOG_PARSER_VERSION}"
     configure-environment-for-gruntwork-module \
-      --tfenv-version NONE \
+      --mise-version NONE \
       --terraform-version ${TERRAFORM_VERSION} \
       --terragrunt-version ${TERRAGRUNT_VERSION} \
       --packer-version ${PACKER_VERSION} \
