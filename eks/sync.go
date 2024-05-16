@@ -33,8 +33,8 @@ const (
 	kubeProxyRepoPath = "eks/kube-proxy"
 	coreDNSRepoPath   = "eks/coredns"
 
-	// Largest eksbuild tag we will try looking for.
-	maxEKSBuild = 20
+	// Largest eksbuild tag we will try looking for (by binary search)
+	maxEKSBuild = 128
 )
 
 var (
@@ -625,8 +625,12 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 		return tagBase, nil
 	}
 
-	var existingTag string
-	for i := 0; i < maxEKSBuild; i++ {
+	left, right := 1, maxEKSBuild
+	for {
+		i := ((right - left) / 2) + left
+		// Round .5 up
+		i += (right - left) % 2
+
 		version := fmt.Sprintf("%s.%d", tagBase, i+1)
 		query := "v" + version
 		logger.Debugf("Trying %s", query)
@@ -634,21 +638,38 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 		if err != nil {
 			return "", err
 		}
+		// adjust our bounds
 		if tagExists {
 			logger.Debugf("Found %s", query)
-			// Update the latest tag marker
-			existingTag = version
+			// Smallest possible result is this one
+			left = i
+
+			// Window has shrunk to just this, we have our answer
+			if left == right {
+				// Unless we're at the max value, then values may go higher
+				if right == maxEKSBuild {
+					// MAINTAINER'S NOTE: If we ever reach here, this is 100% a bug in kubergrunt. Investigation is
+					// needed to resolve this, as it could be maxEKSBuild count is too small.
+					return "", commonerrors.ImpossibleErr("TOO_MANY_EKS_BUILD_TAGS")
+				}
+				logger.Debugf("Returning %s", version)
+				return version, nil
+			}
+
 		} else {
 			logger.Debugf("Not found %s", query)
-			logger.Debugf("Returning %s", existingTag)
-			// At this point, the last existing tag we encountered is the latest, so we return it.
-			return existingTag, nil
+
+			// Searched entire range and found none
+			if left == right {
+				// MAINTAINER'S NOTE: If we ever reach here, this is 100% a bug in kubergrunt. Investigation is needed
+				// to resolve this, as it could be the wrong version is being queried.
+				return "", commonerrors.ImpossibleErr("NO_EKS_BUILD_TAGS")
+			}
+
+			// Largest possible result is right before this one
+			right = i - 1
 		}
 	}
-
-	// MAINTAINER'S NOTE: If we ever reach here, this is 100% a bug in kubergrunt. Investigation is needed to resolve
-	// this, as it could be either the wrong version is being queried, or the maxEKSBuild count is too small.
-	return "", commonerrors.ImpossibleErr("TOO_MANY_EKS_BUILD_TAGS")
 }
 
 // getRepoDomain is a conveniency function to construct the ECR docker repo URL domain.
