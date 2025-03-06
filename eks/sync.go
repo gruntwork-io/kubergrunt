@@ -39,10 +39,11 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.31", "1.30", "1.29", "1.28", "1.27", "1.26", "1.25"}
+	supportedVersions = []string{"1.32", "1.31", "1.30", "1.29", "1.28", "1.27", "1.26", "1.25"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.32": "1.11.4-eksbuild",
 		"1.31": "1.11.3-eksbuild",
 		"1.30": "1.11.3-eksbuild",
 		"1.29": "1.11.3-eksbuild",
@@ -54,6 +55,7 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.32": "1.32.0-minimal-eksbuild",
 		"1.31": "1.31.0-minimal-eksbuild",
 		"1.30": "1.30.3-minimal-eksbuild",
 		"1.29": "1.29.7-minimal-eksbuild",
@@ -65,6 +67,7 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
+		"1.32": "1.19.2",
 		"1.31": "1.18.5",
 		"1.30": "1.18.5",
 		"1.29": "1.18.5",
