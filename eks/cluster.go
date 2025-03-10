@@ -126,7 +126,7 @@ func checkKubernetesApiServer(eksClusterArn string) bool {
 	// A 403 response will be returned from EKS in most situations because we are not going through the auth workflow
 	// here to access the API (to keep things simple), and anonymous access is disabled on the cluster (for security
 	// reasons).
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusForbidden {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusUnauthorized {
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			logger.Errorf("Error reading response body: %s", err)
