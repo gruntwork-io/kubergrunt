@@ -39,42 +39,42 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.32", "1.31", "1.30", "1.29", "1.28", "1.27", "1.26", "1.25"}
+	supportedVersions = []string{"1.33", "1.32", "1.31", "1.30", "1.29", "1.28", "1.27", "1.26", "1.25"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.33": "1.12.2-eksbuild",
 		"1.32": "1.11.4-eksbuild",
-		"1.31": "1.11.3-eksbuild",
-		"1.30": "1.11.3-eksbuild",
-		"1.29": "1.11.3-eksbuild",
+		"1.31": "1.11.4-eksbuild",
+		"1.30": "1.11.4-eksbuild",
+		"1.29": "1.11.4-eksbuild",
 		"1.28": "1.10.1-eksbuild",
 		"1.27": "1.10.1-eksbuild",
 		"1.26": "1.9.3-eksbuild",
-		"1.25": "1.9.3-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
-		"1.32": "1.32.0-minimal-eksbuild",
-		"1.31": "1.31.0-minimal-eksbuild",
-		"1.30": "1.30.3-minimal-eksbuild",
-		"1.29": "1.29.7-minimal-eksbuild",
-		"1.28": "1.28.12-minimal-eksbuild",
+		"1.33": "1.33.0-minimal-eksbuild",
+		"1.32": "1.32.6-minimal-eksbuild",
+		"1.31": "1.31.10-minimal-eksbuild",
+		"1.30": "1.30.14-minimal-eksbuild",
+		"1.29": "1.29.15-minimal-eksbuild",
+		"1.28": "1.28.15-minimal-eksbuild",
 		"1.27": "1.27.16-minimal-eksbuild",
 		"1.26": "1.26.15-minimal-eksbuild",
-		"1.25": "1.25.16-minimal-eksbuild",
 	}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
-		"1.32": "1.19.2",
-		"1.31": "1.18.5",
-		"1.30": "1.18.5",
-		"1.29": "1.18.5",
-		"1.28": "1.18.5",
-		"1.27": "1.18.5",
-		"1.26": "1.18.5",
-		"1.25": "1.18.5",
+		"1.33": "1.19.6",
+		"1.32": "1.19.6",
+		"1.31": "1.19.6",
+		"1.30": "1.19.6",
+		"1.29": "1.19.6",
+		"1.28": "1.19.6",
+		"1.27": "1.19.6",
+		"1.26": "1.19.6",
 	}
 
 	defaultContainerImageAccount = "602401143452"
