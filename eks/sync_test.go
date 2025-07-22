@@ -197,7 +197,7 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		region          string
 		expectedVersion string
 	}{
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.33", "us-east-1", "1.12.2-eksbuild.4"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.33", "us-east-1", "1.12.2-eksbuild.6"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.32", "us-east-1", "1.11.4-eksbuild.20"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.31", "us-east-1", "1.11.4-eksbuild.20"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.30", "us-east-1", "1.11.4-eksbuild.20"},
