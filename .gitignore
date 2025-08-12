@@ -46,3 +46,6 @@ bin
 
 # goenv
 .go-version
+
+# Binary files
+kubergrunt

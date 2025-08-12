@@ -206,13 +206,13 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.27", "us-east-1", "1.10.1-eksbuild.36"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.26", "us-east-1", "1.9.3-eksbuild.40"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.33", "us-east-1", "1.33.0-minimal-eksbuild.7"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.32", "us-east-1", "1.32.6-minimal-eksbuild.3"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.31", "us-east-1", "1.31.10-minimal-eksbuild.3"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.30", "us-east-1", "1.30.14-minimal-eksbuild.3"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.29", "us-east-1", "1.29.15-minimal-eksbuild.11"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.28", "us-east-1", "1.28.15-minimal-eksbuild.26"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.27", "us-east-1", "1.27.16-minimal-eksbuild.36"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.26", "us-east-1", "1.26.15-minimal-eksbuild.41"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.32", "us-east-1", "1.32.6-minimal-eksbuild.6"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.31", "us-east-1", "1.31.10-minimal-eksbuild.6"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.30", "us-east-1", "1.30.14-minimal-eksbuild.6"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.29", "us-east-1", "1.29.15-minimal-eksbuild.14"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.28", "us-east-1", "1.28.15-minimal-eksbuild.29"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.27", "us-east-1", "1.27.16-minimal-eksbuild.39"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.26", "us-east-1", "1.26.15-minimal-eksbuild.44"},
 	}
 
 	for _, tc := range testCase {
