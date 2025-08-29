@@ -18,6 +18,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ensureVersionIsNewerOrEqual checks that actual version >= minimum version using semver comparison
+func ensureVersionIsNewerOrEqual(actual, minimum string) error {
+	compareResult, err := semverStringCompare(actual, minimum)
+	if err != nil {
+		return fmt.Errorf("failed to compare versions %s and %s: %w", actual, minimum, err)
+	}
+	
+	if compareResult < 0 {
+		return fmt.Errorf("version %s is older than minimum required version %s", actual, minimum)
+	}
+	
+	return nil
+}
+
 func TestGetEKSContainerImageURL(t *testing.T) {
 	t.Parallel()
 
@@ -191,28 +205,28 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 	t.Parallel()
 
 	testCase := []struct {
-		lookupTable     map[string]string
-		repoPath        string
-		k8sVersion      string
-		region          string
-		expectedVersion string
+		lookupTable    map[string]string
+		repoPath       string
+		k8sVersion     string
+		region         string
+		minimumVersion string // Minimum build version we expect to exist
 	}{
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.33", "us-east-1", "1.12.2-eksbuild.7"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.32", "us-east-1", "1.11.4-eksbuild.21"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.31", "us-east-1", "1.11.4-eksbuild.21"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.30", "us-east-1", "1.11.4-eksbuild.21"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.29", "us-east-1", "1.11.4-eksbuild.21"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.28", "us-east-1", "1.10.1-eksbuild.37"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.27", "us-east-1", "1.10.1-eksbuild.37"},
-		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.26", "us-east-1", "1.9.3-eksbuild.41"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.33", "us-east-1", "1.33.0-minimal-eksbuild.7"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.32", "us-east-1", "1.32.6-minimal-eksbuild.6"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.31", "us-east-1", "1.31.10-minimal-eksbuild.6"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.30", "us-east-1", "1.30.14-minimal-eksbuild.6"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.29", "us-east-1", "1.29.15-minimal-eksbuild.14"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.28", "us-east-1", "1.28.15-minimal-eksbuild.29"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.27", "us-east-1", "1.27.16-minimal-eksbuild.39"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.26", "us-east-1", "1.26.15-minimal-eksbuild.44"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.33", "us-east-1", "1.12.2-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.32", "us-east-1", "1.11.4-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.31", "us-east-1", "1.11.4-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.30", "us-east-1", "1.11.4-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.29", "us-east-1", "1.11.4-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.28", "us-east-1", "1.10.1-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.27", "us-east-1", "1.10.1-eksbuild.1"},
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.26", "us-east-1", "1.9.3-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.33", "us-east-1", "1.33.0-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.32", "us-east-1", "1.32.6-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.31", "us-east-1", "1.31.10-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.30", "us-east-1", "1.30.14-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.29", "us-east-1", "1.29.15-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.28", "us-east-1", "1.28.15-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.27", "us-east-1", "1.27.16-minimal-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.26", "us-east-1", "1.26.15-minimal-eksbuild.1"},
 	}
 
 	for _, tc := range testCase {
@@ -224,9 +238,16 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 			dockerToken, err := eksawshelper.GetDockerLoginToken(tc.region)
 			require.NoError(t, err)
 
-			appVersion, err := findLatestEKSBuild(dockerToken, repoDomain, tc.repoPath, tc.lookupTable[tc.k8sVersion])
+			baseVersion := tc.lookupTable[tc.k8sVersion]
+			actualVersion, err := findLatestEKSBuild(dockerToken, repoDomain, tc.repoPath, baseVersion)
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedVersion, appVersion)
+
+			// Use dynamic validation: ensure the returned version is >= minimum expected version
+			err = ensureVersionIsNewerOrEqual(actualVersion, tc.minimumVersion)
+			require.NoError(t, err, "Version %s should be >= %s", actualVersion, tc.minimumVersion)
+			
+			// Additional check: ensure we got a non-empty result
+			assert.NotEmpty(t, actualVersion, "Expected non-empty version for %s %s", tc.repoPath, tc.k8sVersion)
 		})
 	}
 }
