@@ -56,7 +56,7 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
-		"1.34": "1.34.1-minimal-eksbuild",
+		"1.34": "1.34.1-eksbuild",
 		"1.33": "1.33.0-minimal-eksbuild",
 		"1.32": "1.32.6-minimal-eksbuild",
 		"1.31": "1.31.10-minimal-eksbuild",
