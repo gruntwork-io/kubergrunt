@@ -220,7 +220,7 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.28", "us-east-1", "1.10.1-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.27", "us-east-1", "1.10.1-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.26", "us-east-1", "1.9.3-eksbuild.1"},
-		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.34", "us-east-1", "1.34.1-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.34", "us-east-1", "1.34.1-eksbuild.2"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.33", "us-east-1", "1.33.0-minimal-eksbuild.1"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.32", "us-east-1", "1.32.6-minimal-eksbuild.1"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.31", "us-east-1", "1.31.10-minimal-eksbuild.1"},
