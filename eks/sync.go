@@ -22,7 +22,6 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/gruntwork-io/kubergrunt/commonerrors"
 	"github.com/gruntwork-io/kubergrunt/eksawshelper"
 	"github.com/gruntwork-io/kubergrunt/jsonpatch"
 	"github.com/gruntwork-io/kubergrunt/kubectl"
@@ -39,10 +38,11 @@ const (
 
 var (
 	// NOTE: Ensure that there is an entry for each supported version in the following tables.
-	supportedVersions = []string{"1.33", "1.32", "1.31", "1.30", "1.29", "1.28", "1.27", "1.26", "1.25"}
+	supportedVersions = []string{"1.34", "1.33", "1.32", "1.31", "1.30", "1.29", "1.28", "1.27", "1.26", "1.25"}
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-coredns.html
 	coreDNSVersionLookupTable = map[string]string{
+		"1.34": "1.12.4-eksbuild",
 		"1.33": "1.12.2-eksbuild",
 		"1.32": "1.11.4-eksbuild",
 		"1.31": "1.11.4-eksbuild",
@@ -55,6 +55,7 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-kube-proxy.html#updating-kube-proxy-add-on
 	kubeProxyVersionLookupTable = map[string]string{
+		"1.34": "1.34.1-eksbuild",
 		"1.33": "1.33.0-minimal-eksbuild",
 		"1.32": "1.32.6-minimal-eksbuild",
 		"1.31": "1.31.10-minimal-eksbuild",
@@ -67,6 +68,7 @@ var (
 
 	// Reference: https://docs.aws.amazon.com/eks/latest/userguide/managing-vpc-cni.html
 	amazonVPCCNIVersionLookupTable = map[string]string{
+		"1.34": "1.20.4",
 		"1.33": "1.19.6",
 		"1.32": "1.19.6",
 		"1.31": "1.19.6",
@@ -645,6 +647,9 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 	}
 
 	var existingTag string
+	consecutiveMisses := 0
+	maxConsecutiveMisses := 5 // Stop after 5 consecutive misses to handle gaps in build numbers
+
 	for i := 0; i < maxEKSBuild; i++ {
 		version := fmt.Sprintf("%s.%d", tagBase, i+1)
 		query := "v" + version
@@ -655,19 +660,28 @@ func findLatestEKSBuild(token, repoDomain, repoPath, tagBase string) (string, er
 		}
 		if tagExists {
 			logger.Debugf("Found %s", query)
-			// Update the latest tag marker
+			// Update the latest tag marker and reset consecutive miss counter
 			existingTag = version
+			consecutiveMisses = 0
 		} else {
 			logger.Debugf("Not found %s", query)
-			logger.Debugf("Returning %s", existingTag)
-			// At this point, the last existing tag we encountered is the latest, so we return it.
-			return existingTag, nil
+			consecutiveMisses++
+			// If we've had enough consecutive misses and have found at least one tag, assume we've reached the end
+			if consecutiveMisses >= maxConsecutiveMisses && existingTag != "" {
+				logger.Debugf("Returning %s after %d consecutive misses", existingTag, consecutiveMisses)
+				return existingTag, nil
+			}
 		}
 	}
 
-	// MAINTAINER'S NOTE: If we ever reach here, this is 100% a bug in kubergrunt. Investigation is needed to resolve
-	// this, as it could be either the wrong version is being queried, or the maxEKSBuild count is too small.
-	return "", commonerrors.ImpossibleErr("TOO_MANY_EKS_BUILD_TAGS")
+	// If we found at least one tag, return the latest one
+	if existingTag != "" {
+		logger.Debugf("Returning %s after exhausting search", existingTag)
+		return existingTag, nil
+	}
+
+	// No tags found at all - this indicates the base version in the lookup table may be incorrect
+	return "", errors.WithStackTrace(fmt.Errorf("no eksbuild tags found for base version %s in repo %s/%s", tagBase, repoDomain, repoPath))
 }
 
 // getRepoDomain is a conveniency function to construct the ECR docker repo URL domain.

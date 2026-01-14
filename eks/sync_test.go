@@ -24,11 +24,11 @@ func ensureVersionIsNewerOrEqual(actual, minimum string) error {
 	if err != nil {
 		return fmt.Errorf("failed to compare versions %s and %s: %w", actual, minimum, err)
 	}
-	
+
 	if compareResult < 0 {
 		return fmt.Errorf("version %s is older than minimum required version %s", actual, minimum)
 	}
-	
+
 	return nil
 }
 
@@ -211,6 +211,7 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		region         string
 		minimumVersion string // Minimum build version we expect to exist
 	}{
+		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.34", "us-east-1", "1.12.4-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.33", "us-east-1", "1.12.2-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.32", "us-east-1", "1.11.4-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.31", "us-east-1", "1.11.4-eksbuild.1"},
@@ -219,6 +220,7 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.28", "us-east-1", "1.10.1-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.27", "us-east-1", "1.10.1-eksbuild.1"},
 		{coreDNSVersionLookupTable, coreDNSRepoPath, "1.26", "us-east-1", "1.9.3-eksbuild.1"},
+		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.34", "us-east-1", "1.34.1-eksbuild.2"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.33", "us-east-1", "1.33.0-minimal-eksbuild.1"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.32", "us-east-1", "1.32.6-minimal-eksbuild.1"},
 		{kubeProxyVersionLookupTable, kubeProxyRepoPath, "1.31", "us-east-1", "1.31.10-minimal-eksbuild.1"},
@@ -245,7 +247,7 @@ func TestFindLatestEKSBuilds(t *testing.T) {
 			// Use dynamic validation: ensure the returned version is >= minimum expected version
 			err = ensureVersionIsNewerOrEqual(actualVersion, tc.minimumVersion)
 			require.NoError(t, err, "Version %s should be >= %s", actualVersion, tc.minimumVersion)
-			
+
 			// Additional check: ensure we got a non-empty result
 			assert.NotEmpty(t, actualVersion, "Expected non-empty version for %s %s", tc.repoPath, tc.k8sVersion)
 		})
