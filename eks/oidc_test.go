@@ -1,9 +1,13 @@
 package eks
 
 import (
+	"crypto/tls"
+	"net"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetOIDCConfigURL(t *testing.T) {
@@ -55,8 +59,19 @@ func TestGetJwksURL(t *testing.T) {
 
 func TestGetThumbprint(t *testing.T) {
 	const jwksURL = "https://www.googleapis.com/oauth2/v3/certs"
-	const expected = "08745487e891c19e3078c1f2a07e452950ef36f6"
+
 	thumbprint, err := getThumbprint(jwksURL)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, thumbprint)
+	require.NoError(t, err)
+
+	// Google rotates this chain, so do not pin a thumbprint. Compare against the
+	// last certificate presented on a direct TLS dial of the same host.
+	parsedURL, err := url.Parse(jwksURL)
+	require.NoError(t, err)
+	conn, err := tls.Dial("tcp", net.JoinHostPort(parsedURL.Hostname(), "443"), &tls.Config{ServerName: parsedURL.Hostname()})
+	require.NoError(t, err)
+	defer conn.Close()
+
+	certs := conn.ConnectionState().PeerCertificates
+	require.NotEmpty(t, certs)
+	assert.Equal(t, sha1Hash(certs[len(certs)-1].Raw), thumbprint)
 }
