@@ -3,6 +3,57 @@
 
 # kubergrunt
 
+> ## ⚠️ This repository is archived and no longer maintained
+>
+> `kubergrunt` has reached the end of its journey. After a final release that bundles the remaining pending dependency
+> updates, this repository will be archived on GitHub. It will remain available in read-only form so existing users can
+> continue to download released binaries, browse the source, and fork the project if they wish to carry it forward.
+>
+> **What this means:**
+>
+> - No new features, bug fixes, or security patches will be released by Gruntwork.
+> - Issues and pull requests will no longer be reviewed or accepted.
+> - The existing releases and binaries will remain available on the [Releases Page](/../../releases).
+> - The source code is open and can be forked under the terms of the existing [LICENSE](/LICENSE).
+>
+> ### A brief eulogy
+>
+> `kubergrunt` was born to fill the gaps. When it was first written, the AWS CLI and AWS API left a lot to be desired
+> for anyone trying to operate an EKS cluster in production: there was no clean way to authenticate `kubectl` against
+> EKS from Terraform, no built-in way to roll out a new AMI to your worker nodes without downtime, no convenient way to
+> sync core add-ons (CoreDNS, kube-proxy, VPC CNI) to a cluster's Kubernetes version, no good story for cleaning up the
+> AWS-managed security groups and ENIs that EKS leaves behind on cluster deletion, and no easy way to retrieve an OIDC
+> provider thumbprint. `kubergrunt` filled every one of those gaps, and quietly did the unglamorous work behind the
+> scenes for a lot of EKS clusters across the community.
+>
+> For years, `kubergrunt` was a core dependency of the
+> [`terraform-aws-eks`](https://github.com/gruntwork-io/terraform-aws-eks) module and the
+> [`terraform-aws-service-catalog`](https://github.com/gruntwork-io/terraform-aws-service-catalog) library, and through
+> them it powered EKS clusters at countless Gruntwork customers and open source users.
+>
+> ### Why we're archiving it
+>
+> The Kubernetes and EKS ecosystems have matured a great deal since `kubergrunt` was first written. Most of the gaps
+> this tool was created to fill have since been closed by native tooling:
+>
+> - `aws eks update-kubeconfig` and `aws eks get-token` now handle `kubectl` authentication.
+> - EKS Managed Node Groups and EKS Add-ons handle node rollouts and core component upgrades natively.
+> - `eksctl` and the AWS provider for Terraform cover OIDC providers, Fargate profile setup, and most day-2 operations.
+> - AWS itself has improved cleanup behavior around cluster deletion.
+>
+> As a result, recent releases of `terraform-aws-eks` and `terraform-aws-service-catalog` no longer depend on
+> `kubergrunt`. With no internal dependency driving its development and the original problems it solved now addressed
+> by upstream tools, continuing to maintain `kubergrunt` is no longer the best use of effort — for us or for the
+> community relying on it.
+>
+> Rather than let it slowly bit-rot, we'd rather close it out cleanly: ship one last release with the pending
+> dependency updates, archive the repository, and let it stand as a reference for the era it served.
+>
+> Thank you to everyone who used `kubergrunt`, filed issues, contributed PRs, or simply trusted it to keep their
+> clusters running. It was a good run.
+
+---
+
 `kubergrunt` is a standalone go binary with a collection of commands that attempts to fill in the gaps between Terraform,
 Helm, and Kubectl for managing a Kubernetes Cluster.
 
